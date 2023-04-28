@@ -1,34 +1,5 @@
 #!/bin/bash
 
-curdir=$(pwd)
-
-echo -e "Press y to create a custom temporary home dirrectory called rexshell here and rice that."
-echo -e "Press n to use custom name"
-echo -e "Press o to use your home dirrectory. Warning: It will move your configs to name.unixtime format"
-
-read -s -n 1 permission
-
-if [[ $permission == o ]] ; then
-     echo -e "using user home dirrectory"
-     echo -e "Are you sure ? y/n"
-     read -s -n 1 response
-     if [[ $response == y ]] ; then
-          echo "Going Through"
-     else
-          echo -e "Cancelled"
-          exit
-     fi
-     user_home_dir
-elif [[ $permission == n ]] ; then
-     echo -e "enter new name of the dirrectory"
-     echo -e "Enter Custom Home Dir name"
-     read homedir
-     custom_home_dir
-elif [[ $permission == y ]] ; then
-     echo -e "Using name rexshell for custom homedir"
-     custom_home_dir
-fi
-
 custom_home_dir () {
      homedir=${homedir:-rexshell}
      
@@ -93,3 +64,38 @@ user_home_dir () {
           exit
      fi
 }
+
+
+
+
+
+
+curdir=$(pwd)
+
+echo -e "Press y to create a custom temporary home dirrectory called rexshell here and rice that."
+echo -e "Press n to use custom name"
+echo -e "Press o to use your home dirrectory. Warning: It will move your configs to name.unixtime format"
+
+read -s -n 1 permission
+
+if [[ $permission == o ]] ; then
+     echo -e "using user home dirrectory"
+     echo -e "Are you sure ? y/n"
+     read -s -n 1 response
+     if [[ $response == y ]] ; then
+          echo "Going Through"
+     else
+          echo -e "Cancelled"
+          exit
+     fi
+     user_home_dir
+elif [[ $permission == n ]] ; then
+     echo -e "enter new name of the dirrectory"
+     echo -e "Enter Custom Home Dir name"
+     read homedir
+     custom_home_dir
+elif [[ $permission == y ]] ; then
+     echo -e "Using name rexshell for custom homedir"
+     custom_home_dir
+fi
+
