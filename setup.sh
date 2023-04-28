@@ -32,6 +32,7 @@ custom_home_dir () {
      else
           exit
      fi
+     zsh
 }
 
 user_home_dir () {
