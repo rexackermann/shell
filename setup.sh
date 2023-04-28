@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 cd ~/
 
@@ -17,6 +17,7 @@ mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
 
 echo -e "Do you want to get the history and private ? y/n "
 read -s -n 1 confirmation
+
 if [[ $confirmation == "y" ]] ; then
      echo -e "On it !"
      export GNUPGHOME=$(PWD)/.gnupg
