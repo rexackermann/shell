@@ -20,7 +20,7 @@ read -s -n 1 confirmation
 
 if [[ $confirmation == "y" ]] ; then
      echo -e "On it !"
-     export GNUPGHOME=$(PWD)/.gnupg
+     export GNUPGHOME=$(pwd)/.gnupg
      gpg -d .zsh_history.gpg >> ~/.zsh_history
      gpg -d .zshrc_private.gpg >> ~/.zshrc_private
 else
