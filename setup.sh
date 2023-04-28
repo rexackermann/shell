@@ -24,5 +24,5 @@ if [[ $confirmation == "y" ]] ; then
      gpg -d .zsh_history.gpg >> ~/.zsh_history
      gpg -d .zshrc_private.gpg >> ~/.zshrc_private
 else
-     quit
+     exit
 fi
