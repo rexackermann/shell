@@ -172,29 +172,29 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
 #alias minimize="$bash xdotool windowminimize $(xdotool getactivewindow)"
-alias zshconfig="gedit ~/.zshrc"
-alias ohmyzsh="gedit ~/.oh-my-zsh"
+alias zshconfig="$EDITOR ~/.zshrc"
+alias ohmyzsh="$EDITOR ~/.oh-my-zsh"
 alias tvp="mplayer -vo fbdev2 -fs -zoom -xy"
 # alias sndcpy="/home/rex/./sndcpy"
-alias ls="exa -a --icons"
-alias l="exa -alihgSUFHum --icons"
-alias lst="exa --tree"
+alias ls="exa -a --icons || ls -a --icons "
+alias l="exa -alihgSUFHum --icons || ls -alihgSUFHum --icons"
+alias lst="exa --tree || ls --tree"
 alias beelogger="sudo python /home/rex/BeeLogger/bee.py"
 alias bh="sync && sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2"
-alias ftp-start="sudo systemctl start vsftpd.service"
-alias ftp-stop="sudo systemctl stop vsftpd.service"
+# alias ftp-start="sudo systemctl start vsftpd.service"
+# alias ftp-stop="sudo systemctl stop vsftpd.service"
 alias fullscreen="wmctrl -r ':ACTIVE:' -b add,fullscreen"
 alias unfullscreen="wmctrl -r ':ACTIVE:' -b add,fullscreen"
 alias sublime="/opt/sublime_text/sublime_text"
-alias glances="glances -C /home/rex/Documents/glances.conf"
+alias glances="glances -C $HOME/Documents/glances.conf"
 alias vm.drop="sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2 && sudo sysctl -w vm.drop_caches=1"
 # alias srhs="cat /home/rex/.zsh_history | grep"
 alias iris="xwinwrap -fs -fdt -ni -b -nf -un -o 1.0 -debug -- mpv -wid WID --loop --no-audio ~/Videos/video.mp4 /home/rex/Videos/iris.mp4 &; disown"
 alias irisk="pkill -f "xwinwrap""
 alias pk="pkill -9 -e"
-alias sshd="/etc/init.d/ssh start"
+# alias sshd="/etc/init.d/ssh start"
 alias wallpaper="tiv /home/rex/.config/autowallp/wall-dark0 && tiv /home/rex/.config/autowallp/wall-dark1 && tiv /home/rex/.config/autowallp/wall-dark2 && tiv /home/rex/.config/autowallp/wall-dark3 && tiv /home/rex/.config/autowallp/wall-dark4"
-alias pyhttp="/home/rex/py_httpserver_Ult/local_server.py"
+# alias pyhttp="/home/rex/py_httpserver_Ult/local_server.py"
 alias m="mpv --demuxer-max-bytes=50M"
 alias define="sdcv"
 alias fetch="cpufetch -Fs fancy -c intel && neofetch"
@@ -204,18 +204,18 @@ alias mvi='mpv --config-dir=$HOME/.config/mvi'
 alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
 alias emacs="emacsclient -ca "emacs""
 alias em="emacs"
-alias vi="nvim"
-alias vim="nvim"
+alias vi="lvim || nvim || vim || vi"
+alias vim="lvim || nvim || vim || vi"
 alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
 alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
 alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
 alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
-alias apt="dnf"
+# alias apt="dnf"
 alias gdown="gdown --fuzzy --continue"
 alias gdownf="gdown --fuzzy --continue --folder"
 alias rename="vidir --verbose"
-alias yolo=/home/rex/yolo-ai-cmdbot/yolo.py
-alias computer=/home/rex/yolo-ai-cmdbot/yolo.py
+alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
+alias computer=$HOME/yolo-ai-cmdbot/yolo.py
 alias music=musikcube
 alias incognito="fc -p"
 
@@ -326,7 +326,7 @@ function fp() {
 
 
 srhs() {
-     rg $1 ~/.zsh_history
+     rg $@ ~/.zsh_history || cat ~/.zsh_history | grep $@
 }
 
 lazynvm() {
@@ -578,4 +578,4 @@ if [ "$funcstack[1]" = "_glow" ]; then
 fi
 
 source "$HOME/.cargo/env"
-export EDITOR=/home/rex/.local/bin/lvim
+export EDITOR=$HOME/.local/bin/lvim
