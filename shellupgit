@@ -1,0 +1,13 @@
+#!/bin/env bash
+
+cd ~/github/shell
+
+export GNUPGHOME=$(pwd)/.gnupg/
+
+gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zsh_history
+gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zshrc_private
+
+mv ~/.zsh_history.gpg ~/github/shell/
+mv ~/.zshrc_private.gpg ~/github/shell/
+
+git commit -am update_$(date +%s) && git push
