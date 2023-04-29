@@ -10,4 +10,6 @@ gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zshrc_private
 mv ~/.zsh_history.gpg ~/github/shell/
 mv ~/.zshrc_private.gpg ~/github/shell/
 
+rm -rfv .gnupg/random_seed
+
 git commit -am update_$(date +%s) && git push
