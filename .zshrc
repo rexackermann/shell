@@ -269,6 +269,34 @@ f() {
      flatpak list | grep -i $1 | awk '{ print $2 }' | xargs flatpak run
 }
 
+man() {
+     batman $@ || sh -c 'col -bx  | bat -l man -p' || man $@
+}
+
+batgrep() {
+     batgrep -B 5 -A 5 $@
+}
+
+watch() {
+     batwatch $@ || watch $@
+}
+
+diff() {
+     batdiff $@ || diff $@
+}
+
+# batpipe
+# To use batpipe, eval the output of this command in your shell init script.
+LESSOPEN="|/usr/bin/batpipe %s";
+export LESSOPEN;
+unset LESSCLOSE;
+
+# The following will enable colors when using batpipe with less:
+LESS="$LESS -R";
+BATPIPE="color";
+export LESS;
+export BATPIPE;
+
 # Songs Play
 # p() {
 #      # song=${1:-\ }   
