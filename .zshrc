@@ -176,9 +176,9 @@ alias zshconfig="$EDITOR ~/.zshrc"
 alias ohmyzsh="$EDITOR ~/.oh-my-zsh"
 alias tvp="mplayer -vo fbdev2 -fs -zoom -xy"
 # alias sndcpy="/home/rex/./sndcpy"
-alias ls="exa -a --icons || ls -a --icons "
-alias l="exa -alihgSUFHum --icons || ls -alihgSUFHum --icons"
-alias lst="exa --tree || ls --tree"
+# alias ls="exa -a --icons || ls -a"
+# alias l="exa -alihgSUFHum --icons || ls -alihgSUFHu --color"
+# alias lst="exa --tree || ls --tree"
 alias beelogger="sudo python /home/rex/BeeLogger/bee.py"
 alias bh="sync && sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2"
 # alias ftp-start="sudo systemctl start vsftpd.service"
@@ -204,8 +204,14 @@ alias mvi='mpv --config-dir=$HOME/.config/mvi'
 alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
 alias emacs="emacsclient -ca "emacs""
 alias em="emacs"
-alias vi="lvim || nvim || vim || vi"
-alias vim="lvim || nvim || vim || vi"
+vi() {
+     lvim $@ || nvim $@ || vim $@ || vi $@
+}
+vim() {
+     lvim $@ || nvim $@ || vim $@ || vi $@
+}
+# alias vi="lvim || nvim || vim || vi"
+# alias vim="lvim || nvim || vim || vi"
 alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
 alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
 alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
@@ -229,7 +235,6 @@ fpath+=${ZDOTDIR:-~}/.zsh_functions
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
-export PATH="$PATH:$HOME/shell/bin"
 
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm" 
 
@@ -353,6 +358,18 @@ function fp() {
   ( flatpak run "$app" "$@" &> /dev/null & )
 }
 
+unalias ls
+unalias l
+
+ls() {
+     exa -a --icons $@ || ls -a $@
+}
+l() {
+     exa -alihgSUFHum --icons $@ || ls -alihgSUFHu --color $@
+}
+lst() {
+     exa --tree $@ || ls --tree $@
+}
 
 srhs() {
      rg $@ ~/.zsh_history || cat ~/.zsh_history | grep $@
