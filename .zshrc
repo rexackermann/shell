@@ -312,7 +312,7 @@ then
      export MANPAGER="sh -c 'col -bx  | bat -l man -p'"
 fi
 
-alias batgrep="batgrep -B 5 -A 5 $@"
+# alias batgrep="batgrep -B 5 -A 5"
 
 if command -v batwatch &> /dev/null
 then
