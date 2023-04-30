@@ -1,7 +1,7 @@
-# shell
+[#](#) shell
 Shell configs
 -----------------
 
 ```
-bash -c "$(curl -fsSl rexackermann.github.io/shellsetup)"
+bash -c "$(curl -fsSl https://rexackermann.github.io/shellsetup)"
 ```
