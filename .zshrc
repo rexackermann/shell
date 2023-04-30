@@ -204,12 +204,40 @@ alias mvi='mpv --config-dir=$HOME/.config/mvi'
 alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
 alias emacs="emacsclient -ca "emacs""
 alias em="emacs"
-vi() {
-     lvim $@ || nvim $@ || vim $@ || vi $@
-}
-vim() {
-     lvim $@ || nvim $@ || vim $@ || vi $@
-}
+
+if command -v lvim &> /dev/null
+then
+     alias vi="lvim"
+elif command -v nvim &> /dev/null
+then
+     alias vi="nvim"
+elif command -v vim &> /dev/null
+then
+     alias vi="vim"
+else
+     alias vi="vi"
+fi 
+
+if command -v lvim &> /dev/null
+then
+     alias vim="lvim"
+elif command -v nvim &> /dev/null
+then
+     alias vim="nvim"
+elif command -v vim &> /dev/null
+then
+     alias vim="vim"
+else
+     alias vim="vi"
+fi 
+
+
+# vi() {
+#      lvim $@ || nvim $@ || vim $@ || vi $@
+# }
+# vim() {
+#      lvim $@ || nvim $@ || vim $@ || vi $@
+# }
 # alias vi="lvim || nvim || vim || vi"
 # alias vim="lvim || nvim || vim || vi"
 alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
@@ -275,21 +303,34 @@ f() {
      flatpak list | grep -i $1 | awk '{ print $2 }' | xargs flatpak run
 }
 
-man() {
-     batman $@ || sh -c 'col -bx  | bat -l man -p' || man $@
-}
+# man() {
+#      batma $@ || sh -c 'col -bx  | bat -l man -p' || man $@
+# }
 
-batgrep() {
-     batgrep -B 5 -A 5 $@
-}
+if command -v bat &> /dev/null
+then
+     export MANPAGER="sh -c 'col -bx  | bat -l man -p'"
+fi
 
-watch() {
-     batwatch $@ || watch $@
-}
+alias batgrep="batgrep -B 5 -A 5 $@"
 
-diff() {
-     batdiff $@ || diff $@
-}
+if command -v batwatch &> /dev/null
+then
+     alias watch="batwatch"
+fi
+
+if command -v batdiff &> /dev/null
+then
+     alias diff="batdiff"
+fi
+
+# watch() {
+#      batwatch $@ || watch $@
+# }
+
+# diff() {
+#      batdiff $@ || diff $@
+# }
 
 # batpipe
 # To use batpipe, eval the output of this command in your shell init script.
@@ -361,15 +402,26 @@ function fp() {
 unalias ls
 unalias l
 
-ls() {
-     exa -a --icons $@ || ls -a $@
-}
-l() {
-     exa -alihgSUFHum --icons $@ || ls -alihgSUFHu --color $@
-}
-lst() {
-     exa --tree $@ || ls --tree $@
-}
+# command replacer
+
+# if command -v newcommand &> /dev/null
+# then
+#      alias command="newcommand"
+# else
+#      alias command="command"
+# fi 
+
+if command -v exa &> /dev/null
+then
+     alias ls="exa -a --icons"
+     alias l="exa -alihgSUFHum --icons"
+     alias lst="exa --tree"
+else
+     alias ls="ls -a"
+     alias l="ls -alihgSUFHu --color"
+     alias lst="ls"
+fi 
+
 
 srhs() {
      rg $@ ~/.zsh_history || cat ~/.zsh_history | grep $@
