@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # bat-extras | Copyright (C) 2020 eth-p | MIT License
 #
@@ -324,7 +324,7 @@ hook_version() {
 		if [[ "$OPT" = "--version" ]]; then
 			printf "%s %s\n\n%s\n%s\n" \
 				"bat-modules" \
-				"2022.07.27" \
+				"2023.03.21" \
 				"Copyright (C) 2019-2021 eth-p | MIT License" \
 				"https://github.com/eth-p/bat-extras"
 			exit 0
@@ -693,7 +693,7 @@ action:help() {
 
 action:clear() {
 	printc "%{YELLOW}Clearing bat syntax and theme cache...%{CLEAR}\n"
-	"bat" cache --clear
+	"/usr/bin/bat" cache --clear
 }
 
 action:update() {
@@ -739,7 +739,7 @@ action:update() {
 	printc "%{YELLOW}Done.%{CLEAR}\n"
 	if "$CHANGES"; then
 		printc "%{YELLOW}Rebuilding cache...%{CLEAR}\n"
-		"bat" cache --build
+		"/usr/bin/bat" cache --build
 	fi
 }
 

@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # bat-extras | Copyright (C) 2020 eth-p | MIT License
 #
@@ -515,7 +515,7 @@ hook_version() {
 		if [[ "$OPT" = "--version" ]]; then
 			printf "%s %s\n\n%s\n%s\n" \
 				"batdiff" \
-				"2022.07.27" \
+				"2023.03.21" \
 				"Copyright (C) 2019-2021 eth-p | MIT License" \
 				"https://github.com/eth-p/bat-extras"
 			exit 0
@@ -576,7 +576,7 @@ hook_width() {
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -732,15 +732,15 @@ print_bat_diff() {
 
 	# Diff two files.
 	if [[ "${#files[@]}" -eq 2 ]]; then
-		diff --unified="$OPT_CONTEXT" "${files[@]}" | "bat" --language=diff - "${BAT_ARGS[@]}"
+		diff --unified="$OPT_CONTEXT" "${files[@]}" | "/usr/bin/bat" --language=diff - "${BAT_ARGS[@]}"
 		return $?
 	fi
 
 	# Diff git file.
 	if "$SUPPORTS_BAT_DIFF"; then
-		"bat" --diff --diff-context="$OPT_CONTEXT" "${files[0]}" "${BAT_ARGS[@]}"
+		"/usr/bin/bat" --diff --diff-context="$OPT_CONTEXT" "${files[0]}" "${BAT_ARGS[@]}"
 	else
-		"git" diff -U"$OPT_CONTEXT" "${files[0]}" | "bat" --language=diff - "${BAT_ARGS[@]}"
+		"git" diff -U"$OPT_CONTEXT" "${files[0]}" | "/usr/bin/bat" --language=diff - "${BAT_ARGS[@]}"
 	fi
 }
 

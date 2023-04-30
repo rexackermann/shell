@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # bat-extras | Copyright (C) 2019 eth-p | MIT License
 #
@@ -515,7 +515,7 @@ hook_version() {
 		if [[ "$OPT" = "--version" ]]; then
 			printf "%s %s\n\n%s\n%s\n" \
 				"batgrep" \
-				"2022.07.27" \
+				"2023.03.21" \
 				"Copyright (C) 2019-2021 eth-p | MIT License" \
 				"https://github.com/eth-p/bat-extras"
 			exit 0
@@ -576,7 +576,7 @@ hook_width() {
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -909,7 +909,7 @@ main() {
 		FIRST_PRINT=false
 
 		# Print the file.
-		"bat" "${BAT_ARGS[@]}" \
+		"/usr/bin/bat" "${BAT_ARGS[@]}" \
 			"${LAST_LR[@]}" \
 			"${LAST_LH[@]}" \
 			--style="${BAT_STYLE}${OPT_SNIP}" \

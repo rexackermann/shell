@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # bat-extras | Copyright (C) 2021 eth-p | MIT License
 #
@@ -37,7 +37,8 @@
 #
 # -----------------------------------------------------------------------------
 # shellcheck disable=SC1090 disable=SC2155
-SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd "$(dirname "$(readlink "${BASH_SOURCE[0]}" || echo ".")")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+SELF_NC="${BASH_SOURCE:-$0}"
+SELF="$(cd "$(dirname "${SELF_NC}")" && cd "$(dirname "$(readlink "${SELF_NC}" || echo ".")")" && pwd)/$(basename "${SELF_NC}")"
 # --- BEGIN LIBRARY FILE: dirs.sh ---
 
 # Gets a configuration directory for a command-line program.
@@ -414,7 +415,7 @@ _ARGV_ORIGINAL=("$@")
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -517,7 +518,7 @@ if [[ "$#" -eq 0 ]]; then
 		printc "%{DIM}# %s, %s.\n# %s\n# %s\n# %s\n# \n# %s%{CLEAR}\n" \
 			"batpipe" \
 			"a bat-based preprocessor for less and bat" \
-			"Version: 2022.07.27" \
+			"Version: 2023.03.21" \
 			"Homepage: https://github.com/eth-p/bat-extras" \
 			"Copyright (C) 2019-2021 eth-p | MIT License" \
 			"To use batpipe, eval the output of this command in your shell init script."
@@ -574,10 +575,35 @@ BATPIPE_INSIDE_LESS=false
 BATPIPE_INSIDE_BAT=false
 TERM_WIDTH="$(term_width)"
 
-if [[ "$(basename -- "$(parent_executable | cut -f1 -d' ')")" == less ]]; then
-	BATPIPE_INSIDE_LESS=true
-elif [[ "$(basename -- "$(parent_executable | cut -f1 -d' ')")" == "$(basename -- "bat")" ]]; then
-	BATPIPE_INSIDE_BAT=true
+if [[ -n "${BATPIPE_TERM_WIDTH:-}" ]]; then
+	if [[ "${BATPIPE_TERM_WIDTH:0:1}" = "-" ]]; then
+		TERM_WIDTH=$((TERM_WIDTH + BATPIPE_TERM_WIDTH)) || true
+	else
+		TERM_WIDTH="$BATPIPE_TERM_WIDTH"
+	fi
+fi
+
+BATPIPE_PARENT_EXECUTABLE_PID="$PPID"
+for i in 1 2 3; do
+	BATPIPE_PARENT_EXECUTABLE="${BATPIPE_DEBUG_PARENT_EXECUTABLE:-$(parent_executable "$BATPIPE_PARENT_EXECUTABLE_PID")}"
+	BATPIPE_PARENT_EXECUTABLE_BASENAME="$(basename -- "${BATPIPE_PARENT_EXECUTABLE}" | cut -d' ' -f1)"
+	BATPIPE_PARENT_EXECUTABLE_PID="$(parent_executable_pid "$BATPIPE_PARENT_EXECUTABLE_PID")"
+
+	if [[ "${BATPIPE_PARENT_EXECUTABLE_BASENAME}" = "less" ]]; then
+		BATPIPE_INSIDE_LESS=true
+		break
+	elif [[ "${BATPIPE_PARENT_EXECUTABLE_BASENAME}" == "$(basename -- "/usr/bin/bat")" ]]; then
+		BATPIPE_INSIDE_BAT=true
+		break
+	fi
+done
+
+if [[ -n "${BATPIPE_DEBUG:-}" ]]; then
+	printf "batpipe debug:\n"
+	printf "  %s: %s\n" \
+		"BATPIPE_INSIDE_LESS" "${BATPIPE_INSIDE_LESS}" \
+		"BATPIPE_INSIDE_BAT" "${BATPIPE_INSIDE_BAT}"
+	printf "\n"
 fi
 
 # -----------------------------------------------------------------------------
@@ -795,7 +821,7 @@ bat() {
 	fi
 
 	# Execute the real bat.
-	command "bat" --paging=never "${__bat_batpipe_args[@]}" "${__bat_forward_args[@]}"
+	command "/usr/bin/bat" --paging=never "${__bat_batpipe_args[@]}" "${__bat_forward_args[@]}"
 }
 
 # -----------------------------------------------------------------------------
