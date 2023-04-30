@@ -297,6 +297,8 @@ export PATH="$HOME/.local/bin:$PATH"
 #doom emacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
 
+export PATH="$HOME/shell//bin:$PATH"
+
 
 # Flatpak
 f() {
