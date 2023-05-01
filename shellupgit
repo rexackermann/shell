@@ -4,12 +4,19 @@ cd ~/github/shell
 
 export GNUPGHOME=$(pwd)/.gnupg/
 
+cp -rfv ~/.zshrc ~/github/shell/
 gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zsh_history
 gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zshrc_private
+cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
+cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
+# cp -rfv $(which shellupgit) ~/github/shell/shellupgit
 
 mv ~/.zsh_history.gpg ~/github/shell/
 mv ~/.zshrc_private.gpg ~/github/shell/
 
 rm -rfv .gnupg/random_seed
 
+git add *
+git status | bat
 git commit -am update_$(date +%s) && git push
+git status | bat
