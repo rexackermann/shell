@@ -1,1 +1,0 @@
-/home/rex/Documents/BashScript/csp
