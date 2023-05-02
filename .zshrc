@@ -204,6 +204,7 @@ alias mvi='mpv --config-dir=$HOME/.config/mvi'
 alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
 alias emacs="emacsclient -ca "emacs""
 alias em="emacs"
+alias pipupgrade="pip-review --local --auto"
 
 if command -v lvim &> /dev/null
 then
