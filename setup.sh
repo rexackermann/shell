@@ -67,7 +67,7 @@ user_home_dir () {
 }
 
 termuxexec() {
-     if [[ uname -a | awk '{print $14}' ]]; then
+     if [[ uname -a | awk '{print $14}' == "Android" ]]; then
           echo "/data/data/com.termux/files/usr/bin/sshdhd -p 43434" >> ~/.zshrc
      fi
 }
