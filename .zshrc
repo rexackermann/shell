@@ -322,6 +322,12 @@ then
      alias watch="batwatch"
 fi
 
+if command -v rsync &> /dev/null
+then
+     alias cp="rsync -avxHAXP --progress"
+     alias mv="rsync -avxHAXP --remove-source-files --progress"
+fi
+
 if command -v batdiff &> /dev/null
 then
      alias diff="batdiff"
