@@ -328,6 +328,20 @@ then
      alias mv="rsync -avxHAXP --remove-source-files --progress"
 fi
 
+# cp() {
+# if [ ! -d "$2" ]; then
+#      mkdir -p "$2"
+# fi
+# rsync -avxHAXP --progress "$1" "$2"
+# }
+
+# mv() {
+# if [ ! -d "$2" ]; then
+#      mkdir -p "$2"
+# fi
+# rsync -avxHAXP --progress --remove-source-files "$1" "$2"
+# }
+
 if command -v batdiff &> /dev/null
 then
      alias diff="batdiff"
