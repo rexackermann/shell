@@ -310,9 +310,11 @@ f() {
 #      batma $@ || sh -c 'col -bx  | bat -l man -p' || man $@
 # }
 
-if command -v bat &> /dev/null
+if command -v batman &> /dev/null
 then
-     export MANPAGER="sh -c 'col -bx  | bat -l man -p'"
+     # export MANPAGER="sh -c 'col -bx  | bat -l man -p'"
+     # export MANPAGER="batman"
+     alias man="batman"
 fi
 
 # alias batgrep="batgrep -B 5 -A 5"
