@@ -310,7 +310,7 @@ f() {
 #      batma $@ || sh -c 'col -bx  | bat -l man -p' || man $@
 # }
 
-if command -v batman &> /dev/null
+if command -v bat &> /dev/null
 then
      # export MANPAGER="sh -c 'col -bx  | bat -l man -p'"
      # export MANPAGER="batman"
@@ -319,7 +319,7 @@ fi
 
 # alias batgrep="batgrep -B 5 -A 5"
 
-if command -v batwatch &> /dev/null
+if command -v bat &> /dev/null
 then
      alias watch="batwatch"
 fi
@@ -344,7 +344,7 @@ fi
 # rsync -avxHAXP --progress --remove-source-files "$1" "$2"
 # }
 
-if command -v batdiff &> /dev/null
+if command -v bat &> /dev/null
 then
      alias diff="batdiff"
 fi
