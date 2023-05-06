@@ -30,7 +30,7 @@ custom_home_dir () {
           # mv ~/.zshrc_private ~/.zshrc_private.$(date +%s)
           gpg -d .zshrc_private.gpg >> $HOME/.zshrc_private
      else
-          exit
+          echo ""
      fi
      zsh
 }
