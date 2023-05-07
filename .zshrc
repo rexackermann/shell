@@ -330,6 +330,20 @@ then
      alias mv="rsync -avxHAXP --remove-source-files --progress"
 fi
 
+
+CON() {
+     xset -q | grep "Caps Lock:   off" && xdotool key Caps_Lock
+}
+con() {
+     xset -q | grep "Caps Lock:   off" && xdotool key Caps_Lock
+}
+COFF() {
+     xset -q | grep "Caps Lock:   on" && xdotool key Caps_Lock
+}
+coff() {
+     xset -q | grep "Caps Lock:   on" && xdotool key Caps_Lock
+}
+
 # cp() {
 # if [ ! -d "$2" ]; then
 #      mkdir -p "$2"
