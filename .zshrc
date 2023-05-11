@@ -168,6 +168,150 @@ source $ZSH/oh-my-zsh.sh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
 #
+load_colors() {
+     # Regular Colors=
+     
+     
+     
+      FG_R_Black="\e[0;30m"
+      FG_R_Red="\e[0;31m"
+      FG_R_Green="\e[0;32m"
+      FG_R_Yellow="\e[0;33m"
+      FG_R_Blue="\e[0;34m"
+      FG_R_Purple="\e[0;35m"
+      FG_R_Cyan="\e[0;36m"
+      FG_R_White="\e[0;37m"
+     
+     # Bold=
+     
+     
+      FG_B_Black="\e[1;30m"
+      FG_B_Red="\e[1;31m"
+      FG_B_Green="\e[1;32m"
+      FG_B_Yellow="\e[1;33m"
+      FG_B_Blue="\e[1;34m"
+      FG_B_Purple="\e[1;35m"
+      FG_B_Cyan="\e[1;36m"
+      FG_B_White="\e[1;37m"
+     
+     # Underline=
+     
+     
+      FG_U_Black="\e[4;30m"
+      FG_U_Red="\e[4;31m"
+      FG_U_Green="\e[4;32m"
+      FG_U_Yellow="\e[4;33m"
+      FG_U_Blue="\e[4;34m"
+      FG_U_Purple="\e[4;35m"
+      FG_U_Cyan="\e[4;36m"
+      FG_U_White="\e[4;37m"
+     
+     # Background=
+     
+     
+     
+      BG_R_Black="\e[40m"
+      BG_R_Red="\e[41m"
+      BG_R_Green="\e[42m"
+      BG_R_Yellow="\e[43m"
+      BG_R_Blue="\e[44m"
+      BG_R_Purple="\e[45m"
+      BG_R_Cyan="\e[46m"
+      BG_R_White="\e[47m"
+     
+     # High Intensty=
+     
+     
+      FG_HI_Black="\e[0;90m"
+      FG_HI_Red="\e[0;91m"
+      FG_HI_Green="\e[0;92m"
+      FG_HI_Yellow="\e[0;93m"
+      FG_HI_Blue="\e[0;94m"
+      FG_HI_Purple="\e[0;95m"
+      FG_HI_Cyan="\e[0;96m"
+      FG_HI_White="\e[0;97m"
+     
+     # Bold High Intensty=
+     
+     
+      FG_BHI_Black="\e[1;90m"
+      FG_BHI_Red="\e[1;91m"
+      FG_BHI_Green="\e[1;92m"
+      FG_BHI_Yellow="\e[1;93m"
+      FG_BHI_Blue="\e[1;94m"
+      FG_BHI_Purple="\e[1;95m"
+      FG_BHI_Cyan="\e[1;96m"
+      FG_BHI_White="\e[1;97m"
+     
+     # High Intensty backgrounds=
+     
+     
+     
+      BG_HI_Black="\e[0;100m"
+      BG_HI_Red="\e[0;101m"
+      BG_HI_Green="\e[0;102m"
+      BG_HI_Yellow="\e[0;103m"
+      BG_HI_Blue="\e[0;104m"
+      BG_HI_Purple="\e[0;105m"
+      BG_HI_Cyan="\e[0;106m"
+      BG_HI_White="\e[0;107m"
+     
+     # Reset=
+     
+     
+     
+     ClearColor="\e[0m"
+}
+load_colors
+
+align_center() {
+    local terminal_width=$(tput cols)     # query the Terminfo database: number of columns
+    local text="${1:?}"                   # text to center
+    local glyph="${2:-=}"                 # glyph to compose the border
+    local padding="${3:-2}"               # spacing around the text
+
+    local text_width=${#text}             
+
+    local border_width=$(( (terminal_width - (padding * 2) - text_width) / 2 ))
+
+    local border=                         # shape of the border
+
+    # create the border (left side or right side)
+    for ((i=0; i<border_width; i++))
+    do
+        border+="${glyph}"
+    done
+
+    # a side of the border may be longer (e.g. the right border)
+    if (( ( terminal_width - ( padding * 2 ) - text_width ) % 2 == 0 ))
+    then
+        # the left and right borders have the same width
+        local left_border=$border
+        local right_border=$left_border
+    else
+        # the right border has one more character than the left border
+        # the text is aligned leftmost
+        local left_border=$border
+        local right_border="${border}${glyph}"
+    fi
+
+    # space between the text and borders
+    local spacing=
+
+    for ((i=0; i<$padding; i++))
+    do
+        spacing+=" "
+    done
+
+    # displays the text in the center of the screen, surrounded by borders.
+    printf "${left_border}${spacing}${text}${spacing}${right_border}\n"
+}
+
+# center_text "Something I want to print" "~"
+# center_text "Something I want to print" "=" 6))" "$padding"
+
+
+
 
 # Example aliases
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
@@ -205,6 +349,20 @@ alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
 alias emacs="emacsclient -ca "emacs""
 alias em="emacs"
 alias pipupgrade="pip-review --local --auto"
+# alias vi="lvim || nvim || vim || vi"
+# alias vim="lvim || nvim || vim || vi"
+alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
+alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
+alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
+alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
+# alias apt="dnf"
+alias gdown="gdown --fuzzy --continue"
+alias gdownf="gdown --fuzzy --continue --folder"
+alias rename="vidir --verbose"
+alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
+alias computer=$HOME/yolo-ai-cmdbot/yolo.py
+alias music=musikcube
+alias incognito="fc -p && clear && echo -e \"${FG_R_Black}${BG_R_Green}\" && align_center \"Incognito Mode Enabled\" && echo \"\" "
 
 if command -v lvim &> /dev/null
 then
@@ -239,20 +397,6 @@ fi
 # vim() {
 #      lvim $@ || nvim $@ || vim $@ || vi $@
 # }
-# alias vi="lvim || nvim || vim || vi"
-# alias vim="lvim || nvim || vim || vi"
-alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
-alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
-alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
-alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
-# alias apt="dnf"
-alias gdown="gdown --fuzzy --continue"
-alias gdownf="gdown --fuzzy --continue --folder"
-alias rename="vidir --verbose"
-alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
-alias computer=$HOME/yolo-ai-cmdbot/yolo.py
-alias music=musikcube
-alias incognito="fc -p"
 
 # typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
 
@@ -362,6 +506,21 @@ if command -v bat &> /dev/null
 then
      alias diff="batdiff"
 fi
+color256() {
+     awk -v cols="$(tput cols)" 'BEGIN{
+         for (colnum = 0; colnum<cols; colnum++) {
+             r = 255-(colnum*255/cols);
+             g = (colnum*510/cols);
+             b = (colnum*255/cols);
+             if (g>255) g = 510-g;
+             printf "\033[48;2;%d;%d;%dm", r,g,b;
+             printf "\033[38;2;%d;%d;%dm", 255-r,255-g,255-b;
+     	char=(colnum%2==0)?"/":"\\";
+             printf "%s\033[0m", char;
+         }
+         printf "\n";
+     }'
+}
 
 # watch() {
 #      batwatch $@ || watch $@
@@ -716,3 +875,5 @@ fi
 
 source "$HOME/.cargo/env"
 export EDITOR=$HOME/.local/bin/lvim
+addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
+clear
