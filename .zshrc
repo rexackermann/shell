@@ -268,11 +268,14 @@ align_center() {
     local terminal_width=$(tput cols)     # query the Terminfo database: number of columns
     local text="${1:?}"                   # text to center
     local glyph="${2:-=}"                 # glyph to compose the border
-    local padding="${3:-2}"               # spacing around the text
+    local glyph2="${3:-=}"                 # glyph to compose the border
+    local padding="${4:-2}"               # spacing around the text
 
     local text_width=${#text}             
+    local glyph_width="${#glyph}"                 # glyph to compose the border
+    local glyph2_width="${#glyph2}"                 # glyph to compose the border
 
-    local border_width=$(( (terminal_width - (padding * 2) - text_width) / 2 ))
+    local border_width=$(( ((terminal_width - (padding * 2) - text_width) / 2) / $glyph_width ))
 
     local border=                         # shape of the border
 
@@ -303,8 +306,14 @@ align_center() {
         spacing+=" "
     done
 
+
     # displays the text in the center of the screen, surrounded by borders.
-    printf "${left_border}${spacing}${text}${spacing}${right_border}\n"
+    for i in {1..$(($terminal_width/$glyph2_width))}; do echo -n "$glyph2"; done
+    for i in {1..$(($terminal_width%$glyph2_width))}; do echo -n "${glyph2:0:$(($terminal_width%$glyph2_width))}"; done
+    printf "${left_border}${spacing}${text}${spacing}${right_border}"
+    for i in {1..$(($terminal_width%$glyph_width))}; do echo -n "${glyph:0:$(($terminal_width%$glyph2_width))}"; done
+    for i in {1..$(($terminal_width/$glyph2_width))}; do echo -n "$glyph2"; done
+    for i in {1..$(($terminal_width%$glyph2_width))}; do echo -n "${glyph2:0:$(($terminal_width%$glyph2_width))}"; done
 }
 
 # center_text "Something I want to print" "~"
@@ -362,7 +371,23 @@ alias rename="vidir --verbose"
 alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
 alias computer=$HOME/yolo-ai-cmdbot/yolo.py
 alias music=musikcube
-alias incognito="fc -p && clear && echo -e \"${FG_R_Black}${BG_R_Green}\" && align_center \"Incognito Mode Enabled\" && echo \"\" "
+
+incognito() {
+     if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
+          fc -P
+          clear
+          echo -e "${FG_R_Black}${BG_R_Red}"
+          align_center "Incognito Mode Disabled" "󱐡" "󰗹 "
+          echo -e "${ClearColor}\n"
+     else
+          /bin/cp ~/.zsh_history /tmp/.zsh_history
+          fc -p /tmp/.zsh_history
+          clear
+          echo -e "${FG_R_Black}${BG_R_Green}"
+          align_center "Incognito Mode Enabled" "󱐡 " "󰗹 "
+          echo -e "${ClearColor}\n"
+     fi
+}
 
 if command -v lvim &> /dev/null
 then
