@@ -377,7 +377,7 @@ incognito() {
           fc -P
           clear
           echo -e "${FG_R_Black}${BG_R_Red}"
-          align_center "Incognito Mode Disabled" "󱐡" "󰗹 "
+          align_center "Incognito Mode Disabled" "󱐡 " "󰗹 "
           echo -e "${ClearColor}\n"
      else
           /bin/cp ~/.zsh_history /tmp/.zsh_history
