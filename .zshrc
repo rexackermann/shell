@@ -495,8 +495,14 @@ fi
 
 if command -v rsync &> /dev/null
 then
-     alias cp="rsync -avxHAXP --progress"
-     alias mv="rsync -avxHAXP --remove-source-files --progress"
+     # alias cp="rsync -avxHAXP --progress"
+     # alias mv="rsync -avxHAXP --remove-source-files --progress"
+     cp() {
+          rsync -avxAHXP $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP $@
+     }
+     mv() {
+          rsync -avxAHXP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
+     }
 fi
 
 
@@ -902,3 +908,4 @@ source "$HOME/.cargo/env"
 export EDITOR=$HOME/.local/bin/lvim
 addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 clear
+[ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
