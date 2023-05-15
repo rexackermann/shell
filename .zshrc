@@ -504,6 +504,8 @@ then
           rsync -avxAHXP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
      }
 fi
+compdef cp=rsync
+compdef mv=rsync
 
 
 CON() {
