@@ -70,7 +70,7 @@ termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
           echo -e "termux detected"
           # echo "/data/data/com.termux/files/usr/bin/sshd -p 43434" >> ~/.zshrc
-          sed 's/my_cpu_temp/\#\ my_cpu_temp/' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
+          sed 's/my_cpu_temp\ \ /\#\ my_cpu_temp\ \ /' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
           mv ~/shell/.p10k.tmp ~/shell/.p10k.zsh
           # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
      fi
