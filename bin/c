@@ -122,7 +122,7 @@ init() {
                     i=true
                     ;;
                e)
-                    lvim $(which $OPTARG | head -n 1)
+                    lvim $(where $OPTARG | head -n 1)
                     exit
                     ;;
                l)
@@ -276,9 +276,9 @@ executeandsave () {
 s () {
      if [[ $s == "true" ]] ; then
           if [[ $i == "true" ]] ; then
-               cat $(which $loc | head -n 1) >> $cdr/c$t.c.sh
+               cat $(where $loc | head -n 1) >> $cdr/c$t.c.sh
           else
-               cp $(which $loc) $cdr/c$t.c.sh
+               cp $(where $loc) $cdr/c$t.c.sh
           fi
      fi
 }
