@@ -23,8 +23,8 @@ git status | bat
 git fetch && git pull && git commit -am update_$(date +%s) && git push
 git status | bat
 
-cd ~/github/RexAckermann.github.io/
+cd ~/github/RexAckermann.github.io/shell/
 git fetch && git pull && git commit -am update_$(date +%s) && git push
 
-cd ~/github/RexAckermann.github.io/shell/
+cd ~/github/RexAckermann.github.io/
 git fetch && git pull && git commit -am update_$(date +%s) && git push
