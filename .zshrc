@@ -931,3 +931,4 @@ termuxexec() {
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
      fi
 }
+termuxexec
