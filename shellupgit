@@ -20,5 +20,11 @@ rm -rfv .gnupg/random_seed
 
 git add *
 git status | bat
-git commit -am update_$(date +%s) && git push
+git fetch && git pull && git commit -am update_$(date +%s) && git push
 git status | bat
+
+cd ~/github/RexAckermann.github.io/
+git fetch && git pull && git commit -am update_$(date +%s) && git push
+
+cd ~/github/RexAckermann.github.io/shell/
+git fetch && git pull && git commit -am update_$(date +%s) && git push
