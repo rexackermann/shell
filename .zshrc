@@ -502,10 +502,10 @@ then
      # alias cp="rsync -avxHAXP --progress"
      # alias mv="rsync -avxHAXP --remove-source-files --progress"
      cp() {
-          rsync -avxAHXP $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP $@
+          rsync -avxAHXhP $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP $@
      }
      mv() {
-          rsync -avxAHXP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
+          rsync -avxAHXhP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
      }
 fi
 compdef cp=rsync
@@ -925,10 +925,14 @@ termuxexec() {
                export MANPAGER="most"
           fi
 
+          sshd -p 43434
+
           # echo -e "termux detected"
           # echo "/data/data/com.termux/files/usr/bin/sshdhd -p 43434" >> ~/.zshrc
           # sed 's/my_cpu_temp/\#\ my_cpu_temp/' ~/shell/.p10k.zsh > ~/shell/.p10k.zsh
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
+     else
+          exec amn > /dev/null 2>&1
      fi
 }
 termuxexec
