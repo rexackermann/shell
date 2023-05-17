@@ -931,8 +931,8 @@ termuxexec() {
           # echo "/data/data/com.termux/files/usr/bin/sshdhd -p 43434" >> ~/.zshrc
           # sed 's/my_cpu_temp/\#\ my_cpu_temp/' ~/shell/.p10k.zsh > ~/shell/.p10k.zsh
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
-     else
-          exec amn > /dev/null 2>&1
+     # else
+     #      amn > /dev/null 2>&1
      fi
 }
 termuxexec

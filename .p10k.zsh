@@ -119,7 +119,7 @@
     todo                    # todo items (https://github.com/todotxt/todo.txt-cli)
     timewarrior             # timewarrior tracking status (https://timewarrior.net/)
     taskwarrior             # taskwarrior task count (https://taskwarrior.org/)
-    my_cpu_temp		    # cpu temperature
+    my_cpu_temp             # cpu temperature
     battery                 # internal battery
     # =========================[ Line #1 ]=========================
     newline
@@ -1590,6 +1590,8 @@
   typeset -g POWERLEVEL9K_IP_INTERFACE='[ew].*'
   # Custom icon.
   # typeset -g POWERLEVEL9K_IP_VISUAL_IDENTIFIER_EXPANSION='⭐'
+  typeset -g POWERLEVEL9K_IP_VISUAL_IDENTIFIER_EXPANSION='󰀑 '
+
 
   #########################[ proxy: system-wide http/https/ftp proxy ]##########################
   # Proxy color.
