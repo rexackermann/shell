@@ -40,12 +40,15 @@
 
   # The list of segments shown on the left. Fill it with the most important segments.
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
+    shell_mommy
+    # newline               # \n
     # =========================[ Line #1 ]=========================
     os_icon               # os identifier
     example               # example user-defined segment (see prompt_example function below)
     # =========================[ Line #1 ]=========================
     newline               # \n
     dir                   # current directory
+    incognito_flag
     vcs                   # git status
     # =========================[ Line #2 ]=========================
     newline               # \n
@@ -1715,7 +1718,15 @@
   typeset -g POWERLEVEL9K_INSTANT_PROMPT=verbose
 
 
+function prompt_incognito_flag() {
+     if [[ $incognito == "true" ]]; then
+          p10k segment -b green -f black   -t "Incognito"
+     fi
+}
 
+function prompt_shell_mommy() {
+     precmd() { if (( $? != 0 )); then; mommy false; else; mommy true; fi }
+}
 
 
 function prompt_my_cpu_temp() {
