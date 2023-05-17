@@ -362,8 +362,8 @@ alias pipupgrade="pip-review --local --auto"
 # alias vim="lvim || nvim || vim || vi"
 alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
 alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
-alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
-alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
+# alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
+# alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
 # alias apt="dnf"
 alias gdown="gdown --fuzzy --continue"
 alias gdownf="gdown --fuzzy --continue --folder"
@@ -374,17 +374,18 @@ alias music=musikcube
 
 incognito() {
      if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
-          fc -P
-          clear
-          echo -e "${FG_R_Black}${BG_R_Red}"
-          align_center "Incognito Mode Disabled" "󱐡 " "󰗹 "
+          fc -P && incognito=false
+          clear &&
+          rm -rfv /tmp/.zsh_history.tmp && echo "Temporary history removed" &&
+          echo -e "${FG_R_Black}${BG_R_Red}" &&
+          align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
           echo -e "${ClearColor}\n"
      else
-          /bin/cp ~/.zsh_history /tmp/.zsh_history
-          fc -p /tmp/.zsh_history
-          clear
-          echo -e "${FG_R_Black}${BG_R_Green}"
-          align_center "Incognito Mode Enabled" "󱐡 " "󰗹 "
+          /bin/cp ~/.zsh_history /tmp/.zsh_history.tmp &&
+          fc -p /tmp/.zsh_history.tmp && incognito=true
+          clear &&
+          echo -e "${FG_R_Black}${BG_R_Green}" &&
+          align_center "Incognito Mode Enabled" "󱐡 " "󰗹 " &&
           echo -e "${ClearColor}\n"
      fi
 }
@@ -633,6 +634,249 @@ function fp() {
   # Run the flatpak app asynchronous and don't show any stdout and stderr
   ( flatpak run "$app" "$@" &> /dev/null & )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# sudofox/shell-mommy.sh
+# There's a function in .p10k.zsh
+
+mommy() (
+
+  # SHELL_MOMMYS_LITTLE - what to call you~ (default: "girl")
+  # SHELL_MOMMYS_PRONOUNS - what pronouns mommy will use for themself~ (default: "her")
+  # SHELL_MOMMYS_ROLES - what role mommy will have~ (default "mommy")
+
+  COLORS_LIGHT_PINK='\e[38;5;217m'
+  COLORS_LIGHT_BLUE='\e[38;5;117m'
+  COLORS_FAINT='\e[2m'
+  COLORS_RESET='\e[0m'
+
+  DEF_WORDS_LITTLE="girl"
+  DEF_WORDS_PRONOUNS="her"
+  DEF_WORDS_ROLES="mommy"
+  DEF_MOMMY_COLOR="${COLORS_LIGHT_PINK}"
+  DEF_ONLY_NEGATIVE="false"
+
+  NEGATIVE_RESPONSES="do you need MOMMYS_ROLE's help~? ❤️
+Don't give up, my love~ ❤️
+Don't worry, MOMMYS_ROLE is here to help you~ ❤️
+I believe in you, my sweet AFFECTIONATE_TERM~ ❤️
+It's okay to make mistakes, my dear~ ❤️
+just a little further, sweetie~ ❤️
+Let's try again together, okay~? ❤️
+MOMMYS_ROLE believes in you, and knows you can overcome this~ ❤️
+MOMMYS_ROLE believes in you~ ❤️
+MOMMYS_ROLE is always here for you, no matter what~ ❤️
+MOMMYS_ROLE is here to help you through it~ ❤️
+MOMMYS_ROLE is proud of you for trying, no matter what the outcome~ ❤️
+MOMMYS_ROLE knows it's tough, but you can do it~ ❤️
+MOMMYS_ROLE knows MOMMYS_PRONOUN little AFFECTIONATE_TERM can do better~ ❤️
+MOMMYS_ROLE knows you can do it, even if it's tough~ ❤️
+MOMMYS_ROLE knows you're feeling down, but you'll get through it~ ❤️
+MOMMYS_ROLE knows you're trying your best~ ❤️
+MOMMYS_ROLE loves you, and is here to support you~ ❤️
+MOMMYS_ROLE still loves you no matter what~ ❤️
+You're doing your best, and that's all that matters to MOMMYS_ROLE~ ❤️
+MOMMYS_ROLE is always here to encourage you~ ❤️"
+
+
+  POSITIVE_RESPONSES="*pets your head*
+awe, what a good AFFECTIONATE_TERM~\nMOMMYS_ROLE knew you could do it~ ❤️
+good AFFECTIONATE_TERM~\nMOMMYS_ROLE's so proud of you~ ❤️
+Keep up the good work, my love~ ❤️
+MOMMYS_ROLE is proud of the progress you've made~ ❤️
+MOMMYS_ROLE is so grateful to have you as MOMMYS_PRONOUN little AFFECTIONATE_TERM~ ❤️
+I'm so proud of you, my love~ ❤️
+MOMMYS_ROLE is so proud of you~ ❤️
+MOMMYS_ROLE loves seeing MOMMYS_PRONOUN little AFFECTIONATE_TERM succeed~ ❤️
+MOMMYS_ROLE thinks MOMMYS_PRONOUN little AFFECTIONATE_TERM earned a big hug~ ❤️
+that's a good AFFECTIONATE_TERM~ ❤️
+you did an amazing job, my dear~ ❤️
+you're such a smart cookie~ ❤️"
+
+# export SHELL_MOMMYS_POSITIVE_RESPONSES=(
+#     "Your effort to improve your privacy and security is a step towards a better world."
+#     "By taking control of your technology, you are empowering yourself and those around you."
+#     "Keep up the good work! You are contributing to a world where privacy and security are the norm."
+#     "You are making a positive difference in the world by prioritizing your privacy and security."
+#     "Remember, every action you take towards protecting your privacy and security is a meaningful one."
+#     "Your dedication to protecting your privacy and security is admirable and will pay off in the long run."
+#     "Your commitment to privacy and security is a valuable contribution to society and will inspire others."
+#     "Well done! You are setting an example for others by taking control of your technology."
+#     "You are on the right track towards a more secure and private digital life."
+#     "Keep going! Your efforts to improve your privacy and security are making a difference."
+# )
+# export SHELL_MOMMYS_NEGATIVE_RESPONSES=(
+#     "Don't give up! The fight for privacy and security is more important than ever."
+#     "Remember, setbacks are temporary. Keep pushing forward in your efforts to protect your privacy and security."
+#     "Stay strong! Every challenge you face in protecting your privacy and security is an opportunity for growth."
+#     "Keep your head up! The pursuit of privacy and security is a constant struggle, but it's worth it."
+#     "Take a deep breath and remember why you're working so hard to protect your privacy and security."
+#     "Don't be discouraged. Your efforts towards privacy and security are important, even in the face of obstacles."
+#     "Remember that every failure is a learning opportunity. Use it to your advantage in your quest for privacy and security."
+#     "Stay focused on your goal of protecting your privacy and security, even when faced with difficulties."
+#     "Don't give up hope! Your efforts towards privacy and security are making a positive difference in the world."
+#     "You are not alone in your fight for privacy and security. Keep going, and know that others are with you."
+# )
+# export SHELL_MOMMYS_NEGATIVE_RESPONSES=(
+# 	"You call that effort? This is some weak-ass shit."
+# 	"You ain't gonna make it with that attitude, son."
+# 	"What the hell is wrong with you?"
+# 	"You ain't got the skills to back that attitude up."
+# 	"You better step up your game, before I step up mine."
+# 	"I ain't got time for this amateur hour bullshit."
+# 	"You ain't gonna make it in this world with that attitude."
+# 	"You better wise up, before you get left behind."
+# 	"I ain't impressed with that effort, son."
+# 	"You ain't got what it takes to succeed."
+# 	"You better bring your A-game, or get out of the game."
+# 	"You better shape up, before I ship out."
+# 	"I ain't gonna sugarcoat it - that was weak as hell."
+# 	"You ain't got what it takes to make it in this world."
+# 	"I ain't gonna hold your hand - you better step up."
+# 	"You better bring your best effort, or don't even bother showing up."
+# 	"I ain't gonna waste my time on half-ass efforts."
+# 	"You ain't gonna make it with that attitude, son."
+# 	"You better come correct, or don't come at all."
+# )
+# export SHELL_MOMMYS_POSITIVE_RESPONSES=(
+# 	"You did it! Now that's what I'm talkin' about!"
+# 	"I knew you had it in you, son."
+# 	"You brought your A-game and it shows."
+# 	"Now that's the effort I like to see."
+# 	"You're killin' it, son."
+# 	"I ain't gonna lie, you impressed the hell out of me."
+# 	"You're on fire, son!"
+# 	"You bringin' your best effort, and it shows."
+# 	"You ain't playin' around, are you?"
+# 	"I can see you're gonna make it in this world."
+# 	"You're bringin' the heat, son."
+# 	"You're killin' it out there."
+# 	"I ain't seen effort like that in a long time."
+# 	"You're bringin' your A-game, and it shows."
+# 	"You ain't afraid to bring your best, and I respect that."
+# 	"You're killin' it, son."
+# 	"I can see you're gonna make it in this world."
+# 	"You're bringin' the heat, son."
+# )
+
+  # allow for overriding of default words (IF ANY SET)
+
+  if [ -n "$SHELL_MOMMYS_LITTLE" ]; then
+    DEF_WORDS_LITTLE="${SHELL_MOMMYS_LITTLE}"
+  fi
+  if [ -n "$SHELL_MOMMYS_PRONOUNS" ]; then
+    DEF_WORDS_PRONOUNS="${SHELL_MOMMYS_PRONOUNS}"
+  fi
+  if [ -n "$SHELL_MOMMYS_ROLES" ]; then
+    DEF_WORDS_ROLES="${SHELL_MOMMYS_ROLES}"
+  fi
+  if [ -n "$SHELL_MOMMYS_COLOR" ]; then
+    DEF_MOMMY_COLOR="${SHELL_MOMMYS_COLOR}"
+  fi
+  # allow overriding to true
+  if [ "$SHELL_MOMMYS_ONLY_NEGATIVE" = "true" ]; then
+    DEF_ONLY_NEGATIVE="true"
+  fi
+  # if the variable is set for positive/negative responses, overwrite it
+  if [ -n "$SHELL_MOMMYS_POSITIVE_RESPONSES" ]; then
+    POSITIVE_RESPONSES="$SHELL_MOMMYS_POSITIVE_RESPONSES"
+  fi
+  if [ -n "$SHELL_MOMMYS_NEGATIVE_RESPONSES" ]; then
+    NEGATIVE_RESPONSES="$SHELL_MOMMYS_NEGATIVE_RESPONSES"
+  fi
+
+  # split a string on forward slashes and return a random element
+  pick_word() {
+    echo "$1" | tr '/' '\n' | shuf | sed 1q
+  }
+
+  pick_response() { # given a response type, pick an entry from the list
+
+    if [ "$1" = "positive" ]; then
+      element=$(echo "$POSITIVE_RESPONSES" | shuf | sed 1q)
+    elif [ "$1" = "negative" ]; then
+      element=$(echo "$NEGATIVE_RESPONSES" | shuf | sed 1q)
+    else
+      echo "Invalid response type: $1"
+      exit 1
+    fi
+
+    # Return the selected response
+    echo "$element"
+
+  }
+
+  sub_terms() { # given a response, sub in the appropriate terms
+    response="$1"
+    # pick_word for each term
+    affectionate_term="$(pick_word "${DEF_WORDS_LITTLE}")"
+    pronoun="$(pick_word "${DEF_WORDS_PRONOUNS}")"
+    role="$(pick_word "${DEF_WORDS_ROLES}")"
+    # sub in the terms, store in variable
+    response="$(echo "$response" | sed "s/AFFECTIONATE_TERM/$affectionate_term/g")"
+    response="$(echo "$response" | sed "s/MOMMYS_PRONOUN/$pronoun/g")"
+    response="$(echo "$response" | sed "s/MOMMYS_ROLE/$role/g")"
+    # we have string literal newlines in the response, so we need to printf it out
+    # print faint and colorcode
+    printf "${DEF_MOMMY_COLOR}$response${COLORS_RESET}\n"
+  }
+
+  success() {
+    (
+      # if we're only supposed to show negative responses, return
+      if [ "$DEF_ONLY_NEGATIVE" = "true" ]; then
+        return 0
+      fi
+      # pick_response for the response type
+      response="$(pick_response "positive")"
+      sub_terms "$response" >&2
+    )
+    return 0
+  }
+  failure() {
+    rc=$?
+    (
+      response="$(pick_response "negative")"
+      sub_terms "$response" >&2
+    )
+    return $rc
+  }
+  # eval is used here to allow for alias resolution
+
+  # TODO: add a way to check if we're running from PROMPT_COMMAND to use the previous exit code instead of doing things this way
+  eval "$@" && success || failure
+  return $?
+)
+# precmd() { if (( $? != 0 )); then; mommy false; else; mommy true; fi }
+
+# SHELL_MOMMYS_LITTLE: Sets the affectionate term that mommy will use to refer to the user. The default value is "girl".
+# SHELL_MOMMYS_PRONOUNS: Sets the pronouns that mommy will use to refer to itself. The default value is "her".
+# SHELL_MOMMYS_ROLES: Sets the role that mommy will have. The default value is "mommy".
+# SHELL_MOMMYS_COLOR: Sets the color of the text output by mommy. The default value is a light pink color.
+# SHELL_MOMMYS_ONLY_NEGATIVE: If set to true, mommy will provide encouragement (on non-zero exit status) but not praise. This will keep clutter down if you intend to use mommy as a PROMPT_COMMAND.
+# SHELL_MOMMYS_NEGATIVE_RESPONSES/SHELL_MOMMYS_POSITIVE_RESPONSES: Sets the possible responses that mommy will use. This should be in the form of a bash array and will override the default responses. Want Samuel L. Jackson to chastise or compliment you? Now you can!
+
+SHELL_MOMMYS_LITTLE="kid"
+SHELL_MOMMYS_PRONOUNS="her"
+SHELL_MOMMYS_ROLES="mommy"
+SHELL_MOMMYS_COLOR=""
+SHELL_MOMMYS_ONLY_NEGATIVE="false"
+# SHELL_MOMMYS_NEGATIVE_RESPONSES/SHELL_MOMMYS_POSITIVE_RESPONSES=""
+
+
+
 
 unalias ls
 unalias l
@@ -913,7 +1157,6 @@ fi
 source "$HOME/.cargo/env"
 export EDITOR=$HOME/.local/bin/lvim
 addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
-clear
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 
 termuxexec() {
