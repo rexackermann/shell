@@ -1725,9 +1725,25 @@ function prompt_incognito_flag() {
 }
 
 function prompt_shell_mommy() {
-     precmd() { if (( $? != 0 )); then; mommy false; else; mommy true; fi }
-     preexec(){ cmd=$1; }
-     precmd(){ if [ "$cmd" ]; then lcmd=$cmd && if (( $? != 0 )); then; mommy false; else; mommy true; fi; cmd=; else; echo "<no command> last was <$lcmd>"; fi; }
+     # precmd() { if (( $? != 0 )); then; mommy false; else; mommy true; fi }
+     preexec(){
+          cmd=$1
+     }
+
+     precmd(){
+          if [ "$cmd" ]; then
+               lcmd=$cmd &&
+                    if (( $? != 0 )); then
+                         mommy false
+                    else
+                         mommy true
+                    fi
+               cmd=
+          else
+               # echo -e "<no command> last was <$lcmd>"
+               mommy_did_not_run=true
+          fi 
+     }
 }
 
 
