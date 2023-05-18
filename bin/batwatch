@@ -561,7 +561,7 @@ fi
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -660,7 +660,7 @@ watcher_entr_watch() {
 	fi
 
 	entr "${ENTR_ARGS[@]}" \
-		"/usr/bin/bat" "${BAT_ARGS[@]}" \
+		"bat" "${BAT_ARGS[@]}" \
 		--terminal-width="$OPT_TERMINAL_WIDTH" \
 		--paging=never \
 		"$@" \
@@ -722,7 +722,7 @@ watcher_poll_watch() {
 		if "$modified"; then
 			modified=false
 			clear
-			"/usr/bin/bat" "${BAT_ARGS[@]}" \
+			"bat" "${BAT_ARGS[@]}" \
 				--terminal-width="$OPT_TERMINAL_WIDTH" \
 				--paging=never \
 				"${files[@]}"
@@ -904,7 +904,7 @@ else
 		BAT_ARGS+=("--terminal-width=$term_width")
 
 		while true; do
-			IFS='' rendered="$("${FILES[@]}" 2>&1 | "/usr/bin/bat" "${BAT_ARGS[@]}")"
+			IFS='' rendered="$("${FILES[@]}" 2>&1 | "bat" "${BAT_ARGS[@]}")"
 			if [ "$rendered" != "$last_rendered" ]; then
 				# Only clear and redraw if there's a change.
 				# This reduces excessive flickering.

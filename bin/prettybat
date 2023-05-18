@@ -306,7 +306,7 @@ END
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -555,10 +555,10 @@ extname() {
 
 print_file() {
 	if [[ "${#PRINT_ARGS[@]}" -eq 0 ]]; then
-		"/usr/bin/bat" "$@"
+		"bat" "$@"
 		return $?
 	else
-		"/usr/bin/bat" "${PRINT_ARGS[@]}" "$@"
+		"bat" "${PRINT_ARGS[@]}" "$@"
 		return $?
 	fi
 }

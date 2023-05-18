@@ -576,7 +576,7 @@ hook_width() {
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -663,10 +663,12 @@ SUPPORTS_DELTA=false
 BAT_VERSION="$(bat_version)"
 BAT_ARGS=()
 DELTA_ARGS=()
+GIT_ARGS=()
 
 FILES=()
 OPT_TABS=
 OPT_CONTEXT=2
+OPT_STAGED=false
 OPT_ALL_CHANGES=false
 
 # Set options based on bat version.
@@ -690,6 +692,7 @@ while shiftopt; do
 
 	# Script options
 	--all)                      OPT_ALL_CHANGES=true ;;
+	--staged)                   OPT_STAGED=true; GIT_ARGS+=("--staged") ;;
 	--delta)                    BATDIFF_USE_DELTA=true ;;
 
 	# ???
@@ -724,6 +727,9 @@ if [[ -n "$OPT_TABS" ]]; then
 	DELTA_ARGS+=("--tabs=${OPT_TABS}")
 fi
 
+# Append arguments for git.
+GIT_ARGS+=(-U"$OPT_CONTEXT")
+
 # -----------------------------------------------------------------------------
 # Printing:
 # -----------------------------------------------------------------------------
@@ -732,15 +738,30 @@ print_bat_diff() {
 
 	# Diff two files.
 	if [[ "${#files[@]}" -eq 2 ]]; then
-		diff --unified="$OPT_CONTEXT" "${files[@]}" | "/usr/bin/bat" --language=diff - "${BAT_ARGS[@]}"
+		diff --unified="$OPT_CONTEXT" "${files[@]}" | "bat" --language=diff - "${BAT_ARGS[@]}"
+		return $?
+	fi
+
+	# Diff staged git file.
+	if "$OPT_STAGED"; then
+		if false && "$SUPPORTS_DELTA"; then
+			# bat doesn't support diffing staged changes against the HEAD.
+			# Delta is better suited for printing diffs in this case.
+			print_delta_diff "$@"
+		else
+			difftext="$("git" diff "${GIT_ARGS[@]}" "${files[0]}")"
+			if [[ "${#difftext}" -gt 0 ]]; then
+				"bat" --language=diff --file-name="${files[0]}" - "${BAT_ARGS[@]}" <<< "$difftext"
+			fi
+		fi
 		return $?
 	fi
 
 	# Diff git file.
 	if "$SUPPORTS_BAT_DIFF"; then
-		"/usr/bin/bat" --diff --diff-context="$OPT_CONTEXT" "${files[0]}" "${BAT_ARGS[@]}"
+		"bat" --diff --diff-context="$OPT_CONTEXT" "${files[0]}" "${BAT_ARGS[@]}"
 	else
-		"git" diff -U"$OPT_CONTEXT" "${files[0]}" | "/usr/bin/bat" --language=diff - "${BAT_ARGS[@]}"
+		"git" diff "${GIT_ARGS[@]}" "${files[0]}" | "bat" --language=diff - "${BAT_ARGS[@]}"
 	fi
 }
 
@@ -754,7 +775,7 @@ print_delta_diff() {
 	fi
 
 	# Diff git file.
-	"git" diff -U"$OPT_CONTEXT" "${files[0]}" | "delta" "${DELTA_ARGS[@]}"
+	"git" diff "${GIT_ARGS[@]}" "${files[0]}" | "delta" "${DELTA_ARGS[@]}"
 }
 
 if [[ "$BATDIFF_USE_DELTA" = "true" && "$SUPPORTS_DELTA" = "true" ]]; then
@@ -796,7 +817,7 @@ main() {
 			if [[ -f "$file" ]]; then
 				print_diff "$file"
 			fi
-		done < <("git" diff --name-only --diff-filter=d)
+		done < <("git" diff "${GIT_ARGS[@]}" --name-only --diff-filter=d)
 		return
 	fi
 

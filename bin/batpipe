@@ -415,7 +415,7 @@ _ARGV_ORIGINAL=("$@")
 # Gets the current bat version.
 bat_version() {
 	if [[ -z "${__BAT_VERSION}" ]]; then
-		__BAT_VERSION="$(command "/usr/bin/bat" --version | cut -d ' ' -f 2)"
+		__BAT_VERSION="$(command "bat" --version | cut -d ' ' -f 2)"
 	fi
 	
 	echo "${__BAT_VERSION}"
@@ -592,7 +592,7 @@ for i in 1 2 3; do
 	if [[ "${BATPIPE_PARENT_EXECUTABLE_BASENAME}" = "less" ]]; then
 		BATPIPE_INSIDE_LESS=true
 		break
-	elif [[ "${BATPIPE_PARENT_EXECUTABLE_BASENAME}" == "$(basename -- "/usr/bin/bat")" ]]; then
+	elif [[ "${BATPIPE_PARENT_EXECUTABLE_BASENAME}" == "$(basename -- "bat")" ]]; then
 		BATPIPE_INSIDE_BAT=true
 		break
 	fi
@@ -821,7 +821,7 @@ bat() {
 	fi
 
 	# Execute the real bat.
-	command "/usr/bin/bat" --paging=never "${__bat_batpipe_args[@]}" "${__bat_forward_args[@]}"
+	command "bat" --paging=never "${__bat_batpipe_args[@]}" "${__bat_forward_args[@]}"
 }
 
 # -----------------------------------------------------------------------------

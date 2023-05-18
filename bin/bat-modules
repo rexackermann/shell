@@ -693,7 +693,7 @@ action:help() {
 
 action:clear() {
 	printc "%{YELLOW}Clearing bat syntax and theme cache...%{CLEAR}\n"
-	"/usr/bin/bat" cache --clear
+	"bat" cache --clear
 }
 
 action:update() {
@@ -739,7 +739,7 @@ action:update() {
 	printc "%{YELLOW}Done.%{CLEAR}\n"
 	if "$CHANGES"; then
 		printc "%{YELLOW}Rebuilding cache...%{CLEAR}\n"
-		"/usr/bin/bat" cache --build
+		"bat" cache --build
 	fi
 }
 
