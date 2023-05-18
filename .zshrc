@@ -1162,11 +1162,11 @@ addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
 
-          unalias man
-          if command -v bat &> /dev/null
-          then
-               export MANPAGER="most"
-          fi
+          # unalias man
+          # if command -v bat &> /dev/null
+          # then
+          #      export MANPAGER="most"   # The batman script in shell/bin/ seems to work now
+          # fi
 
           sshd -p 43434
 
