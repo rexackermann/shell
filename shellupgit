@@ -11,7 +11,8 @@ gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zsh_history
 gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zshrc_private
 cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
 cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
-cp -rfv ~/Documents/BashScript/c ~/github/shell/c
+# cp -rfv ~/Documents/BashScript/c ~/github/shell/c
+cp -rfv $(which c | head -n 1) ~/github/shell/bin/c
 cp -rfv $(which psapp | head -n 1) ~/github/shell/bin/psapp
 # cp -rfv $(which shellupgit) ~/github/shell/shellupgit
 
