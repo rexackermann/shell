@@ -1155,7 +1155,7 @@ if [ "$funcstack[1]" = "_glow" ]; then
 fi
 
 source "$HOME/.cargo/env"
-export EDITOR=$HOME/.local/bin/lvim
+export EDITOR=$(where lvim | head -n 1)
 addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 
