@@ -1,7 +1,8 @@
 #!/bin/env bash
 
 # txt=$(ps -u $USER -wo rss=,comm= --sort -rss | while read -r rss comm ; do echo $comm ":" $((rss/1024)) ; done | awk -F "::" '{print $2}' | paste -sd+ | bc)
-data=$(ps -u $USER -wo rss=,comm= --sort -rss | while read -r rss comm ; do echo $comm":"$((rss/1024)) ; done)
+# data=$(ps -u $USER -wo rss=,comm= --sort -rss | while read -r rss comm ; do echo $comm":"$((rss/1024)) ; done)
+data=$(ps -eo "comm rss pid" | awk '{print $1 ":" $2/1024 ":" $3}' | awk '{print $1 $2 $3}')
 # data=($txt)
 # echo "${data[*]}" | grep vivaldi | sort
 
@@ -24,19 +25,26 @@ for app in ${apps[@]} ; do
           length_low=$length_old
      fi
 done
-echo $length_high
-echo $length_low
+# echo $length_high
+# echo $length_low
 
-for app in ${apps[@]} ; do
+output=$(for app in ${apps[@]} ; do
      # for app in ${data[@]}
      app_name=$(echo -n $app | awk -F ":" '{print $1}')
-     app_ram_consumption=$(echo "$data" | grep $app | sort | awk -F ":" '{print $2}' | paste -sd+ | bc)
-     printf '\e[1;31m%s\e[0m\t: \e[1;32m%s\t%s\e[0m\n' "$app_name" "$app_ram_consumption" "MB" | expand -t $(($length_high-$length_low + 15))
+     app_pids=$(echo "$data" | grep $app | sort | awk -F ":" '{print $3}' | awk 'BEGIN { ORS = " " } { print }')
+     # echo "$app_pids"
+     app_ram_consumption=$(echo "$data" | grep $app | sort | awk -F ":" '{Total=Total+$2} END{print Total}')
+     # printf '\e[1;31m%s\e[0m\t: \e[1;32m%s\t%s\e[0m %s%s \n' "$app_name" "$app_ram_consumption" "MB" "PID= " "$app_pids" | expand -t $(($length_high-$length_low + 15))
+     printf '\e[1;31m%s\e[0m:\e[1;32m%s %s\e[0m:\e[35m%s%s\e[0m\n' "$app_name" "$app_ram_consumption" "MB" "PID = " "$app_pids" | expand -t $(($length_high-$length_low + 15))
      # echo $length_high $length_low
      # echo $(($length_high-$length_high))
      # echo $app_name      $app_ram_consumption | column -t -s $'\t'
      # done
-done
+done)
+echo "$output" | column -t -s ":"
 
 printf %"$(tput cols)"s |tr " " "-"
-printf '\e[1;31m%s\e[0m\t: \e[1;32m%s\t%s\e[0m\n' "total" "$(echo "$data" | awk -F ":" '{print $2}' | paste -sd+ | bc)" "MB" | expand -t $(($length_high-$length_low + 15))
+total_memory=$(echo "$data" | awk -F ":" '{Total=Total+$2} END{print Total}')
+all_pids=$(echo "$data" | sort | awk -F ":" '{print $3}' | awk 'BEGIN { ORS = " " } { print }')
+printf '\e[1;31m%s\e[0m\t: \e[1;32m%s\t%s\e[0m\n' "total" "$total_memory" "MB" | expand -t $(($length_high-$length_low + 15))
+# echo $all_pids

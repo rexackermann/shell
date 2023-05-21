@@ -141,6 +141,7 @@ plugins=(git
          taskwarrior
          systemd
          systemadmin
+         zsh-lazyload
          )
          
 
@@ -635,6 +636,9 @@ function fp() {
   ( flatpak run "$app" "$@" &> /dev/null & )
 }
 
+unixtime() {
+  date +%s
+}
 
 
 
@@ -928,6 +932,7 @@ npm() {
 }
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 
+export PATH=$HOME/.yarn/bin:$PATH
 
 
 
