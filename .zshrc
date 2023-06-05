@@ -1956,7 +1956,7 @@ export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
 setopt EXTENDED_HISTORY
 
-source $HOME/.zshrc_private
+source $XDG_CONFIG_HOME/zsh/.zshrc_private
 
 # fp auto-completion
 () {
@@ -2863,3 +2863,6 @@ addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 
 termuxexec
+
+sed -i 's/\# .*$//g' ~/.config/zsh/.zshrc
+sed -i '/^\s*$/d' ~/.config/zsh/.zshrc
