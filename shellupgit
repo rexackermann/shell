@@ -1,17 +1,17 @@
 #!/bin/env bash
 
-cd ~/github/shell
+cd ~/github/shell || exit
 
 export GNUPGHOME=$(pwd)/.gnupg/
 
-cp -rfv ~/.zshrc ~/github/shell/
-cp -rfv ~/.zshenv ~/github/shell/
-cp -rfv ~/.p10k.zsh ~/github/shell/
-gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zsh_history
-gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.zshrc_private
+cp -rfv ~/.config/zsh/.zshrc ~/github/shell/
+cp -rfv ~/.config/zsh/.zshenv ~/github/shell/
+# cp -rfv ~/.p10k.zsh ~/github/shell/
+gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/.zsh_history
+gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/.zshrc_private
 cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
 cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
-cp -rfv $(which psapp | head -n 1) ~/github/shell/bin/psapp
+cp -rfv "$(which psapp | head -n 1)" ~/github/shell/bin/psapp
 # cp -rfv $(which c | head -n 1) ~/github/shell/bin/c
 # cp -rfv $(which shellupgit) ~/github/shell/shellupgit
 
@@ -20,13 +20,14 @@ mv ~/.zshrc_private.gpg ~/github/shell/
 
 rm -rfv .gnupg/random_seed
 
-git add *
+git add ./*
+git add ./.*
 git status | bat
-git fetch && git pull && git commit -am update_$(date +%s) && git push
+git fetch && git pull && git commit -am update_"$(date +%s)" && git push
 git status | bat
 
-cd ~/github/RexAckermann.github.io/shell/
-git fetch && git pull && git commit -am update_$(date +%s) && git push
+cd ~/github/RexAckermann.github.io/shell/ || exit
+git fetch && git pull && git commit -am update_"$(date +%s)" && git push
 
-cd ~/github/RexAckermann.github.io/
-git fetch && git pull && git commit -am update_$(date +%s) && git push
+cd ~/github/RexAckermann.github.io/ || exit
+git fetch && git pull && git commit -am update_"$(date +%s)" && git push
