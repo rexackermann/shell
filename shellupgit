@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-cd ~/github/shell || exit
+cd ~/github/shell
 
 export GNUPGHOME=$(pwd)/.gnupg/
 
@@ -8,6 +8,7 @@ cp -rfv ~/.config/zsh/.zshrc ~/github/shell/
 cp -rfv ~/.config/zsh/.zshenv ~/github/shell/
 # cp -rfv ~/.p10k.zsh ~/github/shell/
 gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/history
+cp -rfv ~/.config/zsh/*.gpg ./
 gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/.zshrc_private
 cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
 cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
