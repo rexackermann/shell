@@ -7,10 +7,11 @@ export GNUPGHOME=$(pwd)/.gnupg/
 cp -rfv ~/.config/zsh/.zshrc ~/github/shell/
 cp -rfv ~/.config/zsh/.zshenv ~/github/shell/
 # cp -rfv ~/.p10k.zsh ~/github/shell/
-gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/history 
+gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/history -y
 mv -fv ~/.config/zsh/history.gpg ./.zsh_history.gpg
 gpg2 -e -r -y 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/.zshrc_private
-mv -fv ~/.config/zsh/zsh_private.gpg ./.zsh_private.gpg
+mv -fv ~/.config/zsh/zsh_private.gpg ./.zsh_private.gpg -y
+
 cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
 cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
 cp -rfv "$(which psapp | head -n 1)" ~/github/shell/bin/psapp
