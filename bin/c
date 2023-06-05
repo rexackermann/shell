@@ -106,7 +106,7 @@ init() {
                     echo -e "${FG_R_Green}-i${ClearColor}  ${FG_R_White}edit dirrectly \(use with -f or -s\)"
                     # get from history
                     # echo $OPTARG
-                    # history=$(sk ~/.zsh_history)
+                    # history=$(sk ~/.config/zsh/history)
                     # echo $history >> c$t.c.sh ;;
                     echo -e ""
                     ;;
@@ -122,12 +122,12 @@ init() {
                     i=true
                     ;;
                e)
-                    lvim $(which $OPTARG | head -n 1)
+                    $EDITOR $(which $OPTARG | head -n 1)
                     exit
                     ;;
                l)
                     hisline=$OPTARG
-                    # tail -n ${hisline:-10} ~/.zsh_history
+                    # tail -n ${hisline:-10} ~/.config/zsh/history
                     ;;
      
           #  n) # Enter a name
@@ -170,7 +170,7 @@ inject () {
      echo "#!/bin/env bash" > c$t.c.sh &&
      echo $pipe >> c$t.c.sh &&
      echo '' >> c$t.c.sh &&
-     tail -n ${hisline:-10} ~/.zsh_history | sed 's/:.*;/# /' >> c$t.c.sh &&
+     tail -n ${hisline:-10} ~/.config/zsh/history | sed 's/:.*;/# /' >> c$t.c.sh &&
      echo '' >> c$t.c.sh &&
      echo '# Tip: To get a increamental sequence in numbers select with Ctrl-v and g-v-g and then Ctrl-a' >> c$t.c.sh &&
      echo '' >> c$t.c.sh &&
@@ -322,7 +322,7 @@ mainscript
 #      case $option in
 #           h)   # get from history
 #                echo hi
-#                history=$(sk ~/.zsh_history)
+#                history=$(sk ~/.config/zsh/history)
 #                echo $history >> c$t.c.sh ;;
 
 #      #  n) # Enter a name
@@ -336,7 +336,7 @@ mainscript
 # echo "#!/bin/env bash" > c$t.c.sh &&
 # echo $pipe >> c$t.c.sh &&
 # echo '' >> c$t.c.sh &&
-# tail ~/.zsh_history | sed 's/:.*;/# /' >> c$t.c.sh &&
+# tail ~/.config/zsh/history | sed 's/:.*;/# /' >> c$t.c.sh &&
 # echo '' >> c$t.c.sh &&
 # echo '# Tip: To get a increamental sequence in numbers select with Ctrl-v and g-v-g and then Ctrl-a' >> c$t.c.sh &&
 # echo '' >> c$t.c.sh &&

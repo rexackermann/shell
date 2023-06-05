@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+play_song_kitty_mpv () {
+    cd ~/Music/songs || exit
+    song="$(sk --preview="ffthumb {}")"
+    cd || exit
+    nohup mpv --idle --script-opts=autosave-disabled=yes ~/Music/songs/"${song:2:-4}"* > my.log 2>&1 &
+    player_pid="$!"
+    echo "$player_pid"
+
+    while true; do
+        if ! ps -p "$player_pid" >> /dev/null ; then
+            p
+        fi
+        sleep 1
+    done
+}
+
+if [[ "$1" == "y" ]]; then
+    nohup ~/.local/kitty.app/bin/kitty --start-as=fullscreen -e "play_song_kitty_mpv -y"
+fi
