@@ -59,7 +59,7 @@ user_home_dir () {
      cd ~/shell || exit
      # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
      mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
-     ln -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
+     cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
      # mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
      
      echo -e "Do you want to get the history and private ? y/n "
