@@ -20,7 +20,7 @@ export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
 export WINEPREFIX="$XDG_DATA_HOME"/wine
 export _Z_DATA="$XDG_DATA_HOME/z"
 export SSB_HOME="$XDG_DATA_HOME"/zoom
-[ -f "$XDG_CONFIG_HOME"/zsh/history ] && export HISTFILE="$XDG_STATE_HOME"/zsh/history
+[ -f "$XDG_CONFIG_HOME"/zsh/history ] && export HISTFILE="$XDG_STATE_HOME"/zsh/history || export HISTFILE="$HOME"/.zsh_history
 export ZDOTDIR="$HOME"/.config/zsh
 export LIBVA_DRIVER_NAME=iHD
 export ZSH="$XDG_DATA_HOME/oh-my-zsh"
