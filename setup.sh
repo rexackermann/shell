@@ -1,5 +1,12 @@
 #!/bin/bash
 
+export XDG_DATA_HOME=$HOME/.local/share
+export XDG_CONFIG_HOME=$HOME/.config
+export XDG_STATE_HOME=$HOME/.local/state
+export XDG_CACHE_HOME=$HOME/.cache
+export ZSH="$XDG_DATA_HOME"/oh-my-zsh
+export ZSH_CUSTOM="$ZSH"/custom
+
 custom_home_dir () {
      homedir=${homedir:-rexshell}
      
@@ -37,8 +44,8 @@ custom_home_dir () {
 
 user_home_dir () {
      cd ~/
-     
-     mv ~/.oh-my-zsh ~/.oh-my-zsh.$(date +%s)
+
+     mv "$ZSH" "$ZSH".$(date +%s)
      
      curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash  # installs oh-my-zsh
      git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
