@@ -1,3 +1,4 @@
+#!/bin/env zsh
 export XDG_DATA_HOME=$HOME/.local/share
 export XDG_CONFIG_HOME=$HOME/.config
 export XDG_STATE_HOME=$HOME/.local/state
@@ -19,8 +20,9 @@ export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
 export WINEPREFIX="$XDG_DATA_HOME"/wine
 export _Z_DATA="$XDG_DATA_HOME/z"
 export SSB_HOME="$XDG_DATA_HOME"/zoom
-export HISTFILE="$XDG_STATE_HOME"/zsh/history
+[ -f "$XDG_CONFIG_HOME"/zsh/history ] && export HISTFILE="$XDG_STATE_HOME"/zsh/history
 export ZDOTDIR="$HOME"/.config/zsh
+export LIBVA_DRIVER_NAME=iHD
 export ZSH="$XDG_DATA_HOME/oh-my-zsh"
 zmodload zsh/zpty
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
@@ -821,65 +823,252 @@ export GTK_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
 load_colors() {
-      FG_R_Black="\e[0;30m"
-      FG_R_Red="\e[0;31m"
-      FG_R_Green="\e[0;32m"
-      FG_R_Yellow="\e[0;33m"
-      FG_R_Blue="\e[0;34m"
-      FG_R_Purple="\e[0;35m"
-      FG_R_Cyan="\e[0;36m"
-      FG_R_White="\e[0;37m"
-      FG_B_Black="\e[1;30m"
-      FG_B_Red="\e[1;31m"
-      FG_B_Green="\e[1;32m"
-      FG_B_Yellow="\e[1;33m"
-      FG_B_Blue="\e[1;34m"
-      FG_B_Purple="\e[1;35m"
-      FG_B_Cyan="\e[1;36m"
-      FG_B_White="\e[1;37m"
-      FG_U_Black="\e[4;30m"
-      FG_U_Red="\e[4;31m"
-      FG_U_Green="\e[4;32m"
-      FG_U_Yellow="\e[4;33m"
-      FG_U_Blue="\e[4;34m"
-      FG_U_Purple="\e[4;35m"
-      FG_U_Cyan="\e[4;36m"
-      FG_U_White="\e[4;37m"
-      BG_R_Black="\e[40m"
-      BG_R_Red="\e[41m"
-      BG_R_Green="\e[42m"
-      BG_R_Yellow="\e[43m"
-      BG_R_Blue="\e[44m"
-      BG_R_Purple="\e[45m"
-      BG_R_Cyan="\e[46m"
-      BG_R_White="\e[47m"
-      FG_HI_Black="\e[0;90m"
-      FG_HI_Red="\e[0;91m"
-      FG_HI_Green="\e[0;92m"
-      FG_HI_Yellow="\e[0;93m"
-      FG_HI_Blue="\e[0;94m"
-      FG_HI_Purple="\e[0;95m"
-      FG_HI_Cyan="\e[0;96m"
-      FG_HI_White="\e[0;97m"
-      FG_BHI_Black="\e[1;90m"
-      FG_BHI_Red="\e[1;91m"
-      FG_BHI_Green="\e[1;92m"
-      FG_BHI_Yellow="\e[1;93m"
-      FG_BHI_Blue="\e[1;94m"
-      FG_BHI_Purple="\e[1;95m"
-      FG_BHI_Cyan="\e[1;96m"
-      FG_BHI_White="\e[1;97m"
-      BG_HI_Black="\e[0;100m"
-      BG_HI_Red="\e[0;101m"
-      BG_HI_Green="\e[0;102m"
-      BG_HI_Yellow="\e[0;103m"
-      BG_HI_Blue="\e[0;104m"
-      BG_HI_Purple="\e[0;105m"
-      BG_HI_Cyan="\e[0;106m"
-      BG_HI_White="\e[0;107m"
-     ClearColor="\e[0m"
+      export FG_R_Black="\e[0;30m"
+      export FG_R_Red="\e[0;31m"
+      export FG_R_Green="\e[0;32m"
+      export FG_R_Yellow="\e[0;33m"
+      export FG_R_Blue="\e[0;34m"
+      export FG_R_Purple="\e[0;35m"
+      export FG_R_Cyan="\e[0;36m"
+      export FG_R_White="\e[0;37m"
+      export FG_B_Black="\e[1;30m"
+      export FG_B_Red="\e[1;31m"
+      export FG_B_Green="\e[1;32m"
+      export FG_B_Yellow="\e[1;33m"
+      export FG_B_Blue="\e[1;34m"
+      export FG_B_Purple="\e[1;35m"
+      export FG_B_Cyan="\e[1;36m"
+      export FG_B_White="\e[1;37m"
+      export FG_U_Black="\e[4;30m"
+      export FG_U_Red="\e[4;31m"
+      export FG_U_Green="\e[4;32m"
+      export FG_U_Yellow="\e[4;33m"
+      export FG_U_Blue="\e[4;34m"
+      export FG_U_Purple="\e[4;35m"
+      export FG_U_Cyan="\e[4;36m"
+      export FG_U_White="\e[4;37m"
+      export BG_R_Black="\e[40m"
+      export BG_R_Red="\e[41m"
+      export BG_R_Green="\e[42m"
+      export BG_R_Yellow="\e[43m"
+      export BG_R_Blue="\e[44m"
+      export BG_R_Purple="\e[45m"
+      export BG_R_Cyan="\e[46m"
+      export BG_R_White="\e[47m"
+      export FG_HI_Black="\e[0;90m"
+      export FG_HI_Red="\e[0;91m"
+      export FG_HI_Green="\e[0;92m"
+      export FG_HI_Yellow="\e[0;93m"
+      export FG_HI_Blue="\e[0;94m"
+      export FG_HI_Purple="\e[0;95m"
+      export FG_HI_Cyan="\e[0;96m"
+      export FG_HI_White="\e[0;97m"
+      export FG_BHI_Black="\e[1;90m"
+      export FG_BHI_Red="\e[1;91m"
+      export FG_BHI_Green="\e[1;92m"
+      export FG_BHI_Yellow="\e[1;93m"
+      export FG_BHI_Blue="\e[1;94m"
+      export FG_BHI_Purple="\e[1;95m"
+      export FG_BHI_Cyan="\e[1;96m"
+      export FG_BHI_White="\e[1;97m"
+      export BG_HI_Black="\e[0;100m"
+      export BG_HI_Red="\e[0;101m"
+      export BG_HI_Green="\e[0;102m"
+      export BG_HI_Yellow="\e[0;103m"
+      export BG_HI_Blue="\e[0;104m"
+      export BG_HI_Purple="\e[0;105m"
+      export BG_HI_Cyan="\e[0;106m"
+      export BG_HI_White="\e[0;107m"
 }
 load_colors
+init() {
+     while getopts hie:l:s:f: option; do
+          case "$option" in
+               h)
+                    echo -e ""
+                    echo -e "${FG_R_White}${BG_R_Black}This is${ClearColor} ${FG_B_Black}${BG_R_Red}Command${BG_R_Green}Scrach${BG_R_White}Pad${ClearColor} ${FG_B_White}${BG_R_Black}or${ClearColor} ${FG_B_Black}${BG_R_Red}c${BG_R_Green}s${BG_R_White}p${ClearColor}\n"
+                    echo -e "${FG_B_Cyan}${BG_R_Black}This script lets you create a script and execute it on the fly.\n"
+                    echo -e "${FG_R_Green}-f${ClearColor}  ${FG_R_White}file/script/path${ClearColor}"
+                    echo -e "${FG_R_Green}-s${ClearColor}  ${FG_R_White}script_in_your_path${ClearColor}"
+                    echo -e "${FG_R_Green}-i${ClearColor}  ${FG_R_White}edit dirrectly \(use with -f or -s\)"
+                    echo -e ""
+                    ;;
+               s)
+                    loc=$OPTARG
+                    s=true
+                    ;;
+               f)
+                    loc=$OPTARG
+                    f=true
+                    ;;
+               i)
+                    i=true
+                    ;;
+               e)
+                    "$EDITOR" "$(which "$OPTARG" | head -n 1)"
+                    exit
+                    ;;
+               l)
+                    hisline=$OPTARG
+                    ;;
+               *)
+                    exit
+                    ;;
+          esac
+     done
+     parsed_options=$(
+       getopt -n "$0" -o hislRef -- "$@"
+     ) || exit
+     eval "set -- $parsed_options"
+     while [ "$#" -gt 0 ]; do
+       case $1 in
+         (-[Rsielf]) shift;;
+         (-t) shift 2;;
+         (--) shift; break;;
+         (*) exit 1
+       esac
+     done
+}
+addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
+getnamedir () {
+     if [[ $getnamedirpass == true ]] ; then
+          echo working
+          echo ""
+     else
+          t=$(date +%s)
+          cdr=$(pwd)
+     fi
+}
+inject () {
+     echo "#!/bin/env bash" > c"$t".c.sh &&
+     echo "$pipe" >> c"$t".c.sh &&
+     echo "" >> c"$t".c.sh &&
+     tail -n "${hisline:-10}" "$HISTFILE" | sed 's/:.*;/#c /' >> c"$t".c.sh &&
+     echo "" >> c"$t".c.sh &&
+     echo '#c Tip: To get a increamental sequence in numbers select with Ctrl-v and g-v-g and then Ctrl-a' >> c"$t".c.sh &&
+     echo "" >> c"$t".c.sh &&
+     echo -e "$comm" >> c"$t".c.sh
+}
+makekscript () {
+     ${EDITOR:-vi} ./c"$t".c.sh &&
+     scripttxt="$(echo "$cdr"/c"$t".c.sh | grep "^[^#]" | grep -v "^$")"
+     if [[ $scripttxt == "" ]] ; then
+          echo "Nothing to Execute" && rm "$cdr"/c"$t".c.sh && exit
+     fi
+     echo Executuing: &&
+     tput setaf 198
+     command -v bat >/dev/null && bat -P c"$t".c.sh || cat .c.sh &&
+     tput setaf 7
+     chmod +x c"$t".c.sh
+     mkdir -p ~/c
+}
+ifpiped () {
+     echo "Data was piped to this script!"
+     echo -e "#\ Warning : Piping is being used.Therefore, script will execute on save and exit.If you do not want it executing do not save just quit." >> c"$t".c.sh &&
+     echo -e "" >> c"$t".c.sh
+     while IFS= read  pipe; do
+          echo "${pipe}" >> c"$t".c.sh
+     done
+}
+askc () {
+     echo -e "${ClearColor}Do you want to                                    ${FG_B_Black}${BG_R_Green}Execute${ClearColor} it ?  Press ${FG_B_Black}${BG_R_Green}y${ClearColor}"
+     echo -e "${ClearColor}Do you want to                                    ${FG_B_Black}${BG_R_Red}Discard${ClearColor} it ?  Press ${FG_B_Black}${BG_R_Red}n${ClearColor} or ${FG_B_Black}${BG_R_Red}d${ClearColor}"
+     echo -e "${ClearColor}Or perhaps you want to save the script with a     ${FG_B_Black}${BG_R_Purple}new name${ClearColor}   ?  Press ${FG_B_Black}${BG_R_Purple}r${ClearColor}"
+     echo -e "${ClearColor}Or maybe you want to save the script without a    ${FG_B_Black}${BG_R_Yellow}new name${ClearColor}   ?  Press ${FG_B_Black}${BG_R_Yellow}c${ClearColor}"
+     echo -e "${ClearColor}Or maybe you want to rework the script, I mean    ${FG_B_Black}${BG_R_Cyan}rework${ClearColor}     ?  Press ${FG_B_Black}${BG_R_Cyan}e${ClearColor}"
+     echo -e "${ClearColor}Oh ,and if you end up pressing enter or anything else except Ctrl-c ,it will count like c\n"
+     read -k confirmation
+     echo ""
+     if [[ $confirmation == "y" ]] ; then
+          export run=true
+     elif [[ $confirmation == "n" || $confirmation == "d" ]] ; then
+          rm "$cdr"/c"$t".c.sh && echo removed
+          break
+     elif [[ $confirmation == "r" ]] ; then
+          echo -e "What\'s the new name ? It will be saved in ~/c btw !\n"
+          read newname
+          mv "$cdr"/c"$t".c.sh ~/c/"$(echo "$newname" | addESC)" && echo "saved ~/c/$newname"
+          break
+     elif [[ $confirmation == "c" ]] ; then
+          mv "$cdr"/c"$t".c.sh ~/c && echo -e "saved ~/c/c$t.c.sh"
+          break
+     elif [[ $confirmation == "e" ]] ; then
+          getnamedirpass=true
+          mainscript "$cdr"/c"$t".c.sh
+          break
+     else
+          mv "$cdr"/c"$t".c.sh ~/c && echo "saved ~/c/c$t.c.sh"
+          break
+     fi
+}
+executeandsave () {
+     ./c"$t".c.sh && echo -e "\n\e[30m\e[42mExecuted\e[0m\n"
+     scripttxt="$(echo "$cdr"/c"$t".c.sh | grep "^[^#]" | grep -v "^$")"
+     if [[ $scripttxt == "" ]] ; then
+          rm "$cdr"/c"$t".c.sh
+     else
+          echo -e ""
+          echo -e "${ClearColor}Do you want to                                    ${FG_B_Black}${BG_R_Green}save${ClearColor} it           ?       Press ${FG_B_Black}${BG_R_Green}y${ClearColor}"
+          echo -e "${ClearColor}Or perhaps you want to                            ${FG_R_Black}${BG_R_Red}delete${ClearColor} the script ?       Press ${FG_R_Black}${BG_R_Red}d${ClearColor} or ${FG_R_Black}${BG_R_Red}n${ClearColor}"
+          echo -e "${ClearColor}Do you want to save it with a                     ${FG_R_Black}${BG_R_Purple}custom name${ClearColor}       ?       Press ${FG_R_Black}${BG_R_Purple}r${ClearColor}"
+          echo -e "${ClearColor}Or maybe you want to rework the script, I mean    ${FG_B_Black}${BG_R_Cyan}rework${ClearColor}            ?       Press ${FG_B_Black}${BG_R_Cyan}e${ClearColor}"
+          echo -e "${ClearColor}Oh ,and if you end up pressing enter or anything else ,it will count like y"
+          read -k confirmation
+          echo ""
+          echo -e ""
+          if [[ $confirmation == "y" ]] ; then
+               mv "$cdr"/c"$t".c.sh ~/c && echo "saved ~c/c$t.c.sh"
+          elif [[ $confirmation == "n" || $confirmation == "d" ]] ; then
+               rm "$cdr"/c"$t".c.sh && echo removed
+          elif [[ $confirmation == "r" ]] ; then
+               echo -e "What\'s the new name ? It will be saved in ~/c btw !\n"
+               read newname
+               mv "$cdr"/c"$t".c.sh ~/c/"$(echo "$newname" | addESC)" && echo -e "saved ~/c/$newname"
+          elif [[ $confirmation == "e" ]] ; then
+               getnamedirpass=true
+               mainscript "$cdr"/c"$t".c.sh
+               break
+               ut enter
+          else
+               mv "$cdr"/c"$t".c.sh ~/c && echo -e "saved ~c/c$t.c.sh"
+          fi
+     fi
+}
+s () {
+     if [[ $s == "true" ]] ; then
+          if [[ $i == "true" ]] ; then
+               cat "$(which "$loc" | head -n 1)" >> "$cdr"/c"$t".c.sh
+          else
+               cp "$(which "$loc")" "$cdr"/c"$t".c.sh
+          fi
+     fi
+}
+f () {
+     if [[ $f == "true" ]] ; then
+          if [[ $i == "true" ]] ; then
+               cat "$(realpath "$loc")" >> "$cdr"/c"$t".c.sh
+          else
+               cp "$(realpath "$loc")" "$cdr"/c"$t".c.sh
+          fi
+     fi
+}
+comm=$*
+c () {
+     init "$comm"
+     getnamedir
+     inject
+     if [ -p /dev/stdin ]; then
+          ifpiped
+          makekscript
+          executeandsave
+     else
+          s
+          f
+          makekscript
+          askc
+          executeandsave
+     fi
+}
 align_center() {
     local terminal_width=$(tput cols)     
     local text="${1:?}"                   
@@ -924,7 +1113,7 @@ incognito() {
           align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
           echo -e "${ClearColor}\n"
      else
-          /bin/cp ~/.zsh_history /tmp/.zsh_history.tmp &&
+          /bin/cp "$HISTFILE" /tmp/.zsh_history.tmp &&
           fc -p /tmp/.zsh_history.tmp && incognito=true
           clear &&
           echo -e "${FG_R_Black}${BG_R_Green}" &&
@@ -932,6 +1121,20 @@ incognito() {
           echo -e "${ClearColor}\n"
      fi
 }
+function command_permission() {
+  local cmd="${1}"
+  local cmd=$(echo "${cmd}" | awk '{print $1}' )
+  if [[ "${cmd}" =~ ^\./ && ! -x "${cmd#./}" ]]; then
+    read -rq "REPLY?${cmd#./} is not executable. Do you want to make it executable (y/n)? "
+    "$cmd" "$@"
+    if [[ "${REPLY}" =~ ^[Yy]$ ]]; then
+      chmod +x "${cmd#./}"
+    fi
+    echo ""
+  fi
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook preexec command_permission
 unixtime() {
   date +%s
 }
@@ -1066,13 +1269,13 @@ color256() {
      }'
 }
 srhs() {
-     rg $@ ~/.zsh_history || cat ~/.zsh_history | grep $@
+     rg "$*" "$HISTFILE" || cat $HISTFILE | grep "$*"
 }
 termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
           sshd -p 43434
      else
-          export EDITOR="emacsclient -ca "emacs""
+          which em >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
      fi
 }
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
@@ -1187,12 +1390,19 @@ exa_ls() {
 }
 exa_l() {
     exa -alihgSUFHum --icons "$@"
+    exa="$(exa -alihgSUFHum --icons "$@" | head -1)"
+    gap1="$(echo "$exa" | awk '{print index($0, "Permissions")-1}')"
+    gap2="$(echo "$exa" | awk '{print index($0, "Size")-1}')"
+    gap2="$(($gap2-$gap1))"
     printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
     total_number_of_files=$(($(exa -alihgSUFum --icons "$@" | wc -l)-1))
     total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    echo -ne "count:  \e[31m$total_number_of_files\e[0m"
-    for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
-    echo -e "total_size:\e[32m $total_size\e[0m"
+    echo -ne "count:"
+    for i in {1..$(($gap1-6))} ; do echo -n -e " " ; done
+    echo -ne "\e[31m$total_number_of_files\e[0m"
+    for i in {1..$(($gap2-15))} ; do echo -n -e " " ; done
+    echo -ne "total_size:"
+    echo -e "\e[32m $total_size\e[0m"
 }
 exa_lst() {
     exa --tree "$@"
@@ -1230,15 +1440,15 @@ lazynvm() {
 }
 nvm() {
   lazynvm
-  nvm $@
+  nvm "$@"
 }
 node() {
   lazynvm
-  node $@
+  node "$@"
 }
 npm() {
   lazynvm
-  npm $@
+  npm "$@"
 }
 export PATH="$PATH:$HOME/.rvm/bin"
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
@@ -1385,9 +1595,6 @@ if [ "$funcstack[1]" = "_glow" ]; then
 fi
 source "$CARGO_HOME/env"
 export EDITOR=$(where lvim | head -n 1)
-addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
-sed -i 's/\
-sed -i '/^\s*$/d' ~/.config/zsh/.zshrc

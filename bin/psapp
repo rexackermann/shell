@@ -1,19 +1,32 @@
 #!/bin/env bash
 data=$(ps -eo "comm rss pid" | awk '{print $1 ":" $2/1024 ":" $3}' | awk '{print $1 $2 $3}')
-
 apps=$(echo "$data" | awk -F ":" '{print $1}' | sort | uniq)
 IFS=$'\n' read -r -d '' -a apps < <( echo "$apps" && printf '\0' )
-
 for app in "${apps[@]}" ; do
      app_pids+=("$(echo "$data" | grep "$app" | sort | awk -F ":" '{print $3}' | awk 'BEGIN { ORS = " " } { print }')")
      app_ram_consumption+=("$(echo "$data" | grep "$app" | sort | awk -F ":" '{Total=Total+int($2+0.5)} END{print Total}')")
 done
-
 paste <(printf "\e[1;31m%-15s \e[0m\n" "${apps[@]}") <(printf "\e[1;32m%05d MB\e[0m\n" "${app_ram_consumption[@]}") <(printf "PIDs: \e[1;35m %s\e[0m\n" "${app_pids[@]}") | sort -k 2
-
 line="$(printf %"$(tput cols)"s |tr " " "-")"
 total_memory=$(echo "$data" | awk -F ":" '{Total=Total+int($2+0.5)} END{print Total}')
 total="$(printf '\e[1;31m%s\e[0m\e[1;32m%05d%s' "Total           " "$total_memory" " MB" )"
-
+echo "$line"
+echo "$total"
+tangle_file=~/.local/bin/psapp
+sed -i 's/\
+sed -i '/^\s*$/d' "$tangle_file"
+head -n -4 "$tangle_file" >> "$tangle_file"
+#!/bin/env bash
+data=$(ps -eo "comm rss pid" | awk '{print $1 ":" $2/1024 ":" $3}' | awk '{print $1 $2 $3}')
+apps=$(echo "$data" | awk -F ":" '{print $1}' | sort | uniq)
+IFS=$'\n' read -r -d '' -a apps < <( echo "$apps" && printf '\0' )
+for app in "${apps[@]}" ; do
+     app_pids+=("$(echo "$data" | grep "$app" | sort | awk -F ":" '{print $3}' | awk 'BEGIN { ORS = " " } { print }')")
+     app_ram_consumption+=("$(echo "$data" | grep "$app" | sort | awk -F ":" '{Total=Total+int($2+0.5)} END{print Total}')")
+done
+paste <(printf "\e[1;31m%-15s \e[0m\n" "${apps[@]}") <(printf "\e[1;32m%05d MB\e[0m\n" "${app_ram_consumption[@]}") <(printf "PIDs: \e[1;35m %s\e[0m\n" "${app_pids[@]}") | sort -k 2
+line="$(printf %"$(tput cols)"s |tr " " "-")"
+total_memory=$(echo "$data" | awk -F ":" '{Total=Total+int($2+0.5)} END{print Total}')
+total="$(printf '\e[1;31m%s\e[0m\e[1;32m%05d%s' "Total           " "$total_memory" " MB" )"
 echo "$line"
 echo "$total"
