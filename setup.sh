@@ -67,7 +67,7 @@ user_home_dir () {
      
      if [[ $confirmation == "y" ]] ; then
           echo -e "On it !"
-          export GNUPGHOME=$(pwd)/.gnupg
+          export GNUPGHOME=~/shell/.gnupg
           mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
           gpg -d .zsh_history.gpg >> ~/.zsh_history
           mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
