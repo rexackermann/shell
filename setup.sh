@@ -7,66 +7,68 @@ export XDG_CACHE_HOME=$HOME/.cache
 export ZSH="$XDG_DATA_HOME"/oh-my-zsh
 export ZSH_CUSTOM="$ZSH"/custom
 
-custom_home_dir () {
-     homedir=${homedir:-rexshell}
-     
-     # mkdir ${curdir}/$homedir && echo -e "created ${curdir}/$homedir"
-     # echo ${curdir}/$homedir
-     
-     git clone https://github.com/RexAckermann/shell.git
+# custom_home_dir () {
+#      homedir=${homedir:-rexshell}
 
-     mv shell ${curdir}/$homedir
-     cd ${curdir}/$homedir
+#      # mkdir ${curdir}/$homedir && echo -e "created ${curdir}/$homedir"
+#      # echo ${curdir}/$homedir
 
-     export HOME=$(pwd)
+#      git clone https://github.com/RexAckermann/shell.git
 
-     curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash  # installs oh-my-zsh
-     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-     git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/ohmyzsh-full-autoupdate
-     git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+#      mv shell ${curdir}/$homedir
+#      cd ${curdir}/$homedir
 
-     echo -e "Do you want to get the history and private ? y/n "
-     read -s -n 1 confirmation
-     
-     if [[ $confirmation == "y" ]] ; then
-          echo -e "On it !"
-          export GNUPGHOME=$(pwd)/.gnupg
-          # mv ~/.zsh_history ~/.zsh_history.$(date +%s)
-          gpg -d .zsh_history.gpg >> $HOME/.zsh_history
-          # mv ~/.zshrc_private ~/.zshrc_private.$(date +%s)
-          gpg -d .zshrc_private.gpg >> $HOME/.zshrc_private
-     else
-          echo ""
-     fi
-     zsh
-}
+#      export HOME=$(pwd)
+
+#      curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash  # installs oh-my-zsh
+#      git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+#      git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/ohmyzsh-full-autoupdate
+#      git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+#      git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
+#      echo -e "Do you want to get the history and private ? y/n "
+#      read -s -n 1 confirmation
+
+#      if [[ $confirmation == "y" ]] ; then
+#           echo -e "On it !"
+#           export GNUPGHOME="$(pwd)"/.gnupg
+#           # mv ~/.zsh_history ~/.zsh_history.$(date +%s)
+#           gpg -d .zsh_history.gpg >> "$HOME"/.zsh_history
+#           # mv ~/.zshrc_private ~/.zshrc_private.$(date +%s)
+#           gpg -d .zshrc_private.gpg >> "$HOME"/.zshrc_private
+#      else
+#           echo ""
+#      fi
+#      zsh
+# }
 
 user_home_dir () {
-     cd ~/
+     cd ~/ || exit
 
-     mv "$ZSH" "$ZSH".$(date +%s)
+     mv "$ZSH" "$ZSH"."$(date +%s)"
      
      curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash  # installs oh-my-zsh
-     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-     git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/ohmyzsh-full-autoupdate
-     git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/themes/powerlevel10k
+     git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/ohmyzsh-full-autoupdate
+     git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions
+     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
      
      git clone https://github.com/RexAckermann/shell.git
-     cd ~/shell
-     mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
-     mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
+     cd ~/shell || exit
+     # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
+     mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
+     ln -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
+     # mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
      
      echo -e "Do you want to get the history and private ? y/n "
-     read -s -n 1 confirmation
+     read -rs -n 1 confirmation
      
      if [[ $confirmation == "y" ]] ; then
           echo -e "On it !"
           export GNUPGHOME=$(pwd)/.gnupg
-          mv ~/.zsh_history ~/.zsh_history.$(date +%s)
+          mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
           gpg -d .zsh_history.gpg >> ~/.zsh_history
-          mv ~/.zshrc_private ~/.zshrc_private.$(date +%s)
+          mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
           gpg -d .zshrc_private.gpg >> ~/.zshrc_private
      else
           echo skipped
