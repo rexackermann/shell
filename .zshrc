@@ -1272,6 +1272,84 @@ color256() {
          printf "\n";
      }'
 }
+ftpplay() {
+ulimit -s 9999999
+video="${1}"
+sub="${2}"
+ep="${3:-25}"
+for (( i=01; i<="$ep"; i++ ))
+do
+    ii=$(printf '%02d\n' $i)
+    linkv=${video/episode_nung/$ii}
+    links=${sub/episode_nung/$ii}
+    linkvs+=("$linkv")
+    linkss+=("$links")
+done
+[[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
+comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
+echo "$comm" | zsh
+}
+ccr() {
+if [ -z "$1" ]; then
+    echo "Error: No file specified"
+    break
+fi
+if [ ! -f "$1" ]; then
+    echo "Error: File $1 not found"
+    break
+fi
+if [[ "$1" != *.c && "$1" != *.cpp ]]; then
+    echo "Error: $1 is not a C or C++ source file"
+    break
+fi
+file_base=$(basename -s .c "$1")
+file_base=$(basename -s .cpp "$file_base")
+if [[ "$1" == *.c ]]; then
+    gcc -o "$file_base" "$1"
+else
+    g++ -o "$file_base" "$1"
+fi
+if [ $? -ne 0 ]; then
+    echo "Error: Compilation failed"
+    break
+fi
+shift
+"./$file_base" "$@"
+rm "$file_base"
+}
+encryptdir() {
+cp -rfv $(which encryptdir) $(pwd)/close
+echo "Do you really wanna continue ? All files and folder in this dirrectory will be encrypted if you do this !"
+echo "You are currently in the dirrectory : "
+echo $(pwd)
+echo "If you want to continue type password.You will have to retype it to confirm.Keep the password !!!"
+tar -czf - * --remove-files | openssl enc -e -aes256 -salt -out secured && echo "done" &&
+echo "#!/bin/bash" > open &&
+echo "openssl enc -d -aes256 -in secured | tar xz && rm -rfv secured open && echo done &&" >> open &&
+echo "ls" >> open &&
+echo "dust -n 100" >> open &&
+echo "mv -fv open .open" &&
+chmod +x open &&
+ls &&
+dust -n 100 &&
+echo ""
+echo "The contents of the folder has been encrypted.(Or not ! Look at the file list.)"
+echo "If they were encrpted and you want to get them back run the 'open' script using ./open ."
+}
+pdfmerge() {
+mkdir ./tmp
+tp="./tmp/tmp.pdf"
+td="./tmp/data"
+for i in *.pdf; do
+    echo "Bookmarking $i"
+    printf "BookmarkBegin\nBookmarkTitle: %s\nBookmarkLevel: 1\nBookmarkPageNumber: 1\n" "${i%.*}"> "$td"
+    pdftk "$i" update_info "$td" output "$tp"
+    mv "$tp" "$i"
+done
+pdftk *.pdf cat output ${1:-merged.pdf}
+ rm -rfv ./tmp
+ echo "\ndone"
+}
 srhs() {
      rg "$*" "$HISTFILE" || cat $HISTFILE | grep "$*"
 }
@@ -1348,13 +1426,21 @@ else
 fi
 if command -v bat &> /dev/null
 then
+    alias cat="bat -p --paging=never"
+fi
+bcat() {
+    cat $(where $1 | grep "/")
+        }
+compdef bcat=which
+if command -v batman &> /dev/null
+then
      alias man="batman"
 fi
-if command -v bat &> /dev/null
+if command -v batwatch &> /dev/null
 then
      alias watch="batwatch"
 fi
-if command -v bat &> /dev/null
+if command -v batdiff &> /dev/null
 then
      alias diff="batdiff"
 fi
