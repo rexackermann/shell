@@ -804,6 +804,7 @@ export PATH="$HOME/.local/bin:$PATH"
 #doom emacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export PATH="$HOME/shell//bin:$PATH"
+export PATH="$HOME/.local/share/cargo/bin:$PATH"
 [ -f $XDG_CONFIG_HOME/zsh/history ] && export HISTFILE=$XDG_CONFIG_HOME/zsh/history
 export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
@@ -1424,14 +1425,43 @@ then
 else
      alias vim="vi"
 fi
-if command -v bat &> /dev/null
-then
-    alias cat="bat -p --paging=never"
-fi
-bcat() {
-    cat $(where $1 | grep "/")
-        }
-compdef bcat=which
+cat() {
+    args=("$@")
+    args_bat=("$@")
+    for arg in "${args[@]}" ; do
+        if [[ ! -f "$arg" ]]
+        then
+            args=("${(@)args:#"$arg"}")
+        fi
+    done
+    for arg in "${args[@]}" ; do
+        if [[ -f "$arg" ]]
+        then
+            args_bat=("${(@)args_bat:#"$arg"}")
+        fi
+    done
+    if [[ -p /dev/stdin ]]
+    then
+        bat -p --paging=never "${args_bat[@]}" /dev/stdin
+        return 0
+    fi
+    for arg in "${args[@]}" ; do
+        if file --mime-type "$arg" | grep -i image >> /dev/null
+        then
+            if command -v viu &> /dev/null
+            then
+                viu -1 -t "$arg"
+            else
+                img2txt -f utf8 -W "$(tput cols)" "$arg"
+            fi
+        fi
+        if file --mime-type "$arg" | grep -i text >> /dev/null
+        then
+            bat -p --paging=never "${args_bat[@]}" "$arg"
+        fi
+    done
+}
+compdef cat=bat
 if command -v batman &> /dev/null
 then
      alias man="batman"
@@ -1523,6 +1553,34 @@ else
      alias l="gnu_l"
      alias lst="gnu_lst"
 fi
+if command -v bat &> /dev/null
+then
+    lsblk() {
+        "$(which lsblk)" "$@" | cat --language=fstab
+    }
+    bcat() {
+        bcat_var_func="$(functions "$1" | cat -l sh)"
+        if [ ! -z "$bcat_var_func" ] ; then
+            echo "$bcat_var_func" | cat -l sh
+            echo -e "\n"
+        fi
+        bcat_var_alias="$(alias "$1" | cat -l sh)"
+        if [ ! -z "$bcat_var_alias" ] ; then
+            echo "$bcat_var_alias" | cat -l sh
+            echo -e "\n"
+        fi
+        bcat_var_scr="$(which $1 2&> /dev/null | uniq)"
+        echo "$bcat_var_scr" | while read line ; do
+            if [ -f "$line" ] ; then
+                cat "$line"
+            fi
+        done
+    }
+    compdef bcat=which
+fi
+roxy() {
+    sgpt --role roxy "\"$*\""
+}
 lazynvm() {
   unset -f nvm node npm
   export NVM_DIR=~/.nvm
