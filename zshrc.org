@@ -1,4 +1,4 @@
-#+title: .zshrc
+#+title: zshrc
 #+DESCRIPTION: zsh configuration
 #+AUTHOR: Rex Ackermann
 #+EMAIL: ackermann88888@gmail.com
@@ -10,6 +10,8 @@
 
 
 * TABLE OF CONTENTS :toc:
+- [[#install][Install]]
+- [[#what-is-this][What is this]]
 - [[#xdg-path][XDG PATH]]
 - [[#tmux][Tmux]]
 - [[#oh-my-zsh][oh-my-zsh]]
@@ -58,6 +60,23 @@
 - [[#adb][adb]]
 - [[#termuxexec-run][Termuxexec run]]
 - [[#strip-comments-and-blank-lines][Strip Comments and Blank Lines]]
+
+* Install
+
+One command install:
+
+#+begin_src shell :tangle no
+
+bash -c "$(curl -fsSl https://rexackermann.github.io/shellsetup)"
+
+#+end_src
+
+
+* What is this
+
+--> My personal shell setup with one command.
+If someone else wants to use it ,you might need to change it up a bit.I mean my name might be in the .p10k.zsh file.But shouldn't be that difficult to modify that ,yeah ? 😁
+
 
 * XDG PATH
 
