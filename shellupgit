@@ -15,6 +15,7 @@ mv -fv ~/.config/zsh/.zshrc_private.gpg ~/github/shell/.zsh_private.gpg
 cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
 cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
 cp -rfv "$(which psapp | head -n 1)" ~/github/shell/bin/psapp
+cp -rfv ~/org/zshrc.org ~/github/shell/
 # cp -rfv $(which c | head -n 1) ~/github/shell/bin/c
 # cp -rfv $(which shellupgit) ~/github/shell/shellupgit
 
