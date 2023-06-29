@@ -42,9 +42,9 @@ git fetch && git pull && git add . && git commit -am update_"$(date +%s)" && git
 
 
 
-cp "$(which autowallp | head -n 1)" ~/github/autowallp/autowallp
-cp "$(which wallch | head -n 1)" ~/github/autowallp/wallch
-cp ~/org/bashscripts/autowallp.org ~/github/autowallp/README.org
+cp -rfv "$(which autowallp | head -n 1)" ~/github/autowallp/autowallp
+cp -rfv "$(which wallch | head -n 1)" ~/github/autowallp/wallch
+cp -rfv ~/org/bashscripts/autowallp.org ~/github/autowallp/README.org
 cd ~/github/autowallp || exit
 git fetch && git pull && git add . && git commit -am update_"$(date +%s)" && git push
 
