@@ -48,8 +48,8 @@ git fetch && git pull && git add . && git commit -am update_"$(date +%s)" && git
 
 
 
-cp "$(where autowallp | head -n 1)" ~/github/autowallp/
-cp "$(where wallch | head -n 1)" ~/github/autowallp/
+cp "$(which autowallp | head -n 1)" ~/github/autowallp/
+cp "$(which wallch | head -n 1)" ~/github/autowallp/
 cp ~/org/bashscripts/autowallp.org ~/github/autowallp/README.org
 cd ~/github/autowallp || exit
 git fetch && git pull && git add . && git commit -am update_"$(date +%s)" && git push
