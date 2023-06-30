@@ -1560,23 +1560,30 @@ then
     }
     bcat() {
         bcat_var_func="$(functions "$1" | cat -l sh)"
-        if [ ! -z "$bcat_var_func" ] ; then
+        if [ -n "$bcat_var_func" ] ; then
             echo "$bcat_var_func" | cat -l sh
             echo -e "\n"
         fi
         bcat_var_alias="$(alias "$1" | cat -l sh)"
-        if [ ! -z "$bcat_var_alias" ] ; then
+        if [ -n "$bcat_var_alias" ] ; then
             echo "$bcat_var_alias" | cat -l sh
             echo -e "\n"
         fi
-        bcat_var_scr="$(which $1 2&> /dev/null | uniq)"
-        echo "$bcat_var_scr" | while read line ; do
-            if [ -f "$line" ] ; then
-                cat "$line"
-            fi
-        done
+        cat "$(type "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3}')"
     }
     compdef bcat=which
+fi
+if command -v bat &> /dev/null
+then
+    head() {
+    /bin/head "$@" | cat
+    }
+fi
+if command -v bat &> /dev/null
+then
+    tail() {
+    /bin/head "$@" | cat
+    }
 fi
 roxy() {
     sgpt --role roxy "\"$*\""
