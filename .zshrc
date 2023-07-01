@@ -1,4 +1,4 @@
-#!/bin/env zsh
+#!/usr/bin/env zsh
 export XDG_DATA_HOME=$HOME/.local/share
 export XDG_CONFIG_HOME=$HOME/.config
 export XDG_STATE_HOME=$HOME/.local/state
@@ -823,10 +823,14 @@ function fp() {
 alias lc='exa'
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  
 eval "$(register-python-argcomplete pipx)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+[ -s /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 export GTK_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
+binpath() {
+  bin_path="$(type -a "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3 ; exit}')"
+  echo "$bin_path"
+}
 load_colors() {
       export FG_R_Black="\e[0;30m"
       export FG_R_Red="\e[0;31m"
@@ -1118,7 +1122,7 @@ incognito() {
           align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
           echo -e "${ClearColor}\n"
      else
-          /bin/cp "$HISTFILE" /tmp/.zsh_history.tmp &&
+          "$(binpath cp)" "$HISTFILE" /tmp/.zsh_history.tmp &&
           fc -p /tmp/.zsh_history.tmp && incognito=true
           clear &&
           echo -e "${FG_R_Black}${BG_R_Green}" &&
@@ -1288,6 +1292,7 @@ do
 done
 [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
 comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
+echo "$comm"
 echo "$comm" | zsh
 }
 ccr() {
@@ -1325,7 +1330,7 @@ echo "You are currently in the dirrectory : "
 echo $(pwd)
 echo "If you want to continue type password.You will have to retype it to confirm.Keep the password !!!"
 tar -czf - * --remove-files | openssl enc -e -aes256 -salt -out secured && echo "done" &&
-echo "#!/bin/bash" > open &&
+echo "#!/usr/bin/env bash" > open &&
 echo "openssl enc -d -aes256 -in secured | tar xz && rm -rfv secured open && echo done &&" >> open &&
 echo "ls" >> open &&
 echo "dust -n 100" >> open &&
@@ -1385,7 +1390,7 @@ alias mvi='mpv --config-dir=$HOME/.config/mvi'
 alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
 alias emacs="emacsclient -ca "emacs""
 alias pipupgrade="pip-review --local --auto"
-alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
+alias tik="$(binpath kitty) +kitten icat"
 alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
 alias gdown="gdown --fuzzy --continue"
 alias gdownf="gdown --fuzzy --continue --folder"
@@ -1576,13 +1581,13 @@ fi
 if command -v bat &> /dev/null
 then
     head() {
-    /bin/head "$@" | cat
+    /"$(binpath head)" "$@" | cat
     }
 fi
 if command -v bat &> /dev/null
 then
     tail() {
-    /bin/head "$@" | cat
+    /"$(binpath head)" "$@" | cat
     }
 fi
 roxy() {

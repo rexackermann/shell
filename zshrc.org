@@ -3,7 +3,7 @@
 #+AUTHOR: Rex Ackermann
 #+EMAIL: ackermann88888@gmail.com
 #+date: 2023-05-26 16:12:59+06:00
-#+property: header-args :tangle ~/.config/zsh/.zshrc :comments no :eval no :shebang #!/bin/env zsh
+#+property: header-args :tangle ~/.config/zsh/.zshrc :comments no :eval no :shebang #!/usr/bin/env zsh
 #+auto_tangle: t
 #+TOC: headlines 5
 #+STARTUP: showeverything
@@ -48,6 +48,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 - [[#etcetra][Etcetra]]
 - [[#ibus][IBUS]]
 - [[#functions][Functions]]
+  - [[#binpath][binpath]]
   - [[#colored-text][Colored Text]]
   - [[#c][c]]
   - [[#align-text-to-center][Align Text to Center]]
@@ -2210,7 +2211,7 @@ alias lc='exa'
 #+begin_src shell
 
 eval "$(register-python-argcomplete pipx)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+[ -s /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 #+end_src
 
@@ -2231,6 +2232,17 @@ export QT_IM_MODULE=ibus
 
 
 * Functions
+
+** binpath
+
+#+begin_src bash
+
+binpath() {
+  bin_path="$(type -a "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3 ; exit}')"
+  echo "$bin_path"
+}
+
+#+end_src
 
 ** Colored Text
 
@@ -2644,7 +2656,7 @@ incognito() {
           align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
           echo -e "${ClearColor}\n"
      else
-          /bin/cp "$HISTFILE" /tmp/.zsh_history.tmp &&
+          "$(binpath cp)" "$HISTFILE" /tmp/.zsh_history.tmp &&
           fc -p /tmp/.zsh_history.tmp && incognito=true
           clear &&
           echo -e "${FG_R_Black}${BG_R_Green}" &&
@@ -2990,6 +3002,7 @@ done
 [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
 comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
 
+echo "$comm"
 echo "$comm" | zsh
 
 }
@@ -3077,7 +3090,7 @@ echo "If you want to continue type password.You will have to retype it to confir
 
 tar -czf - * --remove-files | openssl enc -e -aes256 -salt -out secured && echo "done" &&
 
-echo "#!/bin/bash" > open &&
+echo "#!/usr/bin/env bash" > open &&
 echo "openssl enc -d -aes256 -in secured | tar xz && rm -rfv secured open && echo done &&" >> open &&
 echo "ls" >> open &&
 echo "dust -n 100" >> open &&
@@ -3203,7 +3216,7 @@ alias emacs="emacsclient -ca "emacs""
 alias pipupgrade="pip-review --local --auto"
 # alias vi="lvim || nvim || vim || vi"
 # alias vim="lvim || nvim || vim || vi"
-alias tik="~/.local/kitty.app/bin/kitty +kitten icat"
+alias tik="$(binpath kitty) +kitten icat"
 alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
 # alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
 # alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
@@ -3540,7 +3553,7 @@ fi
 if command -v bat &> /dev/null
 then
     head() {
-    /bin/head "$@" | cat
+    /"$(binpath head)" "$@" | cat
     }
 fi
 
@@ -3554,7 +3567,7 @@ fi
 if command -v bat &> /dev/null
 then
     tail() {
-    /bin/head "$@" | cat
+    /"$(binpath head)" "$@" | cat
     }
 fi
 
@@ -3896,6 +3909,6 @@ sed -i 's/\# .*$//g' ~/.config/zsh/.zshrc
 sed -i '/^ *$/d' ~/.config/zsh/.zshrc
 # sed -i '/^$/d' file.txt
 
-head -n -3 ~/.config/zsh/.zshrc >> ~/.config/zsh/.zshrc.temp && /bin/mv ~/.config/zsh/.zshrc.temp ~/.config/zsh/.zshrc
+head -n -3 ~/.config/zsh/.zshrc >> ~/.config/zsh/.zshrc.temp && /"$(binpath mv)" ~/.config/zsh/.zshrc.temp ~/.config/zsh/.zshrc
 
 #+end_src
