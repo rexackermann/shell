@@ -54,24 +54,26 @@ user_home_dir () {
      git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
      git clone https://github.com/qoomon/zsh-lazyload "$ZSH_CUSTOM"/plugins/zsh-lazyload
 
-     
-     git clone https://github.com/RexAckermann/shell.git
-     cd ~/shell || exit
+     mv -fvp ~/.config/zsh ~/.config/zsh.ba
+     mkdir -p ~/.config
+     git clone https://github.com/RexAckermann/shell.git ~/.config/zsh
+     cd ~/.config/zsh || exit
+     ln -s .zshenv ~/.zshenv
      # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
-     mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
-     cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
+     # mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
+     # cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
      # mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
-     
+
      echo -e "Do you want to get the history and private ? y/n "
      read -rs -n 1 confirmation
      
      if [[ $confirmation == "y" ]] ; then
           echo -e "On it !"
           export GNUPGHOME=~/shell/.gnupg
-          mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
-          gpg -d .zsh_history.gpg >> ~/.zsh_history
-          mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
-          gpg -d .zshrc_private.gpg >> ~/.zshrc_private
+          # mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
+          gpg -d .zsh_history.gpg >> .zsh_history
+          # mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
+          gpg -d .zshrc_private.gpg >> .zshrc_private
      else
           echo skipped
      fi
@@ -81,8 +83,8 @@ termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
           echo -e "termux detected"
           # echo "/data/data/com.termux/files/usr/bin/sshd -p 43434" >> ~/.zshrc
-          sed 's/my_cpu_temp\ \ /\#\ my_cpu_temp\ \ /' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
-          mv ~/shell/.p10k.tmp ~/shell/.p10k.zsh
+          # sed 's/my_cpu_temp\ \ /\#\ my_cpu_temp\ \ /' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
+          # mv ~/shell/.p10k.tmp ~/shell/.p10k.zsh
           # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
      fi
 }
