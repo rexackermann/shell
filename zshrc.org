@@ -20,7 +20,7 @@ bash -c "$(curl -fsSl https://rexackermann.github.io/shellsetup)"
 #+end_src
 
 
-* What is this
+* What is this ?
 
 --> My personal shell setup with one command.
 If someone else wants to use it ,you might need to change it up a bit.I mean my name might be in the .p10k.zsh file or block.But shouldn't be that difficult to modify that ,yeah ? 😁
@@ -28,7 +28,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 
 * TABLE OF CONTENTS :toc:
 - [[#install][Install]]
-- [[#what-is-this][What is this]]
+- [[#what-is-this-][What is this ?]]
 - [[#xdg-path][XDG PATH]]
 - [[#tmux][Tmux]]
 - [[#oh-my-zsh][oh-my-zsh]]
@@ -2171,26 +2171,62 @@ source $XDG_CONFIG_HOME/zsh/.zshrc_private
 #+begin_src shell
 
 # fp auto-completion
-() {
-  # A list of each flatpak app name in lowercase.
-  # (First word of the name to be exact, so "Brave Browser" will be "brave").
-  local FLATPAK_APPS=$(flatpak list --app | cut -f1 | awk '{print tolower($1)}')
-  complete -W $FLATPAK_APPS fp
-}
+# () {
+#   # A list of each flatpak app name in lowercase.
+#   # (First word of the name to be exact, so "Brave Browser" will be "brave").
+#   local FLATPAK_APPS=$(flatpak list --app | cut -f1 | awk '{print tolower($1)}')
+#   complete -W $FLATPAK_APPS fp
+# }
 
-# Run Flatpak apps from CLI, e.g.: "fp okular"
+# # Run Flatpak apps from CLI, e.g.: "fp okular"
+# function fp() {
+#   app=$(flatpak list --app | cut -f2 | awk -v app="$1" '(tolower($NF) ~ tolower(app))')
+
+#   # Abort if the app name was not entered
+#   test -z $1 && printf "Enter an app to fp.\n\$ fp <app>\n\nINSTALLED APPS\n$app\n" && return;
+
+#   # Remove app name from "$@" array
+#   shift 1;
+
+#   # Run the flatpak app asynchronous and don't show any stdout and stderr
+#   ( flatpak run "$app" "$@" &> /dev/null & )
+# }
+
+# compdef fp="flatpak run"
+
 function fp() {
-  app=$(flatpak list --app | cut -f2 | awk -v app="$1" '(tolower($NF) ~ tolower(app))')
+#PURPOSE: Wrapper for $(flatpak run)
 
-  # Abort if the app name was not entered
-  test -z $1 && printf "Enter an app to fp.\n\$ fp <app>\n\nINSTALLED APPS\n$app\n" && return;
+##check if flatpak is installed and accesible to $PATH
+command -v flatpak >/dev/null 2>&1 || { printf "Flatpak package was not found.\n"; exit 1; }
 
-  # Remove app name from "$@" array
-  shift 1;
+##check if any flatpak packages are installed
+test "$(flatpak list --all | head -c1 | wc -c)" -eq "0" && { printf "No Flatpak packages are installed.\n"; exit 1; }
 
-  # Run the flatpak app asynchronous and don't show any stdout and stderr
-  ( flatpak run "$app" "$@" &> /dev/null & )
+##check if an app name was entered
+[ "$#" -eq "0" ] && { printf "%s\n\n%s\n%s\n%s" "Usage: fp [APP] [OPTION]" "INSTALLED APPS:" "$(flatpak list --all)"; exit 1; }
+
+##store reverse dns name for package
+app=$(flatpak list --app | cut -f2 | awk -F. -v app="$1" '(tolower($0) ~ tolower(app))')
+
+##check if entered app name is valid
+[ -z "$app" ] && { printf "Entered app name is invalid.\n"; exit 1; }
+
+##remove app name from "$@" array
+shift 1;
+
+##main
+flatpak run "$app" "$@"
 }
+# Tab completion for Flatpak applications
+function _fp_completion() {
+  local applications
+  applications=($(flatpak list --app | awk -F '\t' '{print $2}'))
+  _arguments '1: :("${applications[@]}")'
+}
+
+compdef _fp_completion fp
+
 #+end_src
 
 
