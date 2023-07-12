@@ -2201,7 +2201,8 @@ source $XDG_CONFIG_HOME/zsh/.zshrc_private
 # }
 
 # compdef fp="flatpak run"
-
+if command -v flatpak &> /dev/null
+then
 function fp() {
 #PURPOSE: Wrapper for $(flatpak run)
 
@@ -2234,7 +2235,7 @@ function _fp_completion() {
 }
 
 compdef _fp_completion fp
-
+fi
 #+end_src
 
 

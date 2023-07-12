@@ -816,6 +816,8 @@ export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
 setopt EXTENDED_HISTORY
 source $XDG_CONFIG_HOME/zsh/.zshrc_private
+if command -v flatpak &> /dev/null
+then
 function fp() {
 #PURPOSE: Wrapper for $(flatpak run)
 ##check if flatpak is installed and accesible to $PATH
@@ -839,6 +841,7 @@ function _fp_completion() {
   _arguments '1: :("${applications[@]}")'
 }
 compdef _fp_completion fp
+fi
 alias lc='exa'
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  
 eval "$(register-python-argcomplete pipx)"
