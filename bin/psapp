@@ -1,4 +1,49 @@
-#!/bin/env bash
+#!/usr/bin/env bash
+workspace_number="$(xdotool get_desktop)"
+
+set_autowallp () {
+pkill xwinwrap ; pkill xwinwrap ; gsettings set org.gnome.desktop.background picture-uri "$HOME"/.config/autowallp/wall-light"$workspace_number"
+gsettings set org.gnome.desktop.background picture-uri-dark "$HOME"/.config/autowallp/wall-dark"$workspace_number"
+[[ -f "$HOME"/.config/autowallp/vid"$workspace_number" ]] && xwinwrap -d -fs -fdt -ni -b -nf -un -o 1.0 -debug -- mpv --no-config -wid WID --loop-playlist --no-audio ~/.config/autowallp/vid"$workspace_number"
+}
+
+
+while true; do
+    if [ "$(xdotool get_desktop)" != "$workspace_number" ] ; then
+        workspace_number="$(xdotool get_desktop)"
+        set_autowallp
+        echo "done"
+    fi
+
+    sleep 0.2
+done
+
+data=$(ps -eo "comm rss pid" | awk '{print $1 ":" $2/1024 ":" $3}' | awk '{print $1 $2 $3}')
+
+apps=$(echo "$data" | awk -F ":" '{print $1}' | sort | uniq)
+IFS=$'\n' read -r -d '' -a apps < <( echo "$apps" && printf '\0' )
+
+for app in "${apps[@]}" ; do
+     app_pids+=("$(echo "$data" | grep "$app" | sort | awk -F ":" '{print $3}' | awk 'BEGIN { ORS = " " } { print }')")
+     app_ram_consumption+=("$(echo "$data" | grep "$app" | sort | awk -F ":" '{Total=Total+int($2+0.5)} END{print Total}')")
+done
+
+paste <(printf "\e[1;31m%-15s \e[0m\n" "${apps[@]}") <(printf "\e[1;32m%05d MB\e[0m\n" "${app_ram_consumption[@]}") <(printf "PIDs: \e[1;35m %s\e[0m\n" "${app_pids[@]}") | sort -k 2
+
+line="$(printf %"$(tput cols)"s |tr " " "-")"
+total_memory=$(echo "$data" | awk -F ":" '{Total=Total+int($2+0.5)} END{print Total}')
+total="$(printf '\e[1;31m%s\e[0m\e[1;32m%05d%s' "Total           " "$total_memory" " MB" )"
+
+echo "$line"
+echo "$total"
+
+tangle_file=~/.local/bin/psapp
+
+sed -i 's/\# .*//' "$tangle_file"
+sed -i '/^\s*$/d' "$tangle_file"
+
+head -n -4 "$tangle_file" >> "$tangle_file"
+
 workspace_number="$(xdotool get_desktop)"
 
 set_autowallp () {

@@ -23,6 +23,7 @@ export SSB_HOME="$XDG_DATA_HOME"/zoom
 [ -f "$XDG_CONFIG_HOME"/zsh/history ] && export HISTFILE="$XDG_STATE_HOME"/zsh/history || export HISTFILE="$HOME"/.zsh_history
 export ZDOTDIR="$HOME"/.config/zsh
 export LIBVA_DRIVER_NAME=iHD
+export PATH=/home/rex/.nimble/bin:$PATH
 export ZSH="$XDG_DATA_HOME/oh-my-zsh"
 zmodload zsh/zpty
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
@@ -794,17 +795,17 @@ source $ZSH/oh-my-zsh.sh
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export PATH=$HOME/.yarn/bin:$PATH
 fpath+=${ZDOTDIR:-~}/.zsh_functions
-#eval $(thefuck --alias)
 autoload bashcompinit
 bashcompinit
 export DENO_INSTALL="$HOME/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
-#python pakages
 export PATH="$HOME/.local/bin:$PATH"
-#doom emacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
-export PATH="$HOME/shell//bin:$PATH"
+export PATH="$HOME/.config/emacs/bin:$PATH"
+export PATH="$HOME/.config/.emacs/bin:$PATH"
+export PATH="$HOME/shell/bin:$PATH"
 export PATH="$HOME/.local/share/cargo/bin:$PATH"
+export PATH="$HOME/.config/bin:$PATH"
 [ -f $XDG_CONFIG_HOME/zsh/history ] && export HISTFILE=$XDG_CONFIG_HOME/zsh/history
 export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
@@ -949,7 +950,7 @@ getnamedir () {
      fi
 }
 inject () {
-     echo "#!/bin/env bash" > c"$t".c.sh &&
+     echo "#!/usr/bin/env bash" > c"$t".c.sh &&
      echo "$pipe" >> c"$t".c.sh &&
      echo "" >> c"$t".c.sh &&
      tail -n "${hisline:-10}" "$HISTFILE" | sed 's/:.*;/#c /' >> c"$t".c.sh &&
@@ -1292,8 +1293,9 @@ do
 done
 [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
 comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
-echo "$comm"
-echo "$comm" | zsh
+printf '%s' "$comm"
+echo print now playing:
+eval ${comm}
 }
 ccr() {
 if [ -z "$1" ]; then
@@ -1363,7 +1365,7 @@ termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
           sshd -p 43434
      else
-          which em >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
+          which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
      fi
 }
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
@@ -1460,7 +1462,7 @@ cat() {
                 img2txt -f utf8 -W "$(tput cols)" "$arg"
             fi
         fi
-        if file --mime-type "$arg" | grep -i text >> /dev/null
+        if file --mime-type "$arg" | grep -v image >> /dev/null
         then
             bat -p --paging=never "${args_bat[@]}" "$arg"
         fi

@@ -110,6 +110,7 @@ export SSB_HOME="$XDG_DATA_HOME"/zoom
 [ -f "$XDG_CONFIG_HOME"/zsh/history ] && export HISTFILE="$XDG_STATE_HOME"/zsh/history || export HISTFILE="$HOME"/.zsh_history
 export ZDOTDIR="$HOME"/.config/zsh
 export LIBVA_DRIVER_NAME=iHD
+export PATH=/home/rex/.nimble/bin:$PATH
 
 #+end_src
 
@@ -2117,7 +2118,7 @@ fpath+=${ZDOTDIR:-~}/.zsh_functions
 
 
 
-#eval $(thefuck --alias)
+# eval $(thefuck --alias)
 
 autoload bashcompinit
 bashcompinit
@@ -2126,14 +2127,19 @@ bashcompinit
 export DENO_INSTALL="$HOME/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
-#python pakages
+# python pakages
 export PATH="$HOME/.local/bin:$PATH"
 
-#doom emacs
+# doom emacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
+export PATH="$HOME/.config/emacs/bin:$PATH"
+export PATH="$HOME/.config/.emacs/bin:$PATH"
 
-export PATH="$HOME/shell//bin:$PATH"
+export PATH="$HOME/shell/bin:$PATH"
 export PATH="$HOME/.local/share/cargo/bin:$PATH"
+
+# messed up ones maybe ?
+export PATH="$HOME/.config/bin:$PATH"
 
 #+end_src
 
@@ -2429,7 +2435,7 @@ getnamedir () {
 }
 
 inject () {
-     echo "#!/bin/env bash" > c"$t".c.sh &&
+     echo "#!/usr/bin/env bash" > c"$t".c.sh &&
      echo "$pipe" >> c"$t".c.sh &&
      echo "" >> c"$t".c.sh &&
      tail -n "${hisline:-10}" "$HISTFILE" | sed 's/:.*;/#c /' >> c"$t".c.sh &&
@@ -3002,8 +3008,9 @@ done
 [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
 comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
 
-echo "$comm"
-echo "$comm" | zsh
+printf '%s' "$comm"
+echo print now playing:
+eval ${comm}
 
 }
 
@@ -3165,7 +3172,7 @@ termuxexec() {
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
      else
           # amn > /dev/null 2>&1
-          which em >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
+          which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
      fi
 }
 
@@ -3339,7 +3346,7 @@ cat() {
 
         fi
 
-        if file --mime-type "$arg" | grep -i text >> /dev/null
+        if file --mime-type "$arg" | grep -v image >> /dev/null
         then
             # echo it\'s an image
             bat -p --paging=never "${args_bat[@]}" "$arg"
