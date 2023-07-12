@@ -72,9 +72,9 @@ user_home_dir () {
           echo -e "On it !"
           export GNUPGHOME=~/shell/.gnupg
           # mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
-          gpg -d .zsh_history.gpg >> .zsh_history
+          gpg -d .zsh_history.gpg >> history
           # mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
-          gpg -d .zshrc_private.gpg >> .zshrc_private
+          gpg -d .zsh_private.gpg >> .zshrc_private
      else
           echo skipped
      fi
