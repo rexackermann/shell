@@ -55,6 +55,7 @@ user_home_dir () {
      git clone https://github.com/qoomon/zsh-lazyload "$ZSH_CUSTOM"/plugins/zsh-lazyload
 
      mv -fv ~/.config/zsh ~/.config/zsh.ba
+     mv -fv ~/.zshenv ~/.zshenv.ba
      mkdir -p ~/.config
      git clone https://github.com/RexAckermann/shell.git ~/.config/zsh
      cd ~/.config/zsh || exit
