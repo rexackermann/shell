@@ -301,7 +301,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 
 Normally this file is the .p10k.zsh file.
 
-#+begin_src :tangle
+#+begin_src shell
 
 #!/usr/bin/env zsh
 
@@ -370,10 +370,11 @@ Normally this file is the .p10k.zsh file.
   # last prompt line gets hidden if it would overlap with left prompt.
   typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
     # =========================[ Line #2 ]=========================
+    username
     ip                      # ip address and bandwidth usage for a specified network interface
     public_ip               # public IP address
     # proxy                 # system-wide http/https/ftp proxy
-    # wifi                   # wifi speed
+    # wifi                  # wifi speed
     # =========================[ Line #1 ]=========================
     newline
     background_jobs         # presence of background jobs
@@ -419,7 +420,7 @@ Normally this file is the .p10k.zsh file.
     midnight_commander      # midnight commander shell (https://midnight-commander.org/)
     nix_shell               # nix shell (https://nixos.org/nixos/nix-pills/developing-with-nix-shell.html)
     vi_mode                 # vi mode (you don't need this if you've enabled prompt_char)
-    vpn_ip                # virtual private network indicator
+    vpn_ip                  # virtual private network indicator
     load                    # CPU load
     # disk_usage            # disk usage
     ram                     # free RAM
@@ -433,7 +434,7 @@ Normally this file is the .p10k.zsh file.
     newline
     status                  # exit code of the last command
     command_execution_time  # duration of the last command
-    time                  # current time
+    time                    # current time
   )
 
   # Defines character set used by powerlevel10k. It's best to let `p10k configure` set it for you.
@@ -2064,6 +2065,13 @@ else
   fi
 fi
 }
+
+function prompt_username() {
+    username="$(whoami)"
+    p10k segment -b black -f green -t "$(whoami)" -i $'@'
+}
+
+
 
 
 

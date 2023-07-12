@@ -84,6 +84,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     prompt_char           
   )
   typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
+    username
     ip                      
     public_ip               
     newline
@@ -123,7 +124,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     midnight_commander      
     nix_shell               
     vi_mode                 
-    vpn_ip                
+    vpn_ip                  
     load                    
     ram                     
     todo                    
@@ -134,7 +135,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     newline
     status                  
     command_execution_time  
-    time                  
+    time                    
   )
   typeset -g POWERLEVEL9K_MODE=nerdfont-complete
   typeset -g POWERLEVEL9K_ICON_PADDING=moderate
@@ -784,6 +785,10 @@ else
     p10k segment -s WARM -b yollow -f green -t "${cpu_temp}"$'\uE339' -i $'\uE350'
   fi
 fi
+}
+function prompt_username() {
+    username="$(whoami)"
+    p10k segment -b black -f green -t "$(whoami)" -i $'@'
 }
   typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
   (( ! $+functions[p10k] )) || p10k reload
