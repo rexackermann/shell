@@ -54,7 +54,7 @@ user_home_dir () {
      git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
      git clone https://github.com/qoomon/zsh-lazyload "$ZSH_CUSTOM"/plugins/zsh-lazyload
 
-     mv -fvp ~/.config/zsh ~/.config/zsh.ba
+     mv -fv ~/.config/zsh ~/.config/zsh.ba
      mkdir -p ~/.config
      git clone https://github.com/RexAckermann/shell.git ~/.config/zsh
      cd ~/.config/zsh || exit
