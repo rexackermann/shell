@@ -1489,7 +1489,7 @@ cat() {
         fi
     done
 }
-compdef cat=bat
+compdef bat=cat
 if command -v batman &> /dev/null
 then
      alias man="batman"

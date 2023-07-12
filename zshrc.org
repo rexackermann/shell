@@ -3401,7 +3401,7 @@ cat() {
     done
 
 }
-compdef cat=bat
+compdef bat=cat
 
 #+end_src
 
