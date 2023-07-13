@@ -4,6 +4,7 @@ cd ~/github/shell || exit
 
 export GNUPGHOME=$(pwd)/.gnupg/
 
+cp -rfv ~/.config/zsh/.profile ~/github/shell
 cp -rfv ~/.config/zsh/.zshrc ~/github/shell/
 cp -rfv ~/.config/zsh/.zshenv ~/github/shell/
 # cp -rfv ~/.p10k.zsh ~/github/shell/
