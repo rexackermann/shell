@@ -60,6 +60,7 @@ user_home_dir () {
      git clone https://github.com/RexAckermann/shell.git ~/.config/zsh
      cd ~/.config/zsh || exit
      ln -s .zshenv ~/.zshenv
+     ln -s .profile ~/.profile
      # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
      # mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
      # cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
