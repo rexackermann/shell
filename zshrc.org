@@ -57,6 +57,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#unixtime][unixtime]]
   - [[#shell-mommy][Shell Mommy]]
   - [[#color256][color256]]
+  - [[#playepisodes][playepisodes]]
   - [[#ftpplay][ftpplay]]
   - [[#ccr][ccr]]
   - [[#encryptdir][encryptdir]]
@@ -3020,42 +3021,82 @@ color256() {
 #+end_src
 
 
+** playepisodes
+
+#+begin_src shell
+
+playepisodes() {
+
+    ulimit -s 9999999
+
+    video="${1}"
+    sub="${2}"
+    ep="${3:-25}"
+
+    # video="name%02dsomethong"
+    # sub="subofname%02dsomethong"
+
+    # Loop through episodes 1 to 26 and generate links
+    for (( i=01; i<="$ep"; i++ ))
+    do
+        # Generate link using printf with episode number as argument
+        ii=$(printf '%02d\n' $i)
+        linkv=${video/episode_nung/$ii}
+        links=${sub/episode_nung/$ii}
+
+
+        # Add link to list
+        linkvs+=("$linkv")
+        linkss+=("$links")
+    done
+
+    # Print list of links
+    [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
+    comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
+
+    printf '%s' "$comm"
+    echo print now playing:
+    eval ${comm}
+
+}
+
+#+end_src
+
+
 ** ftpplay
+
+Circle ftp player
 
 #+begin_src shell
 
 ftpplay() {
 
-ulimit -s 9999999
+    # Circle ftp player
 
-video="${1}"
-sub="${2}"
-ep="${3:-25}"
+    # URL of the webpage to scrape
+    URL="$1"
 
-# video="name%02dsomethong"
-# sub="subofname%02dsomethong"
+    # Fetch the webpage content using curl
+    page_content=$(curl -s "$URL")
 
-# Loop through episodes 1 to 26 and generate links
-for (( i=01; i<="$ep"; i++ ))
-do
-    # Generate link using printf with episode number as argument
-    ii=$(printf '%02d\n' $i)
-    linkv=${video/episode_nung/$ii}
-    links=${sub/episode_nung/$ii}
+    # Use grep to extract all MKV file links
+    mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
+    mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
 
+    # Generate a playlist file name with path
+    # mpv_playlist=~/.config/ftpplaycircle/mpv_playlist_"$(date +%s)"
+    mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
 
-    # Add link to list
-    linkvs+=("$linkv")
-    linkss+=("$links")
-done
+    # Generate playlist folder
+    mkdir -p ~/.config/ftpplaycircle/
 
-# Print list of links
-[[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
-comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
+    # Print the extracted MKV file links to the playlist file
+    echo "$mkv_links" > "$mpv_playlist"
 
-printf '%s' "$comm"
-echo print now playing:
-eval ${comm}
+    # Play the playlist
+    mpv --playlist="$mpv_playlist"
+
+    # rm -rfv "$mpv_playlist"
 
 }
 
@@ -3070,33 +3111,38 @@ Compile and Run C code
 
 ccr() {
 
+local pwd="$(pwd)"
+cd "$(dirname "$1")"
+
+c_file_name="$(basename "$1")"
+
 # Check if a file was passed as an argument
-if [ -z "$1" ]; then
+if [ -z "$c_file_name" ]; then
     echo "Error: No file specified"
     break
 fi
 
 # Check if the file exists
-if [ ! -f "$1" ]; then
-    echo "Error: File $1 not found"
+if [ ! -f "$c_file_name" ]; then
+    echo "Error: File $c_file_name not found"
     break
 fi
 
 # Check if the file is a C or C++ source file
-if [[ "$1" != *.c && "$1" != *.cpp ]]; then
-    echo "Error: $1 is not a C or C++ source file"
+if [[ "$c_file_name" != *.c && "$1" != *.cpp ]]; then
+    echo "Error: $c_file_name is not a C or C++ source file"
     break
 fi
 
 # Get the base name of the file (without extension)
-file_base=$(basename -s .c "$1")
+file_base=$(basename -s .c "$c_file_name")
 file_base=$(basename -s .cpp "$file_base")
 
 # Compile the program
-if [[ "$1" == *.c ]]; then
-    gcc -o "$file_base" "$1"
+if [[ "$c_file_name" == *.c ]]; then
+    gcc -o "$file_base" "$c_file_name"
 else
-    g++ -o "$file_base" "$1"
+    g++ -o "$file_base" "$c_file_name"
 fi
 
 # Check if the compilation was successful
@@ -3113,6 +3159,8 @@ shift
 
 # Clean up
 rm "$file_base"
+
+cd "$pwd"
 }
 
 #+end_src

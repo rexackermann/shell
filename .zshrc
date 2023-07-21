@@ -1299,44 +1299,57 @@ color256() {
          printf "\n";
      }'
 }
+playepisodes() {
+    ulimit -s 9999999
+    video="${1}"
+    sub="${2}"
+    ep="${3:-25}"
+    for (( i=01; i<="$ep"; i++ ))
+    do
+        ii=$(printf '%02d\n' $i)
+        linkv=${video/episode_nung/$ii}
+        links=${sub/episode_nung/$ii}
+        linkvs+=("$linkv")
+        linkss+=("$links")
+    done
+    [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
+    comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
+    printf '%s' "$comm"
+    echo print now playing:
+    eval ${comm}
+}
 ftpplay() {
-ulimit -s 9999999
-video="${1}"
-sub="${2}"
-ep="${3:-25}"
-for (( i=01; i<="$ep"; i++ ))
-do
-    ii=$(printf '%02d\n' $i)
-    linkv=${video/episode_nung/$ii}
-    links=${sub/episode_nung/$ii}
-    linkvs+=("$linkv")
-    linkss+=("$links")
-done
-[[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
-comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
-printf '%s' "$comm"
-echo print now playing:
-eval ${comm}
+    URL="$1"
+    page_content=$(curl -s "$URL")
+    mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
+    mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
+    mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+    mkdir -p ~/.config/ftpplaycircle/
+    echo "$mkv_links" > "$mpv_playlist"
+    mpv --playlist="$mpv_playlist"
 }
 ccr() {
-if [ -z "$1" ]; then
+local pwd="$(pwd)"
+cd "$(dirname "$1")"
+c_file_name="$(basename "$1")"
+if [ -z "$c_file_name" ]; then
     echo "Error: No file specified"
     break
 fi
-if [ ! -f "$1" ]; then
-    echo "Error: File $1 not found"
+if [ ! -f "$c_file_name" ]; then
+    echo "Error: File $c_file_name not found"
     break
 fi
-if [[ "$1" != *.c && "$1" != *.cpp ]]; then
-    echo "Error: $1 is not a C or C++ source file"
+if [[ "$c_file_name" != *.c && "$1" != *.cpp ]]; then
+    echo "Error: $c_file_name is not a C or C++ source file"
     break
 fi
-file_base=$(basename -s .c "$1")
+file_base=$(basename -s .c "$c_file_name")
 file_base=$(basename -s .cpp "$file_base")
-if [[ "$1" == *.c ]]; then
-    gcc -o "$file_base" "$1"
+if [[ "$c_file_name" == *.c ]]; then
+    gcc -o "$file_base" "$c_file_name"
 else
-    g++ -o "$file_base" "$1"
+    g++ -o "$file_base" "$c_file_name"
 fi
 if [ $? -ne 0 ]; then
     echo "Error: Compilation failed"
@@ -1345,6 +1358,7 @@ fi
 shift
 "./$file_base" "$@"
 rm "$file_base"
+cd "$pwd"
 }
 encryptdir() {
 cp -rfv $(which encryptdir) $(pwd)/close
