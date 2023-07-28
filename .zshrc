@@ -1329,36 +1329,45 @@ ftpplay() {
     mpv --playlist="$mpv_playlist"
 }
 ccr() {
-local pwd="$(pwd)"
-cd "$(dirname "$1")"
+local dir
+dir="$(dirname "$1")"
 c_file_name="$(basename "$1")"
-if [ -z "$c_file_name" ]; then
+if [ -z "$1" ]; then
     echo "Error: No file specified"
-    break
+    return 1
 fi
-if [ ! -f "$c_file_name" ]; then
+if [ ! -f "$1" ]; then
     echo "Error: File $c_file_name not found"
-    break
+    return 1
 fi
 if [[ "$c_file_name" != *.c && "$1" != *.cpp ]]; then
     echo "Error: $c_file_name is not a C or C++ source file"
-    break
+    return 1
 fi
 file_base=$(basename -s .c "$c_file_name")
 file_base=$(basename -s .cpp "$file_base")
 if [[ "$c_file_name" == *.c ]]; then
-    gcc -o "$file_base" "$c_file_name"
+    gcc -g -O -o "$dir"/"$file_base" "$dir"/"$c_file_name" -lncurses -lm -lX11
 else
-    g++ -o "$file_base" "$c_file_name"
+    g++ -g -O -o "$dir"/"$file_base" "$dir"/"$c_file_name" -lncurses -lm -lX11
 fi
 if [ $? -ne 0 ]; then
     echo "Error: Compilation failed"
-    break
+    return 1
 fi
 shift
-"./$file_base" "$@"
-rm "$file_base"
-cd "$pwd"
+echo -e "\nProvided arguments : $@ \n"
+echo -ne "Binary size: "
+du -h "$dir"/"$file_base" | awk '{print $1}' | xargs echo -n
+echo -ne " to "
+strip "$dir"/"$file_base"
+du -h "$dir"/"$file_base" | awk '{print $1}'
+echo ""
+echo "Executing binary:"
+line="$(printf %"$(tput cols)"s |tr " " "-")"
+echo "$line"
+"$dir"/"$file_base" "$@"
+rm "$dir"/"$file_base"
 }
 encryptdir() {
 cp -rfv $(which encryptdir) $(pwd)/close
@@ -1542,7 +1551,7 @@ coff() {
 unalias ls
 unalias l
 exa_ls() {
-    exa -a --icons "$@"
+    exa -a --icons "$@" || return 1
     printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
     total_number_of_files=$(exa -a --icons "$@" | wc -l)
     total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
@@ -1551,7 +1560,7 @@ exa_ls() {
     echo -e "total_size:\e[32m $total_size\e[0m"
 }
 exa_l() {
-    exa -alihgSUFHum --icons "$@"
+    exa -alihgSUFHum --icons "$@" || return 1
     exa="$(exa -alihgSUFHum --icons "$@" | head -1)"
     gap1="$(echo "$exa" | awk '{print index($0, "Permissions")-1}')"
     gap2="$(echo "$exa" | awk '{print index($0, "Size")-1}')"
@@ -1570,19 +1579,19 @@ exa_lst() {
     exa --tree "$@"
 }
 gnu_ls() {
-    /bin/ls -a "$@"
+    /bin/ls -a "$@" || braek
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
     total_number_of_files=$(($(/bin/ls -a "$@" | wc -l)-2))
     echo "$total_number_of_files"
 }
 gnu_l() {
-    /bin/ls -alihgSUFHu "$@"
+    /bin/ls -alihgSUFHu "$@" || braek
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
     total_number_of_files=$(($(/bin/ls -alihgSUFHu "$@" | wc -l)-3))
     echo "$total_number_of_files"
 }
 gnu_lst() {
-    /bin/ls "$@"
+    /bin/ls "$@" || braek
     /bin/ls "$@" | wc -l
 }
 if command -v exa &> /dev/null
