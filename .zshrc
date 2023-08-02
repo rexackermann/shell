@@ -84,6 +84,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     prompt_char           
   )
   typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
+    sudocheck
     username
     ip                      
     public_ip               
@@ -790,6 +791,17 @@ function prompt_username() {
     username="$(whoami)"
     p10k segment -b black -f green -t "$(whoami)" -i $'@'
 }
+function prompt_sudocheck() {
+    if [[ $EUID -eq 0 ]]; then
+        p10k segment -b red -f black -t "sudo" -i $'@'
+    else
+        sudo -n true 2>/dev/null
+        if [[ $? -eq 0 ]]; then
+            p10k segment -b red -f black -t "sudo" -i $'@'
+        else
+        fi
+    fi
+}
   typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
   (( ! $+functions[p10k] )) || p10k reload
 }
@@ -1441,8 +1453,6 @@ alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
 alias gdown="gdown --fuzzy --continue"
 alias gdownf="gdown --fuzzy --continue --folder"
 alias rename="vidir --verbose"
-alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
-alias computer=$HOME/yolo-ai-cmdbot/yolo.py
 alias music=musikcube
 alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
 alias wget=wget --hsts-file="$XDG_DATA_HOME/wget-hsts"
@@ -1638,6 +1648,12 @@ then
 fi
 roxy() {
     sgpt --role roxy "\"$*\""
+}
+tgpt() {
+    echo \""$@"\" | xargs tgpt
+}
+co() {
+    echo \""$@"\" | tgpt --shell
 }
 lazynvm() {
   unset -f nvm node npm

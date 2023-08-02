@@ -72,6 +72,8 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#head][head]]
   - [[#tail][tail]]
   - [[#sgpt][sgpt]]
+  - [[#tgpt][tgpt]]
+  - [[#co][co]]
 - [[#lazyautoload-node-nvm-npm][Lazy(Auto)load node nvm npm]]
 - [[#rvm][RVM]]
 - [[#batpipe][Batpipe]]
@@ -371,6 +373,7 @@ Normally this file is the .p10k.zsh file.
   # last prompt line gets hidden if it would overlap with left prompt.
   typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
     # =========================[ Line #2 ]=========================
+    sudocheck
     username
     ip                      # ip address and bandwidth usage for a specified network interface
     public_ip               # public IP address
@@ -2073,6 +2076,24 @@ function prompt_username() {
 }
 
 
+function prompt_sudocheck() {
+    if [[ $EUID -eq 0 ]]; then
+        p10k segment -b red -f black -t "sudo" -i $'@'
+        # echo "You are currently running with root privileges."
+    else
+        # echo "You do not have root privileges. Checking sudo access..."
+
+        # Check if sudo access is available without password prompt
+        sudo -n true 2>/dev/null
+        if [[ $? -eq 0 ]]; then
+            p10k segment -b red -f black -t "sudo" -i $'@'
+            # echo "Sudo access is available without password prompt."
+        else
+            # echo "Sudo access is either not available or requires a password prompt."
+        fi
+    fi
+}
+
 
 
 
@@ -3338,8 +3359,8 @@ alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
 alias gdown="gdown --fuzzy --continue"
 alias gdownf="gdown --fuzzy --continue --folder"
 alias rename="vidir --verbose"
-alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
-alias computer=$HOME/yolo-ai-cmdbot/yolo.py
+# alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
+# alias computer=$HOME/yolo-ai-cmdbot/yolo.py
 # alias roxy="sgpt --role roxy"
 alias music=musikcube
 alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
@@ -3696,6 +3717,28 @@ fi
 
 roxy() {
     sgpt --role roxy "\"$*\""
+}
+
+#+end_src
+
+
+** tgpt
+
+#+begin_src shell
+
+tgpt() {
+    echo \""$@"\" | xargs tgpt
+}
+
+#+end_src
+
+
+** co
+
+#+begin_src shell
+
+co() {
+    echo \""$@"\" | tgpt --shell
 }
 
 #+end_src
