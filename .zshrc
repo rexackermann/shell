@@ -1331,6 +1331,12 @@ playepisodes() {
     eval ${comm}
 }
 ftpplay() {
+    if [[ $1 == "s" ]]; then
+        P_URL="http://circleftp.net/?s=${2// /+}"
+        point="$(echo "$2" | awk '{print $1}')"
+        echo "$P_URL"
+	    URL="$(curl "$P_URL" | grep "$point" | grep href | awk '/circle/ && ++count <= 2 {next} {print}' | grep -oP 'href="\K[^"]*' | fzf)"
+    fi
     URL="$1"
     page_content=$(curl -s "$URL")
     mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')

@@ -66,3 +66,6 @@ git fetch && git pull && git commit -am update_"$(date +%s)" && git push
 
 cd ~/github/RexAckermann.github.io/ || exit
 git fetch && git pull && git commit -am update_"$(date +%s)" && git push
+
+cd ~/.config/mpv/ || exit
+git fetch && git pull && git commit -am update_"$(date +%s)" && git push
