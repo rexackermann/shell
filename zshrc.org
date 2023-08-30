@@ -64,11 +64,13 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#pdfmerge][pdfmerge]]
   - [[#psapp][psapp]]
   - [[#history-search][History Search]]
+  - [[#exit][exit]]
   - [[#termuxexec][Termuxexec]]
 - [[#aliases][Aliases]]
   - [[#basic-aliases][Basic Aliases]]
   - [[#function-aliases][Function Aliases]]
   - [[#bcat][bcat]]
+  - [[#qr][qr]]
   - [[#head][head]]
   - [[#tail][tail]]
   - [[#sgpt][sgpt]]
@@ -3096,17 +3098,46 @@ ftpplay() {
 
     # URL of the webpage to scrape
 
+    # if [[ $1 == "s" ]]; then
+    #     P_URL="http://circleftp.net/?s=${2// /+}"
+    #     # P_URL="http://new.circleftp.net/search%q=${2// /+}"
+    #     point="$(echo "$2" | awk '{print $1}')"
+    #     echo "$P_URL"
+	#     URL="$(curl "$P_URL" | grep "$point" | grep href | awk '/circle/ && ++count <= 2 {next} {print}' | grep -oP 'href="\K[^"]*' | fzf)"
+    # fi
+
     if [[ $1 == "s" ]]; then
-        P_URL="http://circleftp.net/?s=${2// /+}"
-        point="$(echo "$2" | awk '{print $1}')"
+        # P_URL="http://circleftp.net/?s=${2// /+}"
+        P_URL="http://new.circleftp.net/search?q=${2// /+}"
         echo "$P_URL"
-	    URL="$(curl "$P_URL" | grep "$point" | grep href | awk '/circle/ && ++count <= 2 {next} {print}' | grep -oP 'href="\K[^"]*' | fzf)"
+        URL="$(node ~/puppeteer/test.js "$P_URL")"
+        # echo "$URL"text="$(while IFS= read -r line ; do echo "Received: $line" ; done | sed 's/></>\n</g')"
+        URL="$(echo "$URL" | sed 's/></>\n</g')"
+
+        # Replace 'input.html' with the actual HTML file you want to parse
+        # html_file="input.html"
+
+        # Extract div class and href using grep, awk, and sed
+        # div_class_list=$(echo "$IFS" | grep -o '<div[^>]*class="[^"]*"' | awk -F 'class="' '{print $2}' | awk -F '"' '{print $1}')
+        # href_list=$(echo "text" | grep -o '<a[^>]*href="[^"]*"' | awk -F 'href="' '{print $2}' | awk -F '"' '{print $1}')
+
+        # Extract div class and href using grep, awk, and sed
+        URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
+
+        # Print the extracted data
+        # echo "Div Classes:"
+        # echo "$div_class_list"
+
+        URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
+        echo "$URL"
     fi
 
-    URL="$1"
+    URL="http://new.circleftp.net/content/$URL"
+    echo "$URL"
 
     # Fetch the webpage content using curl
     page_content=$(curl -s "$URL")
+    page_content=$(node ~/puppeteer/test.js "$URL")
 
     # Use grep to extract all MKV file links
     mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
@@ -3287,6 +3318,14 @@ srhs() {
 
 #+end_src
 
+
+** exit
+
+#+begin_src shell
+
+alias :q="exit"
+
+#+end_src
 
 ** Termuxexec
 
@@ -3474,7 +3513,7 @@ cat() {
             # echo it\'s an image
             if command -v viu &> /dev/null
             then
-                viu -1 -t "$arg"
+                viu -1 -t "$arg" && read -n 1
             else
                 img2txt -f utf8 -W "$(tput cols)" "$arg"
             fi
@@ -3686,6 +3725,20 @@ then
     compdef bcat=which
 fi
 
+#+end_src
+
+
+** qr
+
+#+begin_src shell
+
+qr() {
+    local qrname
+    qrname="$(date +%s)"
+    qrencode -s 9 -l H \'"$*"\' -o /tmp/"$qrname"
+    cat /tmp/"$qrname"
+}
+        
 #+end_src
 
 

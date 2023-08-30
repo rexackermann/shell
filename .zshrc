@@ -1331,14 +1331,20 @@ playepisodes() {
     eval ${comm}
 }
 ftpplay() {
+	
     if [[ $1 == "s" ]]; then
-        P_URL="http://circleftp.net/?s=${2// /+}"
-        point="$(echo "$2" | awk '{print $1}')"
+        P_URL="http://new.circleftp.net/search?q=${2// /+}"
         echo "$P_URL"
-	    URL="$(curl "$P_URL" | grep "$point" | grep href | awk '/circle/ && ++count <= 2 {next} {print}' | grep -oP 'href="\K[^"]*' | fzf)"
+        URL="$(node ~/puppeteer/test.js "$P_URL")"
+        URL="$(echo "$URL" | sed 's/></>\n</g')"
+        URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
+        URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
+        echo "$URL"
     fi
-    URL="$1"
+    URL="http://new.circleftp.net/content/$URL"
+    echo "$URL"
     page_content=$(curl -s "$URL")
+    page_content=$(node ~/puppeteer/test.js "$URL")
     mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
     mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
     mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
@@ -1423,6 +1429,7 @@ pdftk *.pdf cat output ${1:-merged.pdf}
 srhs() {
      rg "$*" "$HISTFILE" || cat $HISTFILE | grep "$*"
 }
+alias :q="exit"
 termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
           sshd -p 43434
@@ -1517,7 +1524,7 @@ cat() {
         then
             if command -v viu &> /dev/null
             then
-                viu -1 -t "$arg"
+                viu -1 -t "$arg" && read -n 1
             else
                 img2txt -f utf8 -W "$(tput cols)" "$arg"
             fi
@@ -1640,6 +1647,12 @@ then
     }
     compdef bcat=which
 fi
+qr() {
+    local qrname
+    qrname="$(date +%s)"
+    qrencode -s 9 -l H \'"$*"\' -o /tmp/"$qrname"
+    cat /tmp/"$qrname"
+}
 if command -v bat &> /dev/null
 then
     head() {
