@@ -3793,6 +3793,7 @@ roxy() {
 #+begin_src shell
 
 tgpt() {
+    alias tgpt="$(where tgpt)"
     echo \""$@"\" | xargs tgpt
 }
 

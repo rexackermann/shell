@@ -1672,6 +1672,7 @@ roxy() {
     sgpt --role roxy "\"$*\""
 }
 tgpt() {
+    alias tgpt="$(where tgpt)"
     echo \""$@"\" | xargs tgpt
 }
 co() {
