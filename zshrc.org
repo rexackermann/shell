@@ -2162,6 +2162,9 @@ export PATH="$DENO_INSTALL/bin:$PATH"
 # python pakages
 export PATH="$HOME/.local/bin:$PATH"
 
+# go bin termux
+export PATH="/data/data/com.termux/files/home/.local/share/go/bin:$PATH"
+
 # doom emacs
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export PATH="$HOME/.config/emacs/bin:$PATH"
