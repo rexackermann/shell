@@ -3130,9 +3130,11 @@ ftpplay() {
 
         URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
         echo "$URL"
+        URL="http://new.circleftp.net/content/$URL"
+    else
+        URL="$1"
     fi
 
-    URL="http://new.circleftp.net/content/$URL"
     echo "$URL"
 
     # Fetch the webpage content using curl

@@ -1340,8 +1340,10 @@ ftpplay() {
         URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
         URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
         echo "$URL"
+        URL="http://new.circleftp.net/content/$URL"
+    else
+        URL="$1"
     fi
-    URL="http://new.circleftp.net/content/$URL"
     echo "$URL"
     page_content=$(curl -s "$URL")
     page_content=$(node ~/puppeteer/test.js "$URL")
