@@ -76,6 +76,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#sgpt][sgpt]]
   - [[#tgpt][tgpt]]
   - [[#co][co]]
+  - [[#open][open]]
 - [[#lazyautoload-node-nvm-npm][Lazy(Auto)load node nvm npm]]
 - [[#rvm][RVM]]
 - [[#batpipe][Batpipe]]
@@ -2086,7 +2087,7 @@ function prompt_sudocheck() {
         # echo "You do not have root privileges. Checking sudo access..."
 
         # Check if sudo access is available without password prompt
-        sudo -n true 2>/dev/null
+        sudo -n true >> /dev/null
         if [[ $? -eq 0 ]]; then
             p10k segment -b red -f black -t "sudo" -i $'@'
             # echo "Sudo access is available without password prompt."
@@ -3793,7 +3794,6 @@ roxy() {
 #+begin_src shell
 
 tgpt() {
-    alias tgpt="$(where tgpt)"
     echo \""$@"\" | xargs tgpt
 }
 
@@ -3806,6 +3806,17 @@ tgpt() {
 
 co() {
     echo \""$@"\" | tgpt --shell
+}
+
+#+end_src
+
+
+** open
+
+#+begin_src shell
+
+open() {
+    mimeopen -a "$1"
 }
 
 #+end_src
