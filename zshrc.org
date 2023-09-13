@@ -2087,7 +2087,7 @@ function prompt_sudocheck() {
         # echo "You do not have root privileges. Checking sudo access..."
 
         # Check if sudo access is available without password prompt
-        sudo -n true >> /dev/null
+        sudo -n true >> /dev/null &> /dev/null
         if [[ $? -eq 0 ]]; then
             p10k segment -b red -f black -t "sudo" -i $'@'
             # echo "Sudo access is available without password prompt."
@@ -3626,6 +3626,12 @@ coff() {
 #+begin_src  sh
 unalias ls
 unalias l
+
+
+if command -v eza &> /dev/null
+then
+   alias exa="eza"
+fi
 
 exa_ls() {
     exa -a --icons "$@" || return 1
