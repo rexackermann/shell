@@ -3145,6 +3145,8 @@ ftpplay() {
     page_content=$(curl -s "$URL")
     page_content=$(node ~/puppeteer/test.js "$URL")
 
+    echo "$page_content" | grep -oP '(?<=<h2 class="text-white text-bolder">).*?(?=</h2)'
+
     # Use grep to extract all MKV file links
     mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
     mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
