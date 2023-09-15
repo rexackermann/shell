@@ -3627,11 +3627,37 @@ coff() {
 unalias ls
 unalias l
 
-
-if command -v eza &> /dev/null
-then
-   alias exa="eza"
-fi
+eza_ls() {
+    eza -a --icons "$@" || return 1
+    printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+    total_number_of_files=$(eza -a --icons "$@" | wc -l)
+    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
+    echo -ne "count:  \e[31m$total_number_of_files\e[0m"
+    for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
+    echo -e "total_size:\e[32m $total_size\e[0m"
+}
+eza_l() {
+    eza -alihgSUFHum --icons "$@" || return 1
+    eza="$(eza -alihgSUFHum --icons "$@" | head -1)"
+    gap1="$(echo "$eza" | awk '{print index($0, "Permissions")-1}')"
+    gap2="$(echo "$eza" | awk '{print index($0, "Size")-1}')"
+    # echo $gap2
+    gap2="$(($gap2-$gap1))"
+    # echo $gap1
+    # echo $gap2
+    printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+    total_number_of_files=$(($(eza -alihgSUFum --icons "$@" | wc -l)-1))
+    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
+    echo -ne "count:"
+    for i in {1..$(($gap1-6))} ; do echo -n -e " " ; done
+    echo -ne "\e[31m$total_number_of_files\e[0m"
+    for i in {1..$(($gap2-15))} ; do echo -n -e " " ; done
+    echo -ne "total_size:"
+    echo -e "\e[32m $total_size\e[0m"
+}
+eza_lst() {
+    eza --tree "$@"
+}
 
 exa_ls() {
     exa -a --icons "$@" || return 1
@@ -3682,7 +3708,12 @@ gnu_lst() {
     /bin/ls "$@" | wc -l
 }
 
-if command -v exa &> /dev/null
+if command -v eza &> /dev/null
+then
+     alias ls="eza_ls"
+     alias l="eza_l"
+     alias lst="eza_lst"
+elif command -v exa &> /dev/null
 then
      # alias ls="exa -a --icons"
      # alias l="exa -alihgSUFHum --icons"
