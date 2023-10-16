@@ -3098,6 +3098,25 @@ Circle ftp player
 
 ftpplay() {
 
+    if [[ "$1" == *10.16.100.244* ]] ; then
+        # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
+        links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+
+        mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+
+        # Generate playlist folder
+        mkdir -p ~/.config/ftpplaycircle/
+
+        echo "$links"
+        # Print the extracted MKV file links to the playlist file
+        echo "$links" > "$mpv_playlist"
+
+        # Play the playlist
+        mpv --playlist="$mpv_playlist"
+        return 1
+    fi
+
+        
     # Circle ftp player
 
     # URL of the webpage to scrape
@@ -3112,7 +3131,9 @@ ftpplay() {
 
     if [[ $1 == "s" ]]; then
         # P_URL="http://circleftp.net/?s=${2// /+}"
-        P_URL="http://new.circleftp.net/search?q=${2// /+}"
+        # P_URL="http://new.circleftp.net/search?q=${2// /+}"
+        base_URL="http://103.170.204.84/"
+        P_URL=search?q=${base_URL}${2// /+}
         echo "$P_URL"
         URL="$(node ~/puppeteer/test.js "$P_URL")"
         # echo "$URL"text="$(while IFS= read -r line ; do echo "Received: $line" ; done | sed 's/></>\n</g')"
@@ -3134,7 +3155,7 @@ ftpplay() {
 
         URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
         echo "$URL"
-        URL="http://new.circleftp.net/content/$URL"
+        URL=${base_URL}${URL}
     else
         URL="$1"
     fi
@@ -3808,7 +3829,7 @@ fi
 if command -v bat &> /dev/null
 then
     tail() {
-    /"$(binpath head)" "$@" | cat
+    /"$(binpath tail)" "$@" | cat
     }
 fi
 
