@@ -2061,15 +2061,19 @@ function prompt_shell_mommy() {
 
 
 function prompt_my_cpu_temp() {
-if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+if [[ $(uname -o) == "Android" ]]; then
   break
-else
+elif [[ $(uname -o) == "Msys" ]]; then
+  break
+elif [[ $(uname -o) == "GNU/Linux" ]]; then
   integer cpu_temp="$(</sys/class/thermal/thermal_zone0/temp) / 1000"
   if (( cpu_temp >= 80 )); then
     p10k segment -s HOT -b yollow -f red    -t "${cpu_temp}"$'\uE339' -i $'\uF737'
   elif (( cpu_temp >= 60 )); then
     p10k segment -s WARM -b yollow -f green -t "${cpu_temp}"$'\uE339' -i $'\uE350'
   fi
+else
+    break
 fi
 }
 
