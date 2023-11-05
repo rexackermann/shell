@@ -3102,9 +3102,10 @@ Circle ftp player
 
 ftpplay() {
 
-    if [[ "$1" == *10.16.100.244* ]] ; then
+    if [[ "${@: -1}" == *10.16.100.244* ]] ; then
+        link="${@: -1}"
         # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
-        links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+        links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
 
         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
 
@@ -3116,11 +3117,17 @@ ftpplay() {
         echo "$links" > "$mpv_playlist"
 
         # Play the playlist
-        mpv --playlist="$mpv_playlist"
+        if [[ "$1" == 'd' ]] ; then
+            cd ~/Downloads
+            xargs -a "$mpv_playlist" -L1 wget
+            # parallel --gnu -a "$mpv_playlist" wget
+        else
+            mpv --playlist="$mpv_playlist"
+        fi
         return 1
     fi
 
-        
+
     # Circle ftp player
 
     # URL of the webpage to scrape

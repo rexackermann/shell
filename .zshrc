@@ -776,15 +776,19 @@ function prompt_shell_mommy() {
      }
 }
 function prompt_my_cpu_temp() {
-if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+if [[ $(uname -o) == "Android" ]]; then
   break
-else
+elif [[ $(uname -o) == "Msys" ]]; then
+  break
+elif [[ $(uname -o) == "GNU/Linux" ]]; then
   integer cpu_temp="$(</sys/class/thermal/thermal_zone0/temp) / 1000"
   if (( cpu_temp >= 80 )); then
     p10k segment -s HOT -b yollow -f red    -t "${cpu_temp}"$'\uE339' -i $'\uF737'
   elif (( cpu_temp >= 60 )); then
     p10k segment -s WARM -b yollow -f green -t "${cpu_temp}"$'\uE339' -i $'\uE350'
   fi
+else
+    break
 fi
 }
 function prompt_username() {
@@ -1332,13 +1336,19 @@ playepisodes() {
     eval ${comm}
 }
 ftpplay() {
-    if [[ "$1" == *10.16.100.244* ]] ; then
-        links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+    if [[ "${@: -1}" == *10.16.100.244* ]] ; then
+        link="${@: -1}"
+        links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
         mkdir -p ~/.config/ftpplaycircle/
         echo "$links"
         echo "$links" > "$mpv_playlist"
-        mpv --playlist="$mpv_playlist"
+        if [[ "$1" == 'd' ]] ; then
+            cd ~/Downloads
+            xargs -a "$mpv_playlist" -L1 wget
+        else
+            mpv --playlist="$mpv_playlist"
+        fi
         return 1
     fi
 	
@@ -1599,6 +1609,11 @@ eza_ls() {
 eza_l() {
     eza -alihgSUFHum --icons "$@" || return 1
     eza="$(eza -alihgSUFHum --icons "$@" | head -1)"
+    total_number_of_files=$(eza -a --icons "$@" | wc -l)
+    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
+    echo -ne "count:  \e[31m$total_number_of_files\e[0m"
+    for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
+    echo -e "total_size:\e[32m $total_size\e[0m"
     gap1="$(echo "$eza" | awk '{print index($0, "Permissions")-1}')"
     gap2="$(echo "$eza" | awk '{print index($0, "Size")-1}')"
     gap2="$(($gap2-$gap1))"
