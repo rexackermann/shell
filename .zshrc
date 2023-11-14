@@ -1346,8 +1346,10 @@ ftpplay() {
         if [[ "$1" == 'd' ]] ; then
             cd ~/Downloads
             xargs -a "$mpv_playlist" -L1 wget
+        elif [[ "$1" == 'f' ]] ; then
+            mpv_flags="$2"
         else
-            mpv --playlist="$mpv_playlist"
+            mpv "$mpv_flags" --playlist="$mpv_playlist"
         fi
         return 1
     fi

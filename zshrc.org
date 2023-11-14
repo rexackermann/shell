@@ -42,6 +42,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 - [[#history][History]]
 - [[#source-zsh_private][Source zsh_private]]
 - [[#completion-1][Completion]]
+  - [[#dnf][dnf]]
   - [[#flatpaks][Flatpaks]]
   - [[#exa][Exa]]
   - [[#nvm][NVM]]
@@ -2206,6 +2207,14 @@ source $XDG_CONFIG_HOME/zsh/.zshrc_private
 
 * Completion
 
+** dnf
+
+#+begin_src shell
+
+# compdef dnf=yum
+
+#+end_src
+
 ** Flatpaks
 
 #+begin_src shell
@@ -3121,8 +3130,10 @@ ftpplay() {
             cd ~/Downloads
             xargs -a "$mpv_playlist" -L1 wget
             # parallel --gnu -a "$mpv_playlist" wget
+        elif [[ "$1" == 'f' ]] ; then
+            mpv_flags="$2"
         else
-            mpv --playlist="$mpv_playlist"
+            mpv "$mpv_flags" --playlist="$mpv_playlist"
         fi
         return 1
     fi
