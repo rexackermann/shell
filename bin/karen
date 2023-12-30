@@ -1,0 +1,1 @@
+su --preserve-environment -s /data/data/com.termux/files/home/.config/zsh/bin/karenc
