@@ -1999,6 +1999,9 @@ export PATH="$HOME/.local/share/cargo/bin:$PATH"
 # messed up ones maybe ?
 export PATH="$HOME/.config/bin:$PATH"
 
+
+export PATH="/data/data/com.termux/files/usr/bin:$PATH"
+
 [ -f $XDG_CONFIG_HOME/zsh/history ] && export HISTFILE=$XDG_CONFIG_HOME/zsh/history
 export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
