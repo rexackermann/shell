@@ -78,6 +78,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#tgpt][tgpt]]
   - [[#co][co]]
   - [[#open][open]]
+  - [[#rm][rm]]
 - [[#lazyautoload-node-nvm-npm][Lazy(Auto)load node nvm npm]]
 - [[#rvm][RVM]]
 - [[#batpipe][Batpipe]]
@@ -3138,6 +3139,32 @@ ftpplay() {
         return 1
     fi
 
+    if [[ $1 == "c" ]]; then
+        link="${@: -1}"
+        # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
+        links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+
+        mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+
+        # Generate playlist folder
+        mkdir -p ~/.config/ftpplaycircle/
+
+        echo "$links"
+        # Print the extracted MKV file links to the playlist file
+        echo "$links" > "$mpv_playlist"
+
+        # Play the playlist
+        if [[ "$1" == 'd' ]] ; then
+            cd ~/Downloads
+            xargs -a "$mpv_playlist" -L1 wget
+            # parallel --gnu -a "$mpv_playlist" wget
+        elif [[ "$1" == 'f' ]] ; then
+            mpv_flags="$2"
+        else
+            mpv "$mpv_flags" --playlist="$mpv_playlist"
+        fi
+        return 1
+    fi
 
     # Circle ftp player
 
@@ -3389,6 +3416,8 @@ termuxexec() {
           # then
           #      export MANPAGER="most"   # The batman script in shell/bin/ seems to work now
           # fi
+
+          export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 
           sshd -p 43434
 
@@ -3921,6 +3950,15 @@ co() {
 open() {
     mimeopen -a "$1"
 }
+
+#+end_src
+
+
+** rm
+
+#+begin_src shell
+
+alias rm="rm -i"
 
 #+end_src
 
