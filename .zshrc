@@ -1633,9 +1633,7 @@ eza_l() {
     eza="$(eza -alihgSUFHum --icons "$@" | head -1)"
     total_number_of_files=$(eza -a --icons "$@" | wc -l)
     total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    echo -ne "count:  \e[31m$total_number_of_files\e[0m"
     for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
-    echo -e "total_size:\e[32m $total_size\e[0m"
     gap1="$(echo "$eza" | awk '{print index($0, "Permissions")-1}')"
     gap2="$(echo "$eza" | awk '{print index($0, "Size")-1}')"
     gap2="$(($gap2-$gap1))"
