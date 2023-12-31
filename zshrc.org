@@ -3609,7 +3609,7 @@ cat() {
         if file --mime-type "$arg" | grep -v image >> /dev/null
         then
             # echo it\'s an image
-            bat -p --paging=never "${args_bat[@]}" "$arg"
+            bat --style=plain --paging=never "${args_bat[@]}" "$arg"
             # echo -e "bat -p --paging=never "${args_bat[@]}" "$arg""
         fi
 

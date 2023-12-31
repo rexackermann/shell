@@ -1577,7 +1577,7 @@ cat() {
         fi
         if file --mime-type "$arg" | grep -v image >> /dev/null
         then
-            bat -p --paging=never "${args_bat[@]}" "$arg"
+            bat --style=plain --paging=never "${args_bat[@]}" "$arg"
         fi
     done
 }
