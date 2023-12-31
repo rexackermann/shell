@@ -79,6 +79,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#co][co]]
   - [[#open][open]]
   - [[#rm][rm]]
+  - [[#try][try]]
 - [[#lazyautoload-node-nvm-npm][Lazy(Auto)load node nvm npm]]
 - [[#rvm][RVM]]
 - [[#batpipe][Batpipe]]
@@ -3963,6 +3964,17 @@ open() {
 #+begin_src shell
 
 alias rm="rm -i"
+
+#+end_src
+
+
+** try
+
+#+begin_src shell
+
+try() {
+    while ! "$@" ; do sleep 1; done
+}
 
 #+end_src
 

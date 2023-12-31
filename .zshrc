@@ -1762,6 +1762,9 @@ open() {
     mimeopen -a "$1"
 }
 alias rm="rm -i"
+try() {
+    while ! "$@" ; do sleep 1; done
+}
 lazynvm() {
   unset -f nvm node npm
   export NVM_DIR=~/.nvm
