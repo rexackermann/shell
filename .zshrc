@@ -1629,7 +1629,11 @@ eza_ls() {
     echo -e "total_size:\e[32m $total_size\e[0m"
 }
 eza_l() {
-    eza -alihgSUFHum --icons "$@" || return 1
+    if [ $(tput cols) -gt "130" ]; then
+        eza -alihgSUFHum --icons "$@" || return 1
+    else
+        eza --long || return 1
+    fi
     eza="$(eza -alihgSUFHum --icons "$@" | head -1)"
     total_number_of_files=$(eza -a --icons "$@" | wc -l)
     total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
