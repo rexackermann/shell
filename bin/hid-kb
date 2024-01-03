@@ -1,0 +1,23 @@
+if [[ $(/bin/ls /dev/hidg0) == "/dev/hidg0" ]]
+then
+     echo hidon
+else
+     exit
+fi
+
+while [[ True ]]
+do
+     # read -r -k1 input # Prompt the user for input
+     if [ "$input" = "exit" ]; then
+          echo "Exiting the script."
+          hidoff
+          break
+     fi
+
+     read -r input # Prompt the user for input
+     
+     echo ""
+     echo "$input"
+     
+     echo "$input" | hid-gadget-test /dev/hidg0 keyboard
+done
