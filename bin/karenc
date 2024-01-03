@@ -1,3 +1,4 @@
      export PATH="/data/data/com.termux/files/usr/bin:$PATH"
      export LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib
-     zsh
+     export LD_PRELOAD=$PREFIX/lib/libtermux-exec.so
+     zsh -S
