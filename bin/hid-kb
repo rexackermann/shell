@@ -1,4 +1,4 @@
-if [[ $(/bin/ls /dev/hidg0) == "/dev/hidg0" ]]
+if [[ $( -f /dev/hidg0 ]]
 then
      echo hidon
 else
