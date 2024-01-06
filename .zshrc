@@ -1500,6 +1500,7 @@ alias vm.drop="sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=
 alias iris="xwinwrap -fs -fdt -ni -b -nf -un -o 1.0 -debug -- mpv -wid WID --loop --no-audio ~/Videos/video.mp4 /home/rex/Videos/iris.mp4 &; disown"
 alias irisk="pkill -f "xwinwrap""
 alias pk="pkill -9 -e"
+alias ssh="ssh -F ~/.ssh/config"
 alias wallpaper="tiv /home/rex/.config/autowallp/wall-dark0 && tiv /home/rex/.config/autowallp/wall-dark1 && tiv /home/rex/.config/autowallp/wall-dark2 && tiv /home/rex/.config/autowallp/wall-dark3 && tiv /home/rex/.config/autowallp/wall-dark4"
 alias m="mpv --demuxer-max-bytes=50M"
 alias define="sdcv"

@@ -3472,6 +3472,7 @@ alias iris="xwinwrap -fs -fdt -ni -b -nf -un -o 1.0 -debug -- mpv -wid WID --loo
 alias irisk="pkill -f "xwinwrap""
 alias pk="pkill -9 -e"
 # alias sshd="/etc/init.d/ssh start"
+alias ssh="ssh -F ~/.ssh/config"
 alias wallpaper="tiv /home/rex/.config/autowallp/wall-dark0 && tiv /home/rex/.config/autowallp/wall-dark1 && tiv /home/rex/.config/autowallp/wall-dark2 && tiv /home/rex/.config/autowallp/wall-dark3 && tiv /home/rex/.config/autowallp/wall-dark4"
 # alias pyhttp="/home/rex/py_httpserver_Ult/local_server.py"
 alias m="mpv --demuxer-max-bytes=50M"
