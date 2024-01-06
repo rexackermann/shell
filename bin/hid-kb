@@ -1,23 +1,49 @@
-if [[ -f /dev/hidg0 ]]
+#!/bin/sh
+
+if [[ "$UID" == 0 ]]
+then
+     runuser -l $USER hid-kb
+fi
+
+
+if ls /dev/hidg0 2> /dev/null
 then
      echo hidon
 else
-     exit
+     hidon 2> /dev/null
 fi
 
-while [[ True ]]
+if ls /dev/hidg0 >> /dev/null
+then
+     echo shellshouldbeready
+else
+     echo exitting && exit
+fi
+
+# exit
+
+while [[ true ]]
 do
      # read -r -k1 input # Prompt the user for input
-     if [ "$input" = "exit" ]; then
+
+     input=$(rlwrap -S "hid-kb ==> " -H ~/.config/hid-kb/history -o cat)
+
+     if [ "$input" = "exit" ]
+     then
           echo "Exiting the script."
-          hidoff
+          hidoff 2> /dev/null
           break
+     elif [ "$input" = "help" ]
+     then
+          hid-gadget-test --help
      fi
 
-     read -r input # Prompt the user for input
-     
-     echo ""
-     echo "$input"
+     echo -ne "\e[0;34mhid-kb ==> \a"
+
+     # read -r input # Prompt the user for input
+
+     # echo ""
+     # echo "$input"
      
      echo "$input" | hid-gadget-test /dev/hidg0 keyboard
 done
