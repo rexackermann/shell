@@ -88,6 +88,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 - [[#cargo][Cargo]]
 - [[#adb][adb]]
 - [[#termuxexec-run][Termuxexec run]]
+- [[#tmate-run][TMATE run]]
 - [[#strip-comments-and-blank-lines][Strip Comments and Blank Lines]]
 
 * XDG PATH
@@ -2184,6 +2185,7 @@ export PATH="$HOME/.local/share/cargo/bin:$PATH"
 # messed up ones maybe ?
 export PATH="$HOME/.config/bin:$PATH"
 
+export PATH="$GOPATH/bin:$PATH"
 
 export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 export PATH="/data/data/com.termux/files/home/.config/zsh/bin:$PATH"
@@ -3424,6 +3426,7 @@ termuxexec() {
 
           export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 
+          termux-wake-lock
           sshd -p 43434
 
           # echo -e "termux detected"
@@ -4293,6 +4296,19 @@ export ANDROID_HOME="$XDG_DATA_HOME"/android
 #+begin_src shell
 
 termuxexec
+
+#+end_src
+
+
+* TMATE run
+
+#+begin_src shell
+
+if echo $TMUX | grep tmate
+then
+    trap "echo 'Command interrupted.'; exit 1" INT
+    su -c "/bin/zsh" rex ; exit 2
+fi
 
 #+end_src
 

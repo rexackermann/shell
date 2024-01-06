@@ -828,6 +828,7 @@ export PATH="$HOME/.config/.emacs/bin:$PATH"
 export PATH="$HOME/shell/bin:$PATH"
 export PATH="$HOME/.local/share/cargo/bin:$PATH"
 export PATH="$HOME/.config/bin:$PATH"
+export PATH="$GOPATH/bin:$PATH"
 export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 export PATH="/data/data/com.termux/files/home/.config/zsh/bin:$PATH"
 [ -f $XDG_CONFIG_HOME/zsh/history ] && export HISTFILE=$XDG_CONFIG_HOME/zsh/history
@@ -1478,6 +1479,7 @@ alias :q="exit"
 termuxexec() {
      if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
           export PATH="/data/data/com.termux/files/usr/bin:$PATH"
+          termux-wake-lock
           sshd -p 43434
      else
           which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
@@ -1932,3 +1934,8 @@ export EDITOR=$(where lvim | head -n 1)
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
+if echo $TMUX | grep tmate
+then
+    trap "echo 'Command interrupted.'; exit 1" INT
+    su -c "/bin/zsh" rex ; exit 2
+fi
