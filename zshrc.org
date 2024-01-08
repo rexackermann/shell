@@ -4305,11 +4305,11 @@ termuxexec
 
 #+begin_src shell
 
-if echo $TMUX | grep tmate
-then
-    trap "echo 'Command interrupted.'; exit 1" INT
-    su -c "/bin/zsh" rex ; exit 2
-fi
+# if echo $TMUX | grep tmate
+# then
+#     trap "echo 'Command interrupted.'; exit 1" INT
+#     su -c "/bin/zsh" rex ; exit 2
+# fi
 
 #+end_src
 
