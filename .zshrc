@@ -829,6 +829,7 @@ export PATH="$HOME/shell/bin:$PATH"
 export PATH="$HOME/.local/share/cargo/bin:$PATH"
 export PATH="$HOME/.config/bin:$PATH"
 export PATH="$GOPATH/bin:$PATH"
+export PATH="$HOME/.config/zsh/bin:$PATH"
 export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 export PATH="/data/data/com.termux/files/home/.config/zsh/bin:$PATH"
 [ -f $XDG_CONFIG_HOME/zsh/history ] && export HISTFILE=$XDG_CONFIG_HOME/zsh/history
