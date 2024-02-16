@@ -3543,6 +3543,8 @@ else
      alias vi="vi"
 fi
 
+alias lvim="emacs -nw"
+
 #+end_src
 
 
@@ -3963,8 +3965,25 @@ co() {
 #+begin_src shell
 
 open() {
-    mimeopen -a "$1"
+    mimeopen -a "$@"
 }
+
+#+end_src
+
+
+** openfzf
+
+#+begin_src shell
+
+openfzf() {
+    # openfzf_out_path=$(fzf | sed -e 's/[^a-zA-Z0-9,._+@%/-]/\\&/g; 1{$s/^$/""/}; 1!s/^/"/; $!s/$/"/')
+    openfzf_out_path=$(fzf)
+    mimeopen -a "$openfzf_out_path"
+}
+
+alias fzfopen=openfzf
+alias fzfo=openfzf
+alias ofzf=openfzf
 
 #+end_src
 

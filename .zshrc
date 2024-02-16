@@ -1537,6 +1537,7 @@ then
 else
      alias vi="vi"
 fi
+alias lvim="emacs -nw"
 if command -v lvim &> /dev/null
 then
      alias vim="lvim"
@@ -1765,8 +1766,15 @@ co() {
     echo \""$@"\" | tgpt --shell
 }
 open() {
-    mimeopen -a "$1"
+    mimeopen -a "$@"
 }
+openfzf() {
+    openfzf_out_path=$(fzf)
+    mimeopen -a "$openfzf_out_path"
+}
+alias fzfopen=openfzf
+alias fzfo=openfzf
+alias ofzf=openfzf
 alias rm="rm -i"
 try() {
     while ! "$@" ; do sleep 1; done
