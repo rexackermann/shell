@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+Touch_Controller_ID="$(xinput list | grep "Touch Controller       " | awk -F "=" '{print $2}' | awk '{print $1}')"
+
+if xinput list-props "$Touch_Controller_ID" | grep "Device Enabled" | awk -F ":" '{print $2}' | grep 0 > /dev/null
+then
+  xinput enable "${Touch_Controller_ID}"
+else
+  xinput disable "${Touch_Controller_ID}"
+fi
