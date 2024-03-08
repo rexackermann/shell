@@ -3437,7 +3437,7 @@ termuxexec() {
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
      else
           # amn > /dev/null 2>&1
-          which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
+          # which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
      fi
 }
 
@@ -3533,17 +3533,21 @@ The Functions start from here :
 if command -v lvim &> /dev/null
 then
      alias vi="lvim"
+     export EDITOR="lvim"
 elif command -v nvim &> /dev/null
 then
      alias vi="nvim"
+     export EDITOR="nvim"
 elif command -v vim &> /dev/null
 then
      alias vi="vim"
+     export EDITOR="vim"
 else
      alias vi="vi"
+     export EDITOR="vi"
 fi
 
-alias lvim="emacs -nw"
+alias lvim="nvim"
 
 #+end_src
 
@@ -4297,7 +4301,6 @@ fi
 #+begin_src shell
 
 [ -f "$CARGO_HOME"/env ] && source "$CARGO_HOME/env"
-export EDITOR=$(where lvim | head -n 1)
 # addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 

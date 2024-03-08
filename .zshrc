@@ -1483,7 +1483,6 @@ termuxexec() {
           termux-wake-lock
           sshd -p 43434
      else
-          which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
      fi
 }
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
@@ -1528,16 +1527,20 @@ fi
 if command -v lvim &> /dev/null
 then
      alias vi="lvim"
+     export EDITOR="lvim"
 elif command -v nvim &> /dev/null
 then
      alias vi="nvim"
+     export EDITOR="nvim"
 elif command -v vim &> /dev/null
 then
      alias vi="vim"
+     export EDITOR="vim"
 else
      alias vi="vi"
+     export EDITOR="vi"
 fi
-alias lvim="emacs -nw"
+alias lvim="nvim"
 if command -v lvim &> /dev/null
 then
      alias vim="lvim"
@@ -1940,7 +1943,8 @@ if [ "$funcstack[1]" = "_glow" ]; then
     _glow
 fi
 [ -f "$CARGO_HOME"/env ] && source "$CARGO_HOME/env"
-export EDITOR=$(where lvim | head -n 1)
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
+
+eval "$(atuin init zsh)"

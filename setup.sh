@@ -57,7 +57,7 @@ user_home_dir () {
      mv -fv ~/.config/zsh ~/.config/zsh."$(date +%s)"
      mv -fv ~/.zshenv ~/.zshenv."$(date +%s)"
      mkdir -p ~/.config
-     git clone https://github.com/RexAckermann/shell.git ~/.config/zsh
+     git clone --depth 1 https://github.com/RexAckermann/shell.git ~/.config/zsh
      cd ~/.config/zsh || exit
      ln -s .zshenv ~/.zshenv
      ln -s .profile ~/.profile
