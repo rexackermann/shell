@@ -1353,7 +1353,7 @@ ftpplay() {
         elif [[ "$1" == 'f' ]] ; then
             mpv_flags="$2"
         else
-            mpv "$mpv_flags" --playlist="$mpv_playlist"
+            if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
         fi
         return 1
     fi
@@ -1370,7 +1370,7 @@ ftpplay() {
         elif [[ "$1" == 'f' ]] ; then
             mpv_flags="$2"
         else
-            mpv "$mpv_flags" --playlist="$mpv_playlist"
+            if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
         fi
         return 1
     fi
@@ -1397,7 +1397,7 @@ ftpplay() {
     mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
     mkdir -p ~/.config/ftpplaycircle/
     echo "$mkv_links" > "$mpv_playlist"
-    mpv --playlist="$mpv_playlist"
+    if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
 }
 ccr() {
 local dir
