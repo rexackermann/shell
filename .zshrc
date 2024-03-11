@@ -1482,6 +1482,7 @@ termuxexec() {
           export PATH="/data/data/com.termux/files/usr/bin:$PATH"
           termux-wake-lock
           sshd -p 43434
+          alias mpv="xdg-open"
      else
      fi
 }
@@ -1946,5 +1947,3 @@ fi
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
-
-eval "$(atuin init zsh)"

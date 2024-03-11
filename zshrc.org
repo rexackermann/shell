@@ -3435,6 +3435,7 @@ termuxexec() {
           # echo "/data/data/com.termux/files/usr/bin/sshdhd -p 43434" >> ~/.zshrc
           # sed 's/my_cpu_temp/\#\ my_cpu_temp/' ~/shell/.p10k.zsh > ~/shell/.p10k.zsh
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
+          alias mpv="xdg-open"
      else
           # amn > /dev/null 2>&1
           # which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
