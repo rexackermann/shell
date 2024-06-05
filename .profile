@@ -56,3 +56,4 @@ export GTK_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
 export XIM_PROGRAM=/urs/bin/ibus-daemon -drx
+. "/home/rex/.local/share/cargo/env"

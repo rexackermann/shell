@@ -1339,6 +1339,28 @@ playepisodes() {
     echo print now playing:
     eval ${comm}
 }
+extract() {
+	for archive in "$@"; do
+		if [ -f "$archive" ]; then
+			case $archive in
+			*.tar.bz2) tar xvjf $archive ;;
+			*.tar.gz) tar xvzf $archive ;;
+			*.bz2) bunzip2 $archive ;;
+			*.rar) rar x $archive ;;
+			*.gz) gunzip $archive ;;
+			*.tar) tar xvf $archive ;;
+			*.tbz2) tar xvjf $archive ;;
+			*.tgz) tar xvzf $archive ;;
+			*.zip) unzip $archive ;;
+			*.Z) uncompress $archive ;;
+			*.7z) 7z x $archive ;;
+			*) echo "don't know how to extract '$archive'..." ;;
+			esac
+		else
+			echo "'$archive' is not a valid file!"
+		fi
+	done
+}
 ftpplay() {
     if [[ "${@: -1}" == *10.16.100.244* ]] ; then
         link="${@: -1}"
@@ -1357,9 +1379,20 @@ ftpplay() {
         fi
         return 1
     fi
-    if [[ $1 == "c" ]]; then
-        link="${@: -1}"
-        links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+    if [[ $1 == "s" ]]; then
+        P_URL="http://circleftp.net/?s=${2// /+}"
+        echo "$P_URL"
+	      URL="$(curl -s "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=\"//g' | sed 's/\">//g' | sed 's/\ //g' | uniq | fzf)"
+    fi
+    if [[ $1 == "c" ]] || [[ $1 == "s" ]]; then
+        if [[ $1 == "c" ]]; then
+          link="${@: -1}"
+        elif [[ $1 == "s" ]]; then
+          link="$URL"
+        fi
+        echo "$link"
+        links="$(echo "$link" | tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(echo "$link" |tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) )) )) )"
+        echo "$links"
         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
         mkdir -p ~/.config/ftpplaycircle/
         echo "$links"
@@ -1374,8 +1407,7 @@ ftpplay() {
         fi
         return 1
     fi
-	
-    if [[ $1 == "s" ]]; then
+    if [[ $1 == "sn" ]]; then
         base_URL="http://103.170.204.84/"
         P_URL=search?q=${base_URL}${2// /+}
         echo "$P_URL"
@@ -1385,6 +1417,10 @@ ftpplay() {
         URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
         echo "$URL"
         URL=${base_URL}${URL}
+    elif [[ $1 == "s" ]]; then
+        P_URL="http://circleftp.net/?s=${2// /+}"
+        echo "$P_URL"
+	      URL="$(curl "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=//g' | sed 's/>//g' | sed 's/\ //g' | uniq | fzf)"
     else
         URL="$1"
     fi
@@ -1519,6 +1555,7 @@ alias rename="vidir --verbose"
 alias music=musikcube
 alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
 alias wget=wget --hsts-file="$XDG_DATA_HOME/wget-hsts"
+alias feh="feh -Z"
 if command -v newcommand &> /dev/null
 then
      alias command="newcommand"
@@ -1526,10 +1563,6 @@ else
      alias command="command"
 fi
 if command -v lvim &> /dev/null
-then
-     alias vi="lvim"
-     export EDITOR="lvim"
-elif command -v nvim &> /dev/null
 then
      alias vi="nvim"
      export EDITOR="nvim"
@@ -1782,6 +1815,9 @@ alias ofzf=openfzf
 alias rm="rm -i"
 try() {
     while ! "$@" ; do sleep 1; done
+}
+loop() {
+    while true ; do "$@" && sleep 1 && clear ; done
 }
 lazynvm() {
   unset -f nvm node npm
