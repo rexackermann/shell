@@ -1612,7 +1612,7 @@ cat() {
         then
             if command -v viu &> /dev/null
             then
-                viu -1 -t "$arg" && read -n 1
+                viu -1 -t "$arg"
             else
                 img2txt -f utf8 -W "$(tput cols)" "$arg"
             fi
@@ -1758,20 +1758,20 @@ fi
 if command -v bat &> /dev/null
 then
     lsblk() {
-        "$(which lsblk)" "$@" | cat --language=fstab
+        "$(which lsblk)" "$@" | bat -p --language=fstab
     }
     bcat() {
-        bcat_var_func="$(functions "$1" | cat -l sh)"
+        bcat_var_func="$(functions "$1" | cat -pl sh)"
         if [ -n "$bcat_var_func" ] ; then
-            echo "$bcat_var_func" | cat -l sh
+            echo "$bcat_var_func" | cat -pl sh
             echo -e "\n"
         fi
-        bcat_var_alias="$(alias "$1" | cat -l sh)"
+        bcat_var_alias="$(alias "$1" | cat -pl sh)"
         if [ -n "$bcat_var_alias" ] ; then
-            echo "$bcat_var_alias" | cat -l sh
+            echo "$bcat_var_alias" | cat -pl sh
             echo -e "\n"
         fi
-        cat "$(type "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3}')"
+        cat -p "$(type "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3}')"
     }
     compdef bcat=which
 fi
