@@ -1555,7 +1555,8 @@ alias rename="vidir --verbose"
 alias music=musikcube
 alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
 alias wget=wget --hsts-file="$XDG_DATA_HOME/wget-hsts"
-alias feh="feh -Z"
+alias fehr="feh -ZnzrF"
+alias feh="feh -nZrF -S mtime"
 if command -v newcommand &> /dev/null
 then
      alias command="newcommand"
