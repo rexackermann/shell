@@ -1673,11 +1673,11 @@ eza_ls() {
 }
 eza_l() {
     if [ $(tput cols) -gt "130" ]; then
-        eza -alihgSUFHumo --icons "$@" || return 1
+        eza -alihgSUHumo -F always --icons "$@" || return 1
     else
         eza --long -o "$@" || return 1
     fi
-    eza="$(eza -alihgSUFHum --icons "$@" | head -1)"
+    eza="$(eza -alihgSUHum --icons "$@" | head -1)"
     total_number_of_files=$(eza -a --icons "$@" | wc -l)
     total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
     for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
