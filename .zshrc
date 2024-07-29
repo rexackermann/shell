@@ -77,6 +77,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     newline               
     dir                   
     incognito_flag
+    nvidia_flag
     vcs                   
     newline               
     greeting
@@ -757,6 +758,14 @@ function prompt_incognito_flag() {
           p10k segment -b green -f black   -t "Incognito"
      fi
 }
+function prompt_nvidia_flag() {
+     nvidia_available=$((lsmod | grep -q nvidia) && echo '1' || echo '0')
+     if [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 1 ]]; then
+          p10k segment -b green -f black   -t "nvidia"
+     elif [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 0 ]]; then
+          p10k segment -b white -f black   -t "nvidia[unavailable]"
+     fi
+}
 function prompt_shell_mommy() {
      preexec(){
           cmd=$1
@@ -1173,6 +1182,14 @@ incognito() {
           echo -e "${ClearColor}\n"
      fi
 }
+nvidia() {
+     if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
+          fc -P && nvidia=false
+          export __NV_PRIME_RENDER_OFFLOAD=0
+     else
+          export __NV_PRIME_RENDER_OFFLOAD=1
+     fi
+}
 function command_permission() {
   local cmd="${1}"
   local cmd=$(echo "${cmd}" | awk '{print $1}' )
@@ -1360,6 +1377,50 @@ extract() {
 			echo "'$archive' is not a valid file!"
 		fi
 	done
+}
+escapestring() {
+  if [ -p /dev/stdin ]; then
+    while IFS= read  pipe; do
+      string="$string\n$pipe"
+    done
+  else
+    string="$@"
+  fi
+  echo "$string" | sed -e 's/[[:punct:]|[:space:]]/\\&/g' | sed -e 's/\\-/-/g'| sed -e 's/\\\//\//g' | sed '1d'
+}
+alias fehr="feh -ZnzrF"
+alias feh="feh -nZrF -S mtime"
+feho() {
+  pwd="$(pwd)"
+  cd "$1"
+  find . -type f -maxdepth 0 | xargs feh -ZnFS mtime
+  cd "$pwd"
+}
+play() {
+  args="$@"
+  complay=" /home/rex/Music/songs/ -iname \"idonnowhattoputinhere\" "
+  for ((i = 1 ; i <= $( echo "$@" | wc -w ) ; i++)); do
+    if [[ $@[$i] == "-n" ]] ; then
+      i=i+1
+      ncomplay=" "$ncomplay" -a -not -iname \"*"${@["$i"]}"*\" "
+    elif [[ $@[$i] == "-N" ]] ; then
+      i=i+1
+      ncomplay=" "$ncomplay" -a -not -name \"*"${@["$i"]}"*\" "
+    fi
+  done
+  for ((i = 1 ; i <= $( echo "$@" | wc -w ) ; i++)); do
+    if [[ $@[$i] == "-E" ]] ; then
+      i=i+1
+      complay=" "$complay" "$ncomplay" -o -name \"*"${@["$i"]}"*\" "
+    else
+      complay=" "$complay" "$ncomplay" -o -iname \"*"${@["$i"]}"*\" "
+    fi
+  done
+  complay="$complay $ncomplay"
+  listplay=$(eval find "$complay" |sed -e 's/[[:punct:]|[:space:]]/\\&/g' | sed -e 's/\\-/-/g'| sed -e 's/\\\//\//g')
+  echo "find $complay"
+  echo "$listplay"
+  echo "$listplay" | sed -e 's/\n/\ /g' | xargs mpv --no-resume-playback
 }
 ftpplay() {
     if [[ "${@: -1}" == *10.16.100.244* ]] ; then
@@ -1555,8 +1616,6 @@ alias rename="vidir --verbose"
 alias music=musikcube
 alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
 alias wget=wget --hsts-file="$XDG_DATA_HOME/wget-hsts"
-alias fehr="feh -ZnzrF"
-alias feh="feh -nZrF -S mtime"
 if command -v newcommand &> /dev/null
 then
      alias command="newcommand"

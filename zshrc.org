@@ -364,6 +364,7 @@ Normally this file is the .p10k.zsh file.
     newline               # \n
     dir                   # current directory
     incognito_flag
+    nvidia_flag
     vcs                   # git status
     # =========================[ Line #2 ]=========================
     newline               # \n
@@ -2041,6 +2042,15 @@ function prompt_incognito_flag() {
      fi
 }
 
+function prompt_nvidia_flag() {
+     nvidia_available=$((lsmod | grep -q nvidia) && echo '1' || echo '0')
+     if [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 1 ]]; then
+          p10k segment -b green -f black   -t "nvidia"
+     elif [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 0 ]]; then
+          p10k segment -b white -f black   -t "nvidia[unavailable]"
+     fi
+}
+
 function prompt_shell_mommy() {
      # precmd() { if (( $? != 0 )); then; mommy false; else; mommy true; fi }
      preexec(){
@@ -2770,6 +2780,33 @@ incognito() {
 #+end_src
 
 
+** Nvidia Mode
+
+#+begin_src shell
+
+nvidia() {
+     if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
+          fc -P && nvidia=false
+          export __NV_PRIME_RENDER_OFFLOAD=0
+          # clear &&
+          # rm -rfv /tmp/.zsh_history.tmp && echo "Temporary history removed" &&
+          # echo -e "${FG_R_Black}${BG_R_Red}" &&
+          # align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
+          # echo -e "${ClearColor}\n"
+     else
+          export __NV_PRIME_RENDER_OFFLOAD=1
+          # "$(binpath cp)" "$HISTFILE" /tmp/.zsh_history.tmp &&
+          # fc -p /tmp/.zsh_history.tmp && incognito=true
+          # clear &&
+          # echo -e "${FG_R_Black}${BG_R_Green}" &&
+          # align_center "Incognito Mode Enabled" "󱐡 " "󰗹 " &&
+          # echo -e "${ClearColor}\n"
+     fi
+}
+
+#+end_src
+
+
 ** Give File Execute Permission
 
 #+begin_src bash
@@ -3140,6 +3177,101 @@ extract() {
 			echo "'$archive' is not a valid file!"
 		fi
 	done
+}
+
+#+end_src
+
+
+** escapestring
+
+Escapes chars in string
+
+#+begin_src shell
+
+escapestring() {
+  if [ -p /dev/stdin ]; then
+    while IFS= read  pipe; do
+      # echo "${pipe}" >> c"$t".c.sh
+      string="$string\n$pipe"
+      # echo $string
+    done
+  else
+    string="$@"
+  fi
+  
+  # echo "$string"
+  echo "$string" | sed -e 's/[[:punct:]|[:space:]]/\\&/g' | sed -e 's/\\-/-/g'| sed -e 's/\\\//\//g' | sed '1d'
+}
+
+#+end_src
+
+
+** feh
+
+Extracts any archive(s) (if unp isn't installed)
+
+#+begin_src shell
+
+
+# alias feh="feh -Z"
+alias fehr="feh -ZnzrF"
+alias feh="feh -nZrF -S mtime"
+
+feho() {
+  pwd="$(pwd)"
+  cd "$1"
+  find . -type f -maxdepth 0 | xargs feh -ZnFS mtime
+  cd "$pwd"
+}
+
+#+end_src
+
+
+
+
+** ftpplay
+
+** play
+
+Play from ~/Music/songs with keyword args.
+
+#+begin_src shell
+
+play() {
+
+  args="$@"
+  
+  complay=" /home/rex/Music/songs/ -iname \"idonnowhattoputinhere\" "
+  
+  for ((i = 1 ; i <= $( echo "$@" | wc -w ) ; i++)); do
+    if [[ $@[$i] == "-n" ]] ; then
+      i=i+1
+      ncomplay=" "$ncomplay" -a -not -iname \"*"${@["$i"]}"*\" "
+    elif [[ $@[$i] == "-N" ]] ; then
+      i=i+1
+      ncomplay=" "$ncomplay" -a -not -name \"*"${@["$i"]}"*\" "
+    fi
+  done
+  
+  for ((i = 1 ; i <= $( echo "$@" | wc -w ) ; i++)); do
+    if [[ $@[$i] == "-E" ]] ; then
+      i=i+1
+      complay=" "$complay" "$ncomplay" -o -name \"*"${@["$i"]}"*\" "
+    else
+      complay=" "$complay" "$ncomplay" -o -iname \"*"${@["$i"]}"*\" "
+    fi
+  done
+  
+  complay="$complay $ncomplay"
+  
+  # echo $complay
+  
+  listplay=$(eval find "$complay" |sed -e 's/[[:punct:]|[:space:]]/\\&/g' | sed -e 's/\\-/-/g'| sed -e 's/\\\//\//g')
+  
+  echo "find $complay"
+  echo "$listplay"
+  echo "$listplay" | sed -e 's/\n/\ /g' | xargs mpv --no-resume-playback
+
 }
 
 #+end_src
@@ -3555,9 +3687,6 @@ alias rename="vidir --verbose"
 alias music=musikcube
 alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
 alias wget=wget --hsts-file="$XDG_DATA_HOME/wget-hsts"
-# alias feh="feh -Z"
-alias fehr="feh -ZnzrF"
-alias feh="feh -nZrF -S mtime"
 
 #+end_src
 
