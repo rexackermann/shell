@@ -1185,7 +1185,7 @@ incognito() {
 nvidia() {
      if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
           fc -P && nvidia=false
-          export __NV_PRIME_RENDER_OFFLOAD=0
+          export __NV_PRIME_RENDER_OFFLOAD=0 $@
      else
           export __NV_PRIME_RENDER_OFFLOAD=1
      fi
