@@ -2787,14 +2787,14 @@ incognito() {
 nvidia() {
      if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
           fc -P && nvidia=false
-          export __NV_PRIME_RENDER_OFFLOAD=0 $@
+          export __NV_PRIME_RENDER_OFFLOAD=0
           # clear &&
           # rm -rfv /tmp/.zsh_history.tmp && echo "Temporary history removed" &&
           # echo -e "${FG_R_Black}${BG_R_Red}" &&
           # align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
           # echo -e "${ClearColor}\n"
      else
-          export __NV_PRIME_RENDER_OFFLOAD=1
+          export __NV_PRIME_RENDER_OFFLOAD=1 && $@
           # "$(binpath cp)" "$HISTFILE" /tmp/.zsh_history.tmp &&
           # fc -p /tmp/.zsh_history.tmp && incognito=true
           # clear &&
