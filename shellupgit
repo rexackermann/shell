@@ -1,5 +1,72 @@
 #!/bin/env bash
 
+generate_toc() {
+  generate_toc_arrays() {
+    IFS=''
+    seg1col=()
+    linecol=()
+    seg1old=()
+    seg2old=()
+    tabcol=()
+    while read -r line; do
+      if [[ ""$line"" =~ ^\* ]]; then
+        linecol+=("$line")
+        seg1=$(echo "$line" | sed 's/\ /-/g' | tr -cd '[:alnum:]._-' | sed 's/-//' | sed -e 's/\(.*\)/\L\1/' | sed 's/\.//g')
+        seg2=$(echo "$line" | sed 's/^\**//g' | sed 's/^\ //')
+        seg1old+=($seg1)
+        seg2old+=($seg2)
+        tab=$(echo "$line" | grep -o '^**' | wc -c)
+        ((tab--))
+        tab=$(printf "%${tab}c" ' ')
+        tabcol+=("$tab")
+        # echo "- [[#$seg1]["$line"]]"
+        # seg1col=seg1col$seg1
+      fi
+    done < "$1"
+    # echo ${seg1col[1]}
+
+    # Create an associative array to keep track of counts
+    declare -A counts
+    
+    # Iterate through the original array
+    for element in "${seg1old[@]}"; do
+      # Increment the count for this element
+      ((counts["$element"]++))
+      
+      # Append the count to the element if it's not unique
+      if ((counts["$element"] == 1)); then
+        new_element="$element"
+      elif ((counts["$element"] > 1)); then
+        ((temcou=${counts["$element"]}-1))
+        new_element="${element}-${temcou}"
+      else
+        new_element="$element"
+      fi
+      
+      # Add the modified element to the new array
+      seg1+=("$new_element")
+    done
+
+    echo "* TABLE OF CONTENTS :toc:"
+    c=0
+    for line in "${seg1old[@]}"
+    do
+      if [[ ${seg1[(($c+1))]} == "table-of-contents-toc" ]]
+      then
+        ((c++))
+      else
+        echo "${tabcol[$c]}- [[#${seg1[(($c+1))]}][${seg2old[$c]}]]" | sed 's/^\ -/-/'    
+        ((c++))
+      fi
+    done
+  }
+  oldtoc="$(sed -n '/\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
+  newtoc="$(generate_toc_arrays "$1")"
+  oldfile=$(cat "$1")
+  newfile=${oldfile//"${oldtoc}"/"${newtoc}"}
+  echo "$newfile" > "$1"
+}
+
 cd ~/github/shell || exit
 
 export GNUPGHOME=$(pwd)/.gnupg/
@@ -16,7 +83,9 @@ mv -fv ~/.config/zsh/.zshrc_private.gpg ~/github/shell/.zsh_private.gpg
 cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
 cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
 cp -rfv "$(which psapp | head -n 1)" ~/github/shell/bin/psapp
+generate_toc ~/org/zshrc.org
 cp -rfv ~/org/zshrc.org ~/github/shell/
+
 # cp -rfv $(which c | head -n 1) ~/github/shell/bin/c
 # cp -rfv $(which shellupgit) ~/github/shell/shellupgit
 

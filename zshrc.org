@@ -3206,6 +3206,95 @@ escapestring() {
 #+end_src
 
 
+** org-toc-update
+
+Updates existing table of contents or toc in the org file provided in first arg provided
+
+#+begin_src shell
+
+org-toc-update() {
+  generate_toc_arrays() {
+    IFS=''
+    seg1col=()
+    linecol=()
+    seg1old=()
+    seg2old=()
+    tabcol=()
+    while read -r line; do
+      if [[ ""$line"" =~ ^\* ]]; then
+        linecol+=("$line")
+        seg1=$(echo "$line" | sed 's/\ /-/g' | tr -cd '[:alnum:]._-' | sed 's/-//' | sed -e 's/\(.*\)/\L\1/' | sed 's/\.//g')
+        seg2=$(echo "$line" | sed 's/^\**//g' | sed 's/^\ //')
+        seg1old+=($seg1)
+        seg2old+=($seg2)
+        tab=$(echo "$line" | grep -o '^**' | wc -c)
+        ((tab--))
+        tab=$(printf "%${tab}c" ' ')
+        tabcol+=("$tab")
+        # echo "- [[#$seg1]["$line"]]"
+        # seg1col=seg1col$seg1
+      fi
+    done < "$1"
+    # echo ${seg1col[1]}
+
+    # Create an associative array to keep track of counts
+    declare -A counts
+    
+    # Iterate through the original array
+    for element in "${seg1old[@]}"; do
+      # Increment the count for this element
+      ((counts["$element"]++))
+      
+      # Append the count to the element if it's not unique
+      if ((counts["$element"] == 1)); then
+        new_element="$element"
+      elif ((counts["$element"] > 1)); then
+        ((temcou=${counts["$element"]}-1))
+        new_element="${element}-${temcou}"
+      else
+        new_element="$element"
+      fi
+      
+      # Add the modified element to the new array
+      seg1+=("$new_element")
+    done
+
+    echo "* TABLE OF CONTENTS :toc:"
+    c=0
+    for line in "${seg1old[@]}"
+    do
+      if [[ ${seg1[(($c+1))]} == "table-of-contents-toc" ]]
+      then
+        ((c++))
+      else
+        echo "${tabcol[$c]}- [[#${seg1[(($c+1))]}][${seg2old[$c]}]]" | sed 's/^\ -/-/'    
+        ((c++))
+      fi
+    done
+  }
+  oldtoc="$(sed -n '/\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
+  newtoc="$(generate_toc_arrays "$1")"
+  oldfile=$(cat "$1")
+  newfile=${oldfile//"${oldtoc}"/"${newtoc}"}
+  echo "$newfile" > "$1"
+}
+
+#+end_src
+
+
+** feh
+
+Extracts any archive(s) (if unp isn't installed)
+
+#+begin_src shell
+
+org-tangle-from-zsh() {
+  emacs --batch -l org --eval "(org-babel-tangle-file \"$1\")"
+}
+
+#+end_src
+
+
 ** feh
 
 Extracts any archive(s) (if unp isn't installed)
