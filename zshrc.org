@@ -37,6 +37,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#theme][Theme]]
   - [[#plugins][Plugins]]
   - [[#powerlevel10k-p10k][Powerlevel10k (p10k)]]
+   - [[#p10kzsh][.p10k.zsh]]
   - [[#source-oh-my-zshsh][Source oh-my-zsh.sh]]
 - [[#path][$PATH]]
 - [[#history][History]]
@@ -54,12 +55,20 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#c][c]]
   - [[#align-text-to-center][Align Text to Center]]
   - [[#incognito-mode][Incognito Mode]]
+  - [[#nvidia-mode][Nvidia Mode]]
   - [[#give-file-execute-permission][Give File Execute Permission]]
   - [[#unixtime][unixtime]]
   - [[#shell-mommy][Shell Mommy]]
   - [[#color256][color256]]
   - [[#playepisodes][playepisodes]]
+  - [[#extract][extract]]
+  - [[#escapestring][escapestring]]
+  - [[#org-toc-update][org-toc-update]]
+  - [[#feh][feh]]
+  - [[#feh-1][feh]]
   - [[#ftpplay][ftpplay]]
+  - [[#play][play]]
+  - [[#ftpplay-1][ftpplay]]
   - [[#ccr][ccr]]
   - [[#encryptdir][encryptdir]]
   - [[#pdfmerge][pdfmerge]]
@@ -70,16 +79,30 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 - [[#aliases][Aliases]]
   - [[#basic-aliases][Basic Aliases]]
   - [[#function-aliases][Function Aliases]]
+   - [[#text-editor][Text Editor]]
+    - [[#vi][vi]]
+    - [[#vim][vim]]
+   - [[#bat][Bat]]
+    - [[#batcat][bat/cat]]
+    - [[#batmanman][batman/man]]
+    - [[#batwatchwatch][batwatch/watch]]
+    - [[#batdiffdiff][batdiff/diff]]
+   - [[#file-transfer][File Transfer]]
+   - [[#caps-lock][Caps Lock]]
+   - [[#list-files][List Files]]
   - [[#bcat][bcat]]
   - [[#qr][qr]]
   - [[#head][head]]
   - [[#tail][tail]]
   - [[#sgpt][sgpt]]
+   - [[#roxy][roxy]]
   - [[#tgpt][tgpt]]
   - [[#co][co]]
   - [[#open][open]]
+  - [[#openfzf][openfzf]]
   - [[#rm][rm]]
   - [[#try][try]]
+  - [[#loop][loop]]
 - [[#lazyautoload-node-nvm-npm][Lazy(Auto)load node nvm npm]]
 - [[#rvm][RVM]]
 - [[#batpipe][Batpipe]]
@@ -3221,7 +3244,8 @@ org-toc-update() {
     seg2old=()
     tabcol=()
     while read -r line; do
-      if [[ ""$line"" =~ ^\* ]]; then
+      # if [[ ""$line"" =~ ^\* ]]; then
+      if [[ "$(echo "$line" | grep -o '^**')" ]]; then
         linecol+=("$line")
         seg1=$(echo "$line" | sed 's/\ /-/g' | tr -cd '[:alnum:]._-' | sed 's/-//' | sed -e 's/\(.*\)/\L\1/' | sed 's/\.//g')
         seg2=$(echo "$line" | sed 's/^\**//g' | sed 's/^\ //')
@@ -3272,7 +3296,7 @@ org-toc-update() {
       fi
     done
   }
-  oldtoc="$(sed -n '/\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
+  oldtoc="$(sed -n '/^\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
   newtoc="$(generate_toc_arrays "$1")"
   oldfile=$(cat "$1")
   newfile=${oldfile//"${oldtoc}"/"${newtoc}"}

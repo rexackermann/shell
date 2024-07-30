@@ -9,7 +9,8 @@ generate_toc() {
     seg2old=()
     tabcol=()
     while read -r line; do
-      if [[ ""$line"" =~ ^\* ]]; then
+     # if [[ ""$line"" =~ ^\* ]]; then
+     if [[ "$(echo "$line" | grep -o '^**')" ]]; then
         linecol+=("$line")
         seg1=$(echo "$line" | sed 's/\ /-/g' | tr -cd '[:alnum:]._-' | sed 's/-//' | sed -e 's/\(.*\)/\L\1/' | sed 's/\.//g')
         seg2=$(echo "$line" | sed 's/^\**//g' | sed 's/^\ //')
@@ -60,7 +61,7 @@ generate_toc() {
       fi
     done
   }
-  oldtoc="$(sed -n '/\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
+  oldtoc="$(sed -n '/^\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
   newtoc="$(generate_toc_arrays "$1")"
   oldfile=$(cat "$1")
   newfile=${oldfile//"${oldtoc}"/"${newtoc}"}
