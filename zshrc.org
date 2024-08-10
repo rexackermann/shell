@@ -378,7 +378,7 @@ Normally this file is the .p10k.zsh file.
 
   # The list of segments shown on the left. Fill it with the most important segments.
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
-    shell_mommy
+    #shell_mommy
     # newline               # \n
     # =========================[ Line #1 ]=========================
     os_icon               # os identifier
