@@ -759,7 +759,9 @@ function prompt_incognito_flag() {
      fi
 }
 function prompt_nvidia_flag() {
-     nvidia_available=$((lsmod | grep -q nvidia) && echo '1' || echo '0')
+     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+          nvidia_available=$((lsmod | grep -q nvidia) && echo '1' || echo '0')
+     fi
      if [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 1 ]]; then
           p10k segment -b green -f black   -t "nvidia"
      elif [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 0 ]]; then
