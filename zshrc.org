@@ -2795,6 +2795,7 @@ incognito() {
           align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
           echo -e "${ClearColor}\n"
      else
+          sed -i '$d' "$HISTFILE"
           "$(binpath cp)" "$HISTFILE" /tmp/.zsh_history.tmp &&
           fc -p /tmp/.zsh_history.tmp && incognito=true
           clear &&
