@@ -3982,10 +3982,10 @@ if command -v rsync &> /dev/null
 then
      # alias cp="rsync -avxHAXP --progress"
      # alias mv="rsync -avxHAXP --remove-source-files --progress"
-     cp() {
+     cpr() {
           rsync -avxAHXhP $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP $@
      }
-     mv() {
+     mvr() {
           rsync -avxAHXhP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
      }
 fi

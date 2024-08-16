@@ -1759,10 +1759,10 @@ then
 fi
 if command -v rsync &> /dev/null
 then
-     cp() {
+     cpr() {
           rsync -avxAHXhP $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP $@
      }
-     mv() {
+     mvr() {
           rsync -avxAHXhP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
      }
 fi
