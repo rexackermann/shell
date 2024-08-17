@@ -75,6 +75,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#psapp][psapp]]
   - [[#history-search][History Search]]
   - [[#exit][exit]]
+  - [[#is_mounted][is_mounted]]
   - [[#termuxexec][Termuxexec]]
 - [[#aliases][Aliases]]
   - [[#basic-aliases][Basic Aliases]]
@@ -3715,17 +3716,39 @@ alias :q="exit"
 
 #+end_src
 
+
+** is_mounted
+
+#+begin_src shell
+
+is_mounted() { 
+  grep -q "$1" /proc/mounts; 
+  }
+
+#+end_src
+
+
 ** Termuxexec
 
 #+begin_src shell
 termuxexec() {
-     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+     # if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+     if [[ "$(command -v getprop && getprop ro.build.version.release)" =~ ^[0-9]$ ]]; then
+
+          android=true
 
           # unalias man
           # if command -v bat &> /dev/null
           # then
           #      export MANPAGER="most"   # The batman script in shell/bin/ seems to work now
           # fi
+
+          if is_mounted /storage/emulated; then
+            PHONE_ON=1
+          else
+            PHONE_ON=0
+            powerlevel10k_plugin_unload
+          fi
 
           export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 
@@ -3738,6 +3761,8 @@ termuxexec() {
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
           alias mpv="xdg-open"
      else
+          android=false
+
           # amn > /dev/null 2>&1
           # which em 2&> /dev/null >> /dev/null && export EDITOR="em" || export EDITOR="emacsclient -ca "emacs""
      fi

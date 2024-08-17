@@ -1635,13 +1635,24 @@ srhs() {
      rg "$*" "$HISTFILE" || cat $HISTFILE | grep "$*"
 }
 alias :q="exit"
+is_mounted() { 
+  grep -q "$1" /proc/mounts; 
+  }
 termuxexec() {
-     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+     if [[ "$(command -v getprop && getprop ro.build.version.release)" =~ ^[0-9]$ ]]; then
+          android=true
+          if is_mounted /storage/emulated; then
+            PHONE_ON=1
+          else
+            PHONE_ON=0
+            powerlevel10k_plugin_unload
+          fi
           export PATH="/data/data/com.termux/files/usr/bin:$PATH"
           termux-wake-lock
           sshd -p 43434
           alias mpv="xdg-open"
      else
+          android=false
      fi
 }
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
