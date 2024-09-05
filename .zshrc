@@ -73,7 +73,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     #shell_mommy
     os_icon               
-    example               
+    static_username       
     newline               
     dir                   
     incognito_flag
@@ -125,7 +125,6 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     vim_shell               
     midnight_commander      
     nix_shell               
-    vi_mode                 
     vpn_ip                  
     load                    
     ram                     
@@ -138,6 +137,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
     status                  
     command_execution_time  
     time                    
+    newline
   )
   typeset -g POWERLEVEL9K_MODE=nerdfont-complete
   typeset -g POWERLEVEL9K_ICON_PADDING=moderate
@@ -739,8 +739,8 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
   #
   #function prompt_example() {
   #}
-  function prompt_example() {
-    p10k segment -b 1 -f 3 -i '' -t 'Rex Ackermann'
+  function prompt_static_username() {
+    p10k segment -b 1 -f black -i '' -t 'Rex Ackermann'
   }
   #
   #
@@ -1482,6 +1482,9 @@ play() {
   echo "find $complay"
   echo "$listplay"
   echo "$listplay" | sed -e 's/\n/\ /g' | xargs mpv --no-resume-playback
+}
+duplicateseachdirectoryseparatelyremove() {
+  find ./ -type d -exec fdupes -Nd {} \; #removeduplicateseachdirectoryseparately
 }
 ftpplay() {
     if [[ "${@: -1}" == *10.16.100.244* ]] ; then
