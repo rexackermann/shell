@@ -1942,7 +1942,8 @@ open() {
     mimeopen -a "$@"
 }
 openfzf() {
-    openfzf_out_path=$(fzf)
+    if [ -z "$1" ] ; then openfzf_path="$pwd" ; else openfzf_path=$(realpath "$1") ; fi
+    openfzf_out_path="$openfzf_path"/"$(cd "$openfzf_path" && fzf)"
     mimeopen -a "$openfzf_out_path"
 }
 alias fzfopen=openfzf
