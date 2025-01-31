@@ -880,9 +880,9 @@ alias lc='exa'
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  
 eval "$(register-python-argcomplete pipx)"
 [ -s /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-export GTK_IM_MODULE=ibus
-export XMODIFIERS=@im=ibus
-export QT_IM_MODULE=ibus
+# export GTK_IM_MODULE=ibus
+# export XMODIFIERS=@im=ibus
+# export QT_IM_MODULE=ibus
 binpath() {
   bin_path="$(type -a "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3 ; exit}')"
   echo "$bin_path"
