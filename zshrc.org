@@ -3343,7 +3343,7 @@ alias feh="feh -nZrF -S mtime"
 feho() {
   pwd="$(pwd)"
   cd "$1"
-  find . -type f -maxdepth 0 | xargs feh -ZnFS mtime
+  find . -type f -maxdepth 999 | xargs feh -ZnFS mtime
   cd "$pwd"
 }
 

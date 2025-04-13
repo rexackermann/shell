@@ -52,8 +52,8 @@ export PATH="$HOME/.local/share/cargo/bin:$PATH"
 # messed up ones maybe ?
 export PATH="$HOME/.config/bin:$PATH"
 export PATH="$HOME/.config/scripts:$PATH"
-# export GTK_IM_MODULE=ibus
-# export XMODIFIERS=@im=ibus
-# export QT_IM_MODULE=ibus
-# export XIM_PROGRAM=/urs/bin/ibus-daemon -drx
+export GTK_IM_MODULE=ibus
+export XMODIFIERS=@im=ibus
+export QT_IM_MODULE=ibus
+export XIM_PROGRAM=/urs/bin/ibus-daemon -drx
 . "/home/rex/.local/share/cargo/env"
