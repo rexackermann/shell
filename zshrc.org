@@ -66,10 +66,9 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#org-toc-update][org-toc-update]]
   - [[#feh][feh]]
   - [[#feh-1][feh]]
-  - [[#ftpplay][ftpplay]]
   - [[#play][play]]
   - [[#duplicateseachdirectoryseparatelyremove][duplicateseachdirectoryseparatelyremove]]
-  - [[#ftpplay-1][ftpplay]]
+  - [[#ftpplay][ftpplay]]
   - [[#ccr][ccr]]
   - [[#encryptdir][encryptdir]]
   - [[#pdfmerge][pdfmerge]]
@@ -3352,8 +3351,6 @@ feho() {
 
 
 
-** ftpplay
-
 ** play
 
 Play from ~/Music/songs with keyword args.
@@ -3417,151 +3414,180 @@ Circle ftp player
 #+begin_src shell
 
 ftpplay() {
-
-    if [[ "${@: -1}" == *10.16.100.244* ]] ; then
-        link="${@: -1}"
-        # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
-        links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
-
-        mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
-
-        # Generate playlist folder
-        mkdir -p ~/.config/ftpplaycircle/
-
-        echo "$links"
-        # Print the extracted MKV file links to the playlist file
-        echo "$links" > "$mpv_playlist"
-
-        # Play the playlist
-        if [[ "$1" == 'd' ]] ; then
-            cd ~/Downloads
-            xargs -a "$mpv_playlist" -L1 wget
-            # parallel --gnu -a "$mpv_playlist" wget
-        elif [[ "$1" == 'f' ]] ; then
-            mpv_flags="$2"
-        else
-            if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
-        fi
-        return 1
-    fi
-
-    if [[ $1 == "s" ]]; then
-        P_URL="http://circleftp.net/?s=${2// /+}"
-        # P_URL="http://new.circleftp.net/search%q=${2// /+}"
-        # point="$(echo "$2" | awk '{print $1}')"
-        echo "$P_URL"
-	      URL="$(curl -s "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=\"//g' | sed 's/\">//g' | sed 's/\ //g' | uniq | fzf)"
-    fi
-
-    if [[ $1 == "c" ]] || [[ $1 == "s" ]]; then
-
-        if [[ $1 == "c" ]]; then
-          link="${@: -1}"
-        elif [[ $1 == "s" ]]; then
-          link="$URL"
-        fi
-
-        echo "$link"
-
-        # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
-        links="$(echo "$link" | tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(echo "$link" |tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) )) )) )"
-
-        # links="$(echo "$link" | tr -d '"' | xargs curl )"
-
-        echo "$links"
-
-        mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
-
-        # Generate playlist folder
-        mkdir -p ~/.config/ftpplaycircle/
-
-        echo "$links"
-        # Print the extracted MKV file links to the playlist file
-        echo "$links" > "$mpv_playlist"
-
-        # Play the playlist
-        if [[ "$1" == 'd' ]] ; then
-            cd ~/Downloads
-            xargs -a "$mpv_playlist" -L1 wget
-            # parallel --gnu -a "$mpv_playlist" wget
-        elif [[ "$1" == 'f' ]] ; then
-            mpv_flags="$2"
-        else
-            if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
-        fi
-        return 1
-    fi
-
-    # Circle ftp player
-
-    # URL of the webpage to scrape
-
-
-    if [[ $1 == "sn" ]]; then
-        # P_URL="http://circleftp.net/?s=${2// /+}"
-        # P_URL="http://new.circleftp.net/search?q=${2// /+}"
-        base_URL="http://103.170.204.84/"
-        P_URL=search?q=${base_URL}${2// /+}
-        echo "$P_URL"
-        URL="$(node ~/puppeteer/test.js "$P_URL")"
-        # echo "$URL"text="$(while IFS= read -r line ; do echo "Received: $line" ; done | sed 's/></>\n</g')"
-        URL="$(echo "$URL" | sed 's/></>\n</g')"
-
-        # Replace 'input.html' with the actual HTML file you want to parse
-        # html_file="input.html"
-
-        # Extract div class and href using grep, awk, and sed
-        # div_class_list=$(echo "$IFS" | grep -o '<div[^>]*class="[^"]*"' | awk -F 'class="' '{print $2}' | awk -F '"' '{print $1}')
-        # href_list=$(echo "text" | grep -o '<a[^>]*href="[^"]*"' | awk -F 'href="' '{print $2}' | awk -F '"' '{print $1}')
-
-        # Extract div class and href using grep, awk, and sed
-        URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
-
-        # Print the extracted data
-        # echo "Div Classes:"
-        # echo "$div_class_list"
-
-        URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
-        echo "$URL"
-        URL=${base_URL}${URL}
-    elif [[ $1 == "s" ]]; then
-        P_URL="http://circleftp.net/?s=${2// /+}"
-        # P_URL="http://new.circleftp.net/search%q=${2// /+}"
-        # point="$(echo "$2" | awk '{print $1}')"
-        echo "$P_URL"
-	      URL="$(curl "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=//g' | sed 's/>//g' | sed 's/\ //g' | uniq | fzf)"
-    else
-        URL="$1"
-    fi
-
-    echo "$URL"
-
-    # Fetch the webpage content using curl
-    page_content=$(curl -s "$URL")
-    page_content=$(node ~/puppeteer/test.js "$URL")
-
-    echo "$page_content" | grep -oP '(?<=<h2 class="text-white text-bolder">).*?(?=</h2)'
-
-    # Use grep to extract all MKV file links
-    mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
-    mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
-
-    # Generate a playlist file name with path
-    # mpv_playlist=~/.config/ftpplaycircle/mpv_playlist_"$(date +%s)"
-    mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
-
-    # Generate playlist folder
-    mkdir -p ~/.config/ftpplaycircle/
-
-    # Print the extracted MKV file links to the playlist file
-    echo "$mkv_links" > "$mpv_playlist"
-
-    # Play the playlist
-    if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
-
-    # rm -rfv "$mpv_playlist"
-
+  url="$1"
+  mkdir -p ~/playlist/
+  url="$(echo "$1" | awk -F "/" '{print $1"/"$2"/"$3"/"$4"/"$5"/"$6"/"}')"
+  echo "$url"
+  name="$(unixtime)"
+  domain="$(echo "$url" | awk -F "/FILE" '{print $1}')"
+  html0="$(curl -s "$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+  echo "$html0"
+  while IFS= read -r entry0; do
+    html1="$(curl -s "$domain""$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+    echo $domain$entry0
+    html1="$(curl -s "$domain""$entry0")"
+    echo "$html1" |  sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain/"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' >> /tmp/"$name".playlist
+  done <<< "$html0"
+  mpv --playlist=/tmp/"$name".playlist
 }
+
+# ftpplay() {
+  # url="$1"
+  # domain="$(echo "$url" | awk -F "FILE" '{print $1}')"
+  # show_name=$(basename "$(dirname "$(dirname "$url")")")
+  # name="$(echo "${show_name//[ %()\[\]+-]/}" | tr '[:upper:]' '[:lower:]' | sed -e 's/20//g')"
+  # url="$(dirname "$url")"
+  # mkdir -p ~/playlist/
+  # curl -s "$url"/ | sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' > "$HOME"/playlist/"$name".playlist
+  # mpv --playlist="$HOME"/playlist/"$name".playlist
+# }
+
+# ftpplay() {
+# 
+#     if [[ "${@: -1}" == *10.16.100.244* ]] ; then
+#         link="${@: -1}"
+#         # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
+#         links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+# 
+#         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+# 
+#         # Generate playlist folder
+#         mkdir -p ~/.config/ftpplaycircle/
+# 
+#         echo "$links"
+#         # Print the extracted MKV file links to the playlist file
+#         echo "$links" > "$mpv_playlist"
+# 
+#         # Play the playlist
+#         if [[ "$1" == 'd' ]] ; then
+#             cd ~/Downloads
+#             xargs -a "$mpv_playlist" -L1 wget
+#             # parallel --gnu -a "$mpv_playlist" wget
+#         elif [[ "$1" == 'f' ]] ; then
+#             mpv_flags="$2"
+#         else
+#             if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+#         fi
+#         return 1
+#     fi
+# 
+#     if [[ $1 == "s" ]]; then
+#         P_URL="http://circleftp.net/?s=${2// /+}"
+#         # P_URL="http://new.circleftp.net/search%q=${2// /+}"
+#         # point="$(echo "$2" | awk '{print $1}')"
+#         echo "$P_URL"
+# 	      URL="$(curl -s "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=\"//g' | sed 's/\">//g' | sed 's/\ //g' | uniq | fzf)"
+#     fi
+# 
+#     if [[ $1 == "c" ]] || [[ $1 == "s" ]]; then
+# 
+#         if [[ $1 == "c" ]]; then
+#           link="${@: -1}"
+#         elif [[ $1 == "s" ]]; then
+#           link="$URL"
+#         fi
+# 
+#         echo "$link"
+# 
+#         # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
+#         links="$(echo "$link" | tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(echo "$link" |tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) )) )) )"
+# 
+#         # links="$(echo "$link" | tr -d '"' | xargs curl )"
+# 
+#         echo "$links"
+# 
+#         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+# 
+#         # Generate playlist folder
+#         mkdir -p ~/.config/ftpplaycircle/
+# 
+#         echo "$links"
+#         # Print the extracted MKV file links to the playlist file
+#         echo "$links" > "$mpv_playlist"
+# 
+#         # Play the playlist
+#         if [[ "$1" == 'd' ]] ; then
+#             cd ~/Downloads
+#             xargs -a "$mpv_playlist" -L1 wget
+#             # parallel --gnu -a "$mpv_playlist" wget
+#         elif [[ "$1" == 'f' ]] ; then
+#             mpv_flags="$2"
+#         else
+#             if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+#         fi
+#         return 1
+#     fi
+# 
+#     # Circle ftp player
+# 
+#     # URL of the webpage to scrape
+# 
+# 
+#     if [[ $1 == "sn" ]]; then
+#         # P_URL="http://circleftp.net/?s=${2// /+}"
+#         # P_URL="http://new.circleftp.net/search?q=${2// /+}"
+#         base_URL="http://103.170.204.84/"
+#         P_URL=search?q=${base_URL}${2// /+}
+#         echo "$P_URL"
+#         URL="$(node ~/puppeteer/test.js "$P_URL")"
+#         # echo "$URL"text="$(while IFS= read -r line ; do echo "Received: $line" ; done | sed 's/></>\n</g')"
+#         URL="$(echo "$URL" | sed 's/></>\n</g')"
+# 
+#         # Replace 'input.html' with the actual HTML file you want to parse
+#         # html_file="input.html"
+# 
+#         # Extract div class and href using grep, awk, and sed
+#         # div_class_list=$(echo "$IFS" | grep -o '<div[^>]*class="[^"]*"' | awk -F 'class="' '{print $2}' | awk -F '"' '{print $1}')
+#         # href_list=$(echo "text" | grep -o '<a[^>]*href="[^"]*"' | awk -F 'href="' '{print $2}' | awk -F '"' '{print $1}')
+# 
+#         # Extract div class and href using grep, awk, and sed
+#         URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
+# 
+#         # Print the extracted data
+#         # echo "Div Classes:"
+#         # echo "$div_class_list"
+# 
+#         URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
+#         echo "$URL"
+#         URL=${base_URL}${URL}
+#     elif [[ $1 == "s" ]]; then
+#         P_URL="http://circleftp.net/?s=${2// /+}"
+#         # P_URL="http://new.circleftp.net/search%q=${2// /+}"
+#         # point="$(echo "$2" | awk '{print $1}')"
+#         echo "$P_URL"
+# 	      URL="$(curl "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=//g' | sed 's/>//g' | sed 's/\ //g' | uniq | fzf)"
+#     else
+#         URL="$1"
+#     fi
+# 
+#     echo "$URL"
+# 
+#     # Fetch the webpage content using curl
+#     page_content=$(curl -s "$URL")
+#     page_content=$(node ~/puppeteer/test.js "$URL")
+# 
+#     echo "$page_content" | grep -oP '(?<=<h2 class="text-white text-bolder">).*?(?=</h2)'
+# 
+#     # Use grep to extract all MKV file links
+#     mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
+#     mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
+# 
+#     # Generate a playlist file name with path
+#     # mpv_playlist=~/.config/ftpplaycircle/mpv_playlist_"$(date +%s)"
+#     mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+# 
+#     # Generate playlist folder
+#     mkdir -p ~/.config/ftpplaycircle/
+# 
+#     # Print the extracted MKV file links to the playlist file
+#     echo "$mkv_links" > "$mpv_playlist"
+# 
+#     # Play the playlist
+#     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+# 
+#     # rm -rfv "$mpv_playlist"
+# 
+# }
 
 #+end_src
 

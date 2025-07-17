@@ -1487,78 +1487,21 @@ duplicateseachdirectoryseparatelyremove() {
   find ./ -type d -exec fdupes -Nd {} \; #removeduplicateseachdirectoryseparately
 }
 ftpplay() {
-    if [[ "${@: -1}" == *10.16.100.244* ]] ; then
-        link="${@: -1}"
-        links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
-        mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
-        mkdir -p ~/.config/ftpplaycircle/
-        echo "$links"
-        echo "$links" > "$mpv_playlist"
-        if [[ "$1" == 'd' ]] ; then
-            cd ~/Downloads
-            xargs -a "$mpv_playlist" -L1 wget
-        elif [[ "$1" == 'f' ]] ; then
-            mpv_flags="$2"
-        else
-            if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
-        fi
-        return 1
-    fi
-    if [[ $1 == "s" ]]; then
-        P_URL="http://circleftp.net/?s=${2// /+}"
-        echo "$P_URL"
-	      URL="$(curl -s "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=\"//g' | sed 's/\">//g' | sed 's/\ //g' | uniq | fzf)"
-    fi
-    if [[ $1 == "c" ]] || [[ $1 == "s" ]]; then
-        if [[ $1 == "c" ]]; then
-          link="${@: -1}"
-        elif [[ $1 == "s" ]]; then
-          link="$URL"
-        fi
-        echo "$link"
-        links="$(echo "$link" | tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(echo "$link" |tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) )) )) )"
-        echo "$links"
-        mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
-        mkdir -p ~/.config/ftpplaycircle/
-        echo "$links"
-        echo "$links" > "$mpv_playlist"
-        if [[ "$1" == 'd' ]] ; then
-            cd ~/Downloads
-            xargs -a "$mpv_playlist" -L1 wget
-        elif [[ "$1" == 'f' ]] ; then
-            mpv_flags="$2"
-        else
-            if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
-        fi
-        return 1
-    fi
-    if [[ $1 == "sn" ]]; then
-        base_URL="http://103.170.204.84/"
-        P_URL=search?q=${base_URL}${2// /+}
-        echo "$P_URL"
-        URL="$(node ~/puppeteer/test.js "$P_URL")"
-        URL="$(echo "$URL" | sed 's/></>\n</g')"
-        URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
-        URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
-        echo "$URL"
-        URL=${base_URL}${URL}
-    elif [[ $1 == "s" ]]; then
-        P_URL="http://circleftp.net/?s=${2// /+}"
-        echo "$P_URL"
-	      URL="$(curl "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=//g' | sed 's/>//g' | sed 's/\ //g' | uniq | fzf)"
-    else
-        URL="$1"
-    fi
-    echo "$URL"
-    page_content=$(curl -s "$URL")
-    page_content=$(node ~/puppeteer/test.js "$URL")
-    echo "$page_content" | grep -oP '(?<=<h2 class="text-white text-bolder">).*?(?=</h2)'
-    mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
-    mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
-    mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
-    mkdir -p ~/.config/ftpplaycircle/
-    echo "$mkv_links" > "$mpv_playlist"
-    if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+  url="$1"
+  mkdir -p ~/playlist/
+  url="$(echo "$1" | awk -F "/" '{print $1"/"$2"/"$3"/"$4"/"$5"/"$6"/"}')"
+  echo "$url"
+  name="$(unixtime)"
+  domain="$(echo "$url" | awk -F "/FILE" '{print $1}')"
+  html0="$(curl -s "$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+  echo "$html0"
+  while IFS= read -r entry0; do
+    html1="$(curl -s "$domain""$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+    echo $domain$entry0
+    html1="$(curl -s "$domain""$entry0")"
+    echo "$html1" |  sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain/"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' >> /tmp/"$name".playlist
+  done <<< "$html0"
+  mpv --playlist=/tmp/"$name".playlist
 }
 ccr() {
 local dir
@@ -2120,3 +2063,6 @@ fi
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
+autoload bashcompinit
+bashcompinit
+source "/home/rex/.local/share/bash-completion/completions/am"
