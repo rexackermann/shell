@@ -883,6 +883,7 @@ eval "$(register-python-argcomplete pipx)"
 export GTK_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
+export LIBVIRT_DEFAULT_URI='qemu:///system'
 binpath() {
   bin_path="$(type -a "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3 ; exit}')"
   echo "$bin_path"
@@ -2063,6 +2064,3 @@ fi
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
-autoload bashcompinit
-bashcompinit
-source "/home/rex/.local/share/bash-completion/completions/am"

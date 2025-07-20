@@ -2371,6 +2371,8 @@ export GTK_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
 
+export LIBVIRT_DEFAULT_URI='qemu:///system'
+
 #+end_src
 
 
