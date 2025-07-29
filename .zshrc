@@ -1709,7 +1709,7 @@ then
 fi
 if command -v batwatch &> /dev/null
 then
-     alias watch="batwatch"
+     alias watch="batwatch --color -x"
 fi
 if command -v batdiff &> /dev/null
 then
