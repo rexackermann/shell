@@ -94,6 +94,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
   - [[#bcat][bcat]]
   - [[#qr][qr]]
   - [[#head][head]]
+  - [[#epoch][epoch]]
   - [[#tail][tail]]
   - [[#sgpt][sgpt]]
    - [[#roxy][roxy]]
@@ -110,8 +111,10 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 - [[#git-auto-launch-ssh-agent][git auto launch ssh-agent]]
 - [[#glow][Glow]]
 - [[#cargo][Cargo]]
+- [[#thefuck][thefuck]]
 - [[#adb][adb]]
 - [[#termuxexec-run][Termuxexec run]]
+- [[#zsh-autocomplete-tab-fix][zsh-autocomplete tab-fix]]
 - [[#tmate-run][TMATE run]]
 - [[#strip-comments-and-blank-lines][Strip Comments and Blank Lines]]
 
@@ -279,15 +282,16 @@ plugins=(git
          npm
          web-search
          torrent
-         #timer
          themes
-         # thefuck
          taskwarrior
          systemd
          systemadmin
          zsh-lazyload
-         # chromatic-zsh
          )
+         # zsh-autocomplete
+         #timer
+         # thefuck
+         # chromatic-zsh
 
 #+end_src
 
@@ -3415,23 +3419,28 @@ Circle ftp player
 
 #+begin_src shell
 
-ftpplay() {
-  url="$1"
-  mkdir -p ~/playlist/
-  url="$(echo "$1" | awk -F "/" '{print $1"/"$2"/"$3"/"$4"/"$5"/"$6"/"}')"
-  echo "$url"
-  name="$(unixtime)"
-  domain="$(echo "$url" | awk -F "/FILE" '{print $1}')"
-  html0="$(curl -s "$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
-  echo "$html0"
-  while IFS= read -r entry0; do
-    html1="$(curl -s "$domain""$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
-    echo $domain$entry0
-    html1="$(curl -s "$domain""$entry0")"
-    echo "$html1" |  sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain/"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' >> /tmp/"$name".playlist
-  done <<< "$html0"
-  mpv --playlist=/tmp/"$name".playlist
-}
+if ! command -v ftpplay &> /dev/null
+then
+
+  ftpplay() {
+    url="$1"
+    mkdir -p ~/playlist/
+    url="$(echo "$1" | awk -F "/" '{print $1"/"$2"/"$3"/"$4"/"$5"/"$6"/"}')"
+    echo "$url"
+    name="$(unixtime)"
+    domain="$(echo "$url" | awk -F "/FILE" '{print $1}')"
+    html0="$(curl -s "$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+    echo "$html0"
+    while IFS= read -r entry0; do
+      html1="$(curl -s "$domain""$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+      echo $domain$entry0
+      html1="$(curl -s "$domain""$entry0")"
+      echo "$html1" |  sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain/"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' >> /tmp/"$name".playlist
+    done <<< "$html0"
+    mpv --playlist=/tmp/"$name".playlist
+  }
+
+fi
 
 # ftpplay() {
   # url="$1"
@@ -3802,6 +3811,7 @@ termuxexec() {
           # sed 's/my_cpu_temp/\#\ my_cpu_temp/' ~/shell/.p10k.zsh > ~/shell/.p10k.zsh
           # # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
           alias mpv="xdg-open"
+          TERM="kitty"
      else
           android=false
 
@@ -4286,6 +4296,15 @@ fi
 #+end_src
 
 
+** epoch
+
+#+begin_src shell
+
+alias epoch="date +%s"
+
+#+end_src
+
+
 ** tail
 
 #+begin_src shell
@@ -4690,6 +4709,18 @@ fi
 #+end_src
 
 
+* thefuck
+
+#+begin_src shell
+
+eval $(thefuck --alias)
+# You can use whatever you want as an alias, like for Mondays:
+eval $(thefuck --alias FUCK)
+eval $(thefuck --alias F)
+
+#+end_src
+
+
 * adb
 
 #+begin_src bash
@@ -4707,6 +4738,15 @@ termuxexec
 
 #+end_src
 
+
+* zsh-autocomplete tab-fix
+
+#+begin_src shell
+
+# bindkey              '^I' menu-select
+# bindkey "$terminfo[kcbt]" menu-select
+
+#+end_src
 
 * TMATE run
 

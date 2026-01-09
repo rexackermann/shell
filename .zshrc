@@ -42,13 +42,13 @@ plugins=(git
          npm
          web-search
          torrent
-         #timer
          themes
          taskwarrior
          systemd
          systemadmin
          zsh-lazyload
          )
+         #timer
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
@@ -1487,23 +1487,26 @@ play() {
 duplicateseachdirectoryseparatelyremove() {
   find ./ -type d -exec fdupes -Nd {} \; #removeduplicateseachdirectoryseparately
 }
-ftpplay() {
-  url="$1"
-  mkdir -p ~/playlist/
-  url="$(echo "$1" | awk -F "/" '{print $1"/"$2"/"$3"/"$4"/"$5"/"$6"/"}')"
-  echo "$url"
-  name="$(unixtime)"
-  domain="$(echo "$url" | awk -F "/FILE" '{print $1}')"
-  html0="$(curl -s "$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
-  echo "$html0"
-  while IFS= read -r entry0; do
-    html1="$(curl -s "$domain""$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
-    echo $domain$entry0
-    html1="$(curl -s "$domain""$entry0")"
-    echo "$html1" |  sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain/"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' >> /tmp/"$name".playlist
-  done <<< "$html0"
-  mpv --playlist=/tmp/"$name".playlist
-}
+if ! command -v ftpplay &> /dev/null
+then
+  ftpplay() {
+    url="$1"
+    mkdir -p ~/playlist/
+    url="$(echo "$1" | awk -F "/" '{print $1"/"$2"/"$3"/"$4"/"$5"/"$6"/"}')"
+    echo "$url"
+    name="$(unixtime)"
+    domain="$(echo "$url" | awk -F "/FILE" '{print $1}')"
+    html0="$(curl -s "$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+    echo "$html0"
+    while IFS= read -r entry0; do
+      html1="$(curl -s "$domain""$url" | grep -oP '<a href="\K[^"]+' | grep -v "https://" | grep -v "\.\.")"
+      echo $domain$entry0
+      html1="$(curl -s "$domain""$entry0")"
+      echo "$html1" |  sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain/"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' >> /tmp/"$name".playlist
+    done <<< "$html0"
+    mpv --playlist=/tmp/"$name".playlist
+  }
+fi
 ccr() {
 local dir
 dir="$(dirname "$1")"
@@ -1598,6 +1601,7 @@ termuxexec() {
           termux-wake-lock
           sshd -p 43434
           alias mpv="xdg-open"
+          TERM="kitty"
      else
           android=false
      fi
@@ -1867,6 +1871,7 @@ then
     /"$(binpath head)" "$@" | cat
     }
 fi
+alias epoch="date +%s"
 if command -v bat &> /dev/null
 then
     tail() {
@@ -2062,5 +2067,8 @@ if [ "$funcstack[1]" = "_glow" ]; then
 fi
 [ -f "$CARGO_HOME"/env ] && source "$CARGO_HOME/env"
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
+eval $(thefuck --alias)
+eval $(thefuck --alias FUCK)
+eval $(thefuck --alias F)
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
