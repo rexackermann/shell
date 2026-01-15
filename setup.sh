@@ -42,59 +42,58 @@ export ZSH_CUSTOM="$ZSH"/custom
 #      zsh
 # }
 
-user_home_dir () {
-     cd ~/ || exit
+user_home_dir() {
+  cd ~/ || exit
 
-     mv "$ZSH" "$ZSH"."$(date +%s)"
-     
-     curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash  # installs oh-my-zsh
-     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/themes/powerlevel10k
-     git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/ohmyzsh-full-autoupdate
-     git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions
-     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
-     git clone https://github.com/qoomon/zsh-lazyload "$ZSH_CUSTOM"/plugins/zsh-lazyload
+  mv "$ZSH" "$ZSH"."$(date +%s)"
 
-     mv -fv ~/.config/zsh ~/.config/zsh."$(date +%s)"
-     mv -fv ~/.zshenv ~/.zshenv."$(date +%s)"
-     mkdir -p ~/.config
-     git clone --depth 1 https://github.com/RexAckermann/shell.git ~/.config/zsh
-     cd ~/.config/zsh || exit
-     ln -s .zshenv ~/.zshenv
-     ln -s .profile ~/.profile
-     # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
-     # mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
-     # cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
-     # mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
+  curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash # installs oh-my-zsh
+  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/themes/powerlevel10k
+  git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/ohmyzsh-full-autoupdate
+  git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
+  git clone https://github.com/qoomon/zsh-lazyload "$ZSH_CUSTOM"/plugins/zsh-lazyload
+  git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git $ZSH_CUSTOM/plugins/zsh-autocomplete
 
-     echo -e "Do you want to get the history and private ? y/n "
-     read -rs -n 1 confirmation
-     
-     if [[ $confirmation == "y" ]] ; then
-          echo -e "On it !"
-          export GNUPGHOME=~/shell/.gnupg
-          # mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
-          gpg -d .zsh_history.gpg >> history
-          # mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
-          gpg -d .zsh_private.gpg >> .zshrc_private
-     else
-          echo skipped
-     fi
+  mv -fv ~/.config/zsh ~/.config/zsh."$(date +%s)"
+  mv -fv ~/.zshenv ~/.zshenv."$(date +%s)"
+  mkdir -p ~/.config
+  git clone --depth 1 https://github.com/RexAckermann/shell.git ~/.config/zsh
+  cd ~/.config/zsh || exit
+  ln -s .zshenv ~/.zshenv
+  ln -s .profile ~/.profile
+  # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
+  # mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
+  # cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
+  # mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
+
+  echo -e "Do you want to get the history and private ? y/n "
+  read -rs -n 1 confirmation
+
+  if [[ $confirmation == "y" ]]; then
+    echo -e "On it !"
+    export GNUPGHOME=~/shell/.gnupg
+    # mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
+    gpg -d .zsh_history.gpg >>history
+    # mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
+    gpg -d .zsh_private.gpg >>.zshrc_private
+  else
+    echo skipped
+  fi
 }
 
 termuxexec() {
-     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
-          echo -e "termux detected"
-          # echo "/data/data/com.termux/files/usr/bin/sshd -p 43434" >> ~/.zshrc
-          # sed 's/my_cpu_temp\ \ /\#\ my_cpu_temp\ \ /' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
-          # mv ~/shell/.p10k.tmp ~/shell/.p10k.zsh
-          # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
-     fi
+  if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
+    echo -e "termux detected"
+    # echo "/data/data/com.termux/files/usr/bin/sshd -p 43434" >> ~/.zshrc
+    # sed 's/my_cpu_temp\ \ /\#\ my_cpu_temp\ \ /' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
+    # mv ~/shell/.p10k.tmp ~/shell/.p10k.zsh
+    # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
+  fi
 }
 
 user_home_dir
 termuxexec
-
-
 
 # curdir=$(pwd)
 
@@ -124,4 +123,3 @@ termuxexec
 #      echo -e "Using name rexshell for custom homedir"
 #      custom_home_dir
 # fi
-

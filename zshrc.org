@@ -44,6 +44,7 @@ If someone else wants to use it ,you might need to change it up a bit.I mean my 
 - [[#source-zsh_private][Source zsh_private]]
 - [[#completion-1][Completion]]
   - [[#dnf][dnf]]
+  - [[#optimize-][optimize ?]]
   - [[#flatpaks][Flatpaks]]
   - [[#exa][Exa]]
   - [[#nvm][NVM]]
@@ -2267,6 +2268,15 @@ source $XDG_CONFIG_HOME/zsh/.zshrc_private
 #+begin_src shell
 
 # compdef dnf=yum
+
+#+end_src
+
+** optimize ?
+
+#+begin_src shell
+
+autoload -Uz compinit
+compinit -C
 
 #+end_src
 
@@ -4713,10 +4723,10 @@ fi
 
 #+begin_src shell
 
-eval $(thefuck --alias)
+# eval $(thefuck --alias)
 # You can use whatever you want as an alias, like for Mondays:
-eval $(thefuck --alias FUCK)
-eval $(thefuck --alias F)
+# eval $(thefuck --alias FUCK)
+# eval $(thefuck --alias F)
 
 #+end_src
 
@@ -4746,6 +4756,39 @@ termuxexec
 # bindkey              '^I' menu-select
 # bindkey "$terminfo[kcbt]" menu-select
 
+
+# Make Tab go to the menu, and Shift-Tab go backwards
+bindkey '\t' menu-complete
+bindkey "$terminfo[kcbt]" reverse-menu-complete
+
+# Enter always submits the command
+bindkey -M menuselect '^M' .accept-line
+
+bindkey -M menuselect '^[[A' .up-line-or-history
+bindkey -M menuselect '^[[B' .down-line-or-history
+bindkey -M menuselect '^[[C' .forward-char
+bindkey -M menuselect '^[[D' .backward-char
+
+# 2. Force classic Zsh behavior
+zstyle ':autocomplete:*' default-context ''  # Don't start completing on empty lines
+zstyle ':autocomplete:*' delay 0.2           # Add a slight delay before showing results
+
+bindkey -M menuselect '^M' .accept-line      # Enter executes command
+bindkey '\t' menu-complete                   # Tab cycles through
+
+
+# Load the list-colors module
+zmodload zsh/complist
+
+# Enable visual selection (highlighting) in the menu
+zstyle ':completion:*' menu select
+
+# Define the highlight style (ma = Match)
+# 7;1 makes it "Standout/Reverse video" + "Bold"
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" "ma=7;1"
+bindkey -M menuselect '^I' menu-complete
+bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
+
 #+end_src
 
 * TMATE run
@@ -4759,6 +4802,8 @@ termuxexec
 # fi
 
 #+end_src
+
+
 
 
 * Strip Comments and Blank Lines

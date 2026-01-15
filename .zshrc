@@ -850,6 +850,8 @@ export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
 setopt EXTENDED_HISTORY
 source $XDG_CONFIG_HOME/zsh/.zshrc_private
+autoload -Uz compinit
+compinit -C
 if command -v flatpak &> /dev/null
 then
 function fp() {
@@ -2067,8 +2069,21 @@ if [ "$funcstack[1]" = "_glow" ]; then
 fi
 [ -f "$CARGO_HOME"/env ] && source "$CARGO_HOME/env"
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
-eval $(thefuck --alias)
-eval $(thefuck --alias FUCK)
-eval $(thefuck --alias F)
 export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
+bindkey '\t' menu-complete
+bindkey "$terminfo[kcbt]" reverse-menu-complete
+bindkey -M menuselect '^M' .accept-line
+bindkey -M menuselect '^[[A' .up-line-or-history
+bindkey -M menuselect '^[[B' .down-line-or-history
+bindkey -M menuselect '^[[C' .forward-char
+bindkey -M menuselect '^[[D' .backward-char
+zstyle ':autocomplete:*' default-context ''  
+zstyle ':autocomplete:*' delay 0.2           
+bindkey -M menuselect '^M' .accept-line      
+bindkey '\t' menu-complete                   
+zmodload zsh/complist
+zstyle ':completion:*' menu select
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" "ma=7;1"
+bindkey -M menuselect '^I' menu-complete
+bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
