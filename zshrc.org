@@ -3920,14 +3920,14 @@ The Functions start from here :
 #+begin_src shell
 
 if command -v lvim &> /dev/null
-# then
-#      alias vi="lvim"
-#      export EDITOR="lvim"
-# elif command -v nvim &> /dev/null
 then
-     alias vi="nvim"
-     export EDITOR="nvim"
-elif command -v vim &> /dev/null
+     alias vi="lvim"
+     export EDITOR="lvim"
+elif command -v nvim &> /dev/null
+# then
+#      alias vi="nvim"
+#      export EDITOR="nvim"
+# elif command -v vim &> /dev/null
 then
      alias vi="vim"
      export EDITOR="vim"
@@ -3936,7 +3936,8 @@ else
      export EDITOR="vi"
 fi
 
-alias lvim="nvim"
+# alias lvim="nvim"
+alias nvim="lvim"
 
 #+end_src
 
@@ -4762,7 +4763,7 @@ bindkey '\t' menu-complete
 bindkey "$terminfo[kcbt]" reverse-menu-complete
 
 # Enter always submits the command
-bindkey -M menuselect '^M' .accept-line
+# bindkey -M menuselect '^M' .accept-line
 
 bindkey -M menuselect '^[[A' .up-line-or-history
 bindkey -M menuselect '^[[B' .down-line-or-history
@@ -4773,7 +4774,7 @@ bindkey -M menuselect '^[[D' .backward-char
 zstyle ':autocomplete:*' default-context ''  # Don't start completing on empty lines
 zstyle ':autocomplete:*' delay 0.2           # Add a slight delay before showing results
 
-bindkey -M menuselect '^M' .accept-line      # Enter executes command
+# bindkey -M menuselect '^M' .accept-line      # Enter executes command
 bindkey '\t' menu-complete                   # Tab cycles through
 
 

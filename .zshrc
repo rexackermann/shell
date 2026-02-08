@@ -1649,9 +1649,9 @@ else
 fi
 if command -v lvim &> /dev/null
 then
-     alias vi="nvim"
-     export EDITOR="nvim"
-elif command -v vim &> /dev/null
+     alias vi="lvim"
+     export EDITOR="lvim"
+elif command -v nvim &> /dev/null
 then
      alias vi="vim"
      export EDITOR="vim"
@@ -1659,7 +1659,7 @@ else
      alias vi="vi"
      export EDITOR="vi"
 fi
-alias lvim="nvim"
+alias nvim="lvim"
 if command -v lvim &> /dev/null
 then
      alias vim="lvim"
@@ -2073,14 +2073,12 @@ export ANDROID_HOME="$XDG_DATA_HOME"/android
 termuxexec
 bindkey '\t' menu-complete
 bindkey "$terminfo[kcbt]" reverse-menu-complete
-bindkey -M menuselect '^M' .accept-line
 bindkey -M menuselect '^[[A' .up-line-or-history
 bindkey -M menuselect '^[[B' .down-line-or-history
 bindkey -M menuselect '^[[C' .forward-char
 bindkey -M menuselect '^[[D' .backward-char
 zstyle ':autocomplete:*' default-context ''  
 zstyle ':autocomplete:*' delay 0.2           
-bindkey -M menuselect '^M' .accept-line      
 bindkey '\t' menu-complete                   
 zmodload zsh/complist
 zstyle ':completion:*' menu select
