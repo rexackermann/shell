@@ -8,6 +8,19 @@
 #+STARTUP: overview
 
 
+
+* Install
+
+#+begin_src shell :tangle no
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/rexackermann/shell/main/setup.sh)"
+#+end_src
+
+Clones this repository to =~/.config/zsh=, links =~/.zshenv=, =~/.profile= and
+=~/.p10k.zsh=, and optionally restores the encrypted history/private config
+(needs your own GPG key in =$XDG_DATA_HOME/gnupg=). Zim and Powerlevel10k install
+themselves on first start. Edit this file, then regenerate the plain files with
+=python3 tools/tangle.py --check zshrc.org .= (or =shellupgit=).
+
 * 00 · Early Zsh environment
 
 ** User ~/.zshenv
@@ -137,7 +150,7 @@ rex-shell-remote-install() {
   print -r -- "Review it first: curl -fsSL $url | less"
   read -q "REPLY?Continue? [y/N] " || { print; return 1 }
   print
-  command curl -fsSL -- "$url" | command bash
+  command bash -c "$(command curl -fsSL -- "$url")"
 }
 #+end_src
 

@@ -57,7 +57,7 @@ restore_private() {
     echo "No secret key in $gh; import yours there first (it is NOT stored in this repo). Skipping."
     return 0
   }
-  read -rp "Restore encrypted history and private config? [y/N] " -n 1 ans; echo
+  read -rp "Restore encrypted history and private config? [y/N] " -n 1 ans </dev/tty; echo
   [[ $ans == [yY] ]] || { echo skipped; return 0; }
   umask 077
   cd "$ZDOTDIR_TARGET"
