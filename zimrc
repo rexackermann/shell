@@ -1,0 +1,38 @@
+#!/usr/bin/env zsh
+# -----------------------------------------------------------------------------
+# Rex Shell 2026 — Zim module manifest
+# -----------------------------------------------------------------------------
+
+# Core Zsh behavior.
+zmodule environment
+zmodule input
+zmodule termtitle
+zmodule utility
+zmodule run-help
+zmodule smite
+
+# Productivity / shell integrations.
+zmodule git
+zmodule direnv
+zmodule exa
+zmodule fzf
+zmodule ssh
+
+# Modern prompt.
+# P10k is maintained by Zim as a regular module and installed with degit.
+zmodule romkatv/powerlevel10k --use degit
+
+# Completion stack.
+# Zim installs the completion definitions and fzf-tab source tree, but does not
+# initialize either here. This avoids the old Termux/global-compinit race and
+# lets the main .zshrc explicitly establish the order:
+#   zsh-completions → compinit → fzf-tab → Carapace → syntax/autosuggest.
+zmodule zsh-users/zsh-completions --fpath src
+zmodule Aloxaf/fzf-tab --cmd ':'
+zmodule z-shell/F-Sy-H --cmd ':'
+zmodule zsh-users/zsh-history-substring-search --cmd ':'
+zmodule zsh-users/zsh-autosuggestions --cmd ':'
+
+# No Oh My Zsh framework or global OMZ compatibility layer is loaded.
+# A few legacy OMZ features used by the old configuration are reimplemented
+# below as small standalone Zsh functions/aliases so there is no OMZ startup cost.

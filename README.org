@@ -1,1 +1,31 @@
-zshrc.org
+#+TITLE: Rex Shell 2026
+#+AUTHOR: Rex Ackermann
+
+Zsh configuration built on *Zim* and *Powerlevel10k*, written as a single Org
+file ([[file:zshrc.org][zshrc.org]]) and tangled into plain files.
+
+* Install
+#+begin_src shell
+curl -fsSL https://raw.githubusercontent.com/rexackermann/shell/main/setup.sh | bash
+#+end_src
+Review =setup.sh= first if you prefer. It clones this repo to =~/.config/zsh=,
+symlinks =~/.zshenv=, =~/.profile= and =~/.p10k.zsh=, and optionally restores
+the encrypted history/private config (needs your own GPG key in
+=$XDG_DATA_HOME/gnupg=; no key is stored here). Zim and Powerlevel10k install
+themselves on first start.
+
+* Layout
+| Path                 | Purpose                                                  |
+|----------------------+----------------------------------------------------------|
+| =zshrc.org=          | Source of truth (edit this)                              |
+| =.zshrc .zshenv .profile zimrc .p10k.zsh home.zshenv= | Generated from the org file |
+| =tools/tangle.py=    | Emacs-free tangler (=--check= runs =zsh -n=)             |
+| =bin/=               | Helper scripts (on =PATH=)                               |
+| =setup.sh=           | Installer                                                |
+| =shellupgit=         | Regenerate, verify, encrypt, commit, push                |
+| =shellupgit-all=     | =shellupgit= plus the author's other repos               |
+| =archive/=           | Previous org, installer and sync script                  |
+
+* Editing
+Edit =zshrc.org=, then run =python3 tools/tangle.py --check zshrc.org .= (or
+open it in Emacs with AUTO_TANGLE). Never commit =.gnupg/=; see =.gitignore=.

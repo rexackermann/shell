@@ -1,125 +1,86 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Rex Shell installer (Zim + Powerlevel10k). Idempotent; backs up what it replaces.
+# Usage: setup.sh [--no-private] [--dir DIR]
+set -euo pipefail
 
-export XDG_DATA_HOME=$HOME/.local/share
-export XDG_CONFIG_HOME=$HOME/.config
-export XDG_STATE_HOME=$HOME/.local/state
-export XDG_CACHE_HOME=$HOME/.cache
-export ZSH="$XDG_DATA_HOME"/oh-my-zsh
-export ZSH_CUSTOM="$ZSH"/custom
+REPO_URL=${REX_SHELL_REPO_URL:-https://github.com/rexackermann/shell.git}
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+ZDOTDIR_TARGET=$XDG_CONFIG_HOME/zsh
+DO_PRIVATE=1
+ts=$(date +%s)
 
-# custom_home_dir () {
-#      homedir=${homedir:-rexshell}
+while (($#)); do
+  case $1 in
+    --no-private) DO_PRIVATE=0 ;;
+    --dir) ZDOTDIR_TARGET=$2; shift ;;
+    -h|--help) sed -n '2,3p' "$0"; exit 0 ;;
+    *) echo "unknown option: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
 
-#      # mkdir ${curdir}/$homedir && echo -e "created ${curdir}/$homedir"
-#      # echo ${curdir}/$homedir
+need() { command -v "$1" >/dev/null 2>&1 || { echo "missing required tool: $1" >&2; exit 127; }; }
+need git; need zsh; need curl
 
-#      git clone https://github.com/RexAckermann/shell.git
+backup() { # move an existing non-symlink path aside
+  local p=$1
+  if [[ -e $p || -L $p ]]; then mv -v -- "$p" "$p.bak.$ts"; fi
+}
 
-#      mv shell ${curdir}/$homedir
-#      cd ${curdir}/$homedir
-
-#      export HOME=$(pwd)
-
-#      curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash  # installs oh-my-zsh
-#      git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-#      git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/ohmyzsh-full-autoupdate
-#      git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-#      git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-
-#      echo -e "Do you want to get the history and private ? y/n "
-#      read -s -n 1 confirmation
-
-#      if [[ $confirmation == "y" ]] ; then
-#           echo -e "On it !"
-#           export GNUPGHOME="$(pwd)"/.gnupg
-#           # mv ~/.zsh_history ~/.zsh_history.$(date +%s)
-#           gpg -d .zsh_history.gpg >> "$HOME"/.zsh_history
-#           # mv ~/.zshrc_private ~/.zshrc_private.$(date +%s)
-#           gpg -d .zshrc_private.gpg >> "$HOME"/.zshrc_private
-#      else
-#           echo ""
-#      fi
-#      zsh
-# }
-
-user_home_dir() {
-  cd ~/ || exit
-
-  mv "$ZSH" "$ZSH"."$(date +%s)"
-
-  curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash # installs oh-my-zsh
-  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"/themes/powerlevel10k
-  git clone https://github.com/Pilaton/OhMyZsh-full-autoupdate.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/ohmyzsh-full-autoupdate
-  git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions
-  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
-  git clone https://github.com/qoomon/zsh-lazyload "$ZSH_CUSTOM"/plugins/zsh-lazyload
-  git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git $ZSH_CUSTOM/plugins/zsh-autocomplete
-
-  mv -fv ~/.config/zsh ~/.config/zsh."$(date +%s)"
-  mv -fv ~/.zshenv ~/.zshenv."$(date +%s)"
-  mkdir -p ~/.config
-  git clone --depth 1 https://github.com/RexAckermann/shell.git ~/.config/zsh
-  cd ~/.config/zsh || exit
-  ln -s .zshenv ~/.zshenv
-  ln -s .profile ~/.profile
-  # mv ~/.zshrc ~/.zshrc.$(date +%s) ; ln -s ~/shell/.zshrc ~/.zshrc
-  # mv "$XDG_CONFIG_HOME"/zsh/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc."$(date +%s)"
-  # cp -s ~/shell/.zshrc "$XDG_CONFIG_HOME"/zsh/.zshrc
-  # mv ~/.p10k.zsh ~/.p10k.zsh.$(date +%s) ; ln -s ~/shell/.p10k.zsh ~/.p10k.zsh
-
-  echo -e "Do you want to get the history and private ? y/n "
-  read -rs -n 1 confirmation
-
-  if [[ $confirmation == "y" ]]; then
-    echo -e "On it !"
-    export GNUPGHOME=~/shell/.gnupg
-    # mv ~/.zsh_history ~/.zsh_history."$(date +%s)"
-    gpg -d .zsh_history.gpg >>history
-    # mv ~/.zshrc_private ~/.zshrc_private."$(date +%s)"
-    gpg -d .zsh_private.gpg >>.zshrc_private
+install_repo() {
+  mkdir -p "$XDG_CONFIG_HOME"
+  if [[ -d $ZDOTDIR_TARGET/.git ]]; then
+    echo "Updating $ZDOTDIR_TARGET"
+    git -C "$ZDOTDIR_TARGET" pull --ff-only
   else
-    echo skipped
+    backup "$ZDOTDIR_TARGET"
+    git clone --depth 1 "$REPO_URL" "$ZDOTDIR_TARGET"
   fi
+}
+
+link_files() { # link <source-in-repo> <destination>
+  local src=$ZDOTDIR_TARGET/$1 dst=$2
+  [[ -e $src ]] || { echo "skip (not in repo): $1"; return 0; }
+  if [[ -L $dst && $(readlink "$dst") == "$src" ]]; then return 0; fi
+  backup "$dst"
+  ln -s "$src" "$dst"
+  echo "linked $dst -> $src"
+}
+
+restore_private() {
+  local gh=${GNUPGHOME:-$XDG_DATA_HOME/gnupg}
+  command -v gpg >/dev/null 2>&1 || { echo "gpg not found; skipping history/private restore"; return 0; }
+  GNUPGHOME=$gh gpg --list-secret-keys >/dev/null 2>&1 || {
+    echo "No secret key in $gh; import yours there first (it is NOT stored in this repo). Skipping."
+    return 0
+  }
+  read -rp "Restore encrypted history and private config? [y/N] " -n 1 ans; echo
+  [[ $ans == [yY] ]] || { echo skipped; return 0; }
+  umask 077
+  cd "$ZDOTDIR_TARGET"
+  [[ -f history ]] && cp -- history "history.bak.$ts"
+  [[ -f .zshrc_private ]] && cp -- .zshrc_private ".zshrc_private.bak.$ts"
+  GNUPGHOME=$gh gpg -d .zsh_history.gpg >>history
+  GNUPGHOME=$gh gpg -d .zsh_private.gpg >>.zshrc_private
+  echo "restored history and .zshrc_private into $ZDOTDIR_TARGET"
 }
 
 termuxexec() {
-  if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
-    echo -e "termux detected"
-    # echo "/data/data/com.termux/files/usr/bin/sshd -p 43434" >> ~/.zshrc
-    # sed 's/my_cpu_temp\ \ /\#\ my_cpu_temp\ \ /' ~/shell/.p10k.zsh > ~/shell/.p10k.tmp
-    # mv ~/shell/.p10k.tmp ~/shell/.p10k.zsh
-    # echo "sed 's/my_cpu_temp/\#\ my_cpu_temp/' .p10k.zsh > .p10k.zsh"
+  if [[ -n ${TERMUX_VERSION:-} || ${PREFIX:-} == /data/data/com.termux/files/usr ]]; then
+    echo "termux detected (Termux handling lives in zshrc.org)"
   fi
 }
 
-user_home_dir
+install_repo
+link_files home.zshenv "$HOME/.zshenv"
+link_files .profile    "$HOME/.profile"
+link_files .p10k.zsh   "$HOME/.p10k.zsh"
+((DO_PRIVATE)) && restore_private
 termuxexec
 
-# curdir=$(pwd)
-
-# echo -e "Press y to create a custom temporary home dirrectory called rexshell here and rice that."
-# echo -e "Press n to use custom name"
-# echo -e "Press o to use your home dirrectory. Warning: It will move your configs to name.unixtime format"
-
-# read -s -n 1 permission
-
-# if [[ $permission == o ]] ; then
-#      echo -e "using user home dirrectory"
-#      echo -e "Are you sure ? y/n"
-#      read -s -n 1 response
-#      if [[ $response == y ]] ; then
-#           echo "Going Through"
-#      else
-#           echo -e "Cancelled"
-#           exit
-#      fi
-#      user_home_dir
-# elif [[ $permission == n ]] ; then
-#      echo -e "enter new name of the dirrectory"
-#      echo -e "Enter Custom Home Dir name"
-#      read homedir
-#      custom_home_dir
-# elif [[ $permission == y ]] ; then
-#      echo -e "Using name rexshell for custom homedir"
-#      custom_home_dir
-# fi
+echo
+echo "Done. Start a new zsh: Zim and Powerlevel10k install themselves on first launch."
+echo "Config source of truth: $ZDOTDIR_TARGET/zshrc.org (regenerate with tools/tangle.py)."

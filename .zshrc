@@ -1,896 +1,941 @@
 #!/usr/bin/env zsh
-export XDG_DATA_HOME=$HOME/.local/share
-export XDG_CONFIG_HOME=$HOME/.config
-export XDG_STATE_HOME=$HOME/.local/state
-export XDG_CACHE_HOME=$HOME/.cache
-export GNUPGHOME="$XDG_DATA_HOME"/gnupg
-export CARGO_HOME="$XDG_DATA_HOME"/cargo
-export GOPATH="$XDG_DATA_HOME"/go
-export GTK2_RC_FILES="$XDG_CONFIG_HOME"/gtk-2.0/gtkrc
-export XCURSOR_PATH=/usr/share/icons:$XDG_DATA_HOME/icons
-export KDEHOME="$XDG_CONFIG_HOME"/kde
-export LESSHISTFILE="$XDG_STATE_HOME"/less/history
-export ICEAUTHORITY="$XDG_CACHE_HOME"/ICEauthority
-export MPLAYER_HOME="$XDG_CONFIG_HOME"/mplayer
-export NODE_REPL_HISTORY="$XDG_DATA_HOME"/node_repl_history
-export NVM_DIR="$XDG_DATA_HOME"/nvm
-export ZSH="$XDG_DATA_HOME"/oh-my-zsh
-export PYTHONSTARTUP="/etc/python/pythonrc"
-export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
-export WINEPREFIX="$XDG_DATA_HOME"/wine
-export _Z_DATA="$XDG_DATA_HOME/z"
-export SSB_HOME="$XDG_DATA_HOME"/zoom
-[ -f "$XDG_CONFIG_HOME"/zsh/history ] && export HISTFILE="$XDG_STATE_HOME"/zsh/history || export HISTFILE="$HOME"/.zsh_history
-export ZDOTDIR="$HOME"/.config/zsh
-export LIBVA_DRIVER_NAME=iHD
-export PATH=/home/rex/.nimble/bin:$PATH
-export ZSH="$XDG_DATA_HOME/oh-my-zsh"
-zmodload zsh/zpty
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-zstyle ':autocomplete:*' min-input 2  
-#zstyle ':autocomplete:tab:*' insert-unambiguous yes
-zstyle ':autocomplete:tab:*' widget-style menu-select
-zstyle ':autocomplete:*' fzf-completion yes
-zstyle ':autocomplete:*' default-context ''
-zstyle ':autocomplete:*' widget-style complete-word
-plugins=(git
-         zsh-autosuggestions
-         zsh-syntax-highlighting
-         z
-         battery
-         sudo
-         npm
-         web-search
-         torrent
-         themes
-         taskwarrior
-         systemd
-         systemadmin
-         zsh-lazyload
-         )
-         #timer
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-ZSH_THEME="powerlevel10k/powerlevel10k"
-#OWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="> "
-#!/usr/bin/env zsh
-#
-#
-#
- function prompt_greeting() {
-    p10k segment -b 99 -f 0 -i '' -t '🥷 Did you need anything, honey ?'
- }
-'builtin' 'local' '-a' 'p10k_config_opts'
-[[ ! -o 'aliases'         ]] || p10k_config_opts+=('aliases')
-[[ ! -o 'sh_glob'         ]] || p10k_config_opts+=('sh_glob')
-[[ ! -o 'no_brace_expand' ]] || p10k_config_opts+=('no_brace_expand')
-'builtin' 'setopt' 'no_aliases' 'no_sh_glob' 'brace_expand'
-() {
-  emulate -L zsh -o extended_glob
-  unset -m '(POWERLEVEL9K_*|DEFAULT_USER)~POWERLEVEL9K_GITSTATUS_DIR'
-  autoload -Uz is-at-least && is-at-least 5.1 || return
-  typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
-    #shell_mommy
-    os_icon               
-    static_username       
-    newline               
-    dir                   
-    incognito_flag
-    nvidia_flag
-    vcs                   
-    newline               
-    greeting
-    newline
-    prompt_char           
-  )
-  typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
-    sudocheck
-    username
-    ip                      
-    public_ip               
-    newline
-    background_jobs         
-    direnv                  
-    asdf                    
-    virtualenv              
-    anaconda                
-    pyenv                   
-    goenv                   
-    nodenv                  
-    nvm                     
-    nodeenv                 
-    package                 
-    rbenv                   
-    rvm                     
-    fvm                     
-    luaenv                  
-    jenv                    
-    plenv                   
-    phpenv                  
-    scalaenv                
-    haskell_stack           
-    kubecontext             
-    terraform               
-    aws                     
-    aws_eb_env              
-    azure                   
-    gcloud                  
-    google_app_cred         
-    context                 
-    nordvpn                 
-    ranger                  
-    nnn                     
-    xplr                    
-    vim_shell               
-    midnight_commander      
-    nix_shell               
-    vpn_ip                  
-    load                    
-    ram                     
-    todo                    
-    timewarrior             
-    taskwarrior             
-    my_cpu_temp             
-    battery                 
-    newline
-    status                  
-    command_execution_time  
-    time                    
-    newline
-  )
-  typeset -g POWERLEVEL9K_MODE=nerdfont-complete
-  typeset -g POWERLEVEL9K_ICON_PADDING=moderate
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_ICON_BEFORE_CONTENT=
-  typeset -g POWERLEVEL9K_PROMPT_ADD_NEWLINE=false
-  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX='%244F╭─'
-  typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_PREFIX='%244F├─'
-  typeset -g POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX='%244F╰─'
-  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_SUFFIX='%244F─╮'
-  typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_SUFFIX='%244F─┤'
-  typeset -g POWERLEVEL9K_MULTILINE_LAST_PROMPT_SUFFIX='%244F─╯'
-  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_CHAR='─'
-  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_BACKGROUND=
-  typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_GAP_BACKGROUND=
-  if [[ $POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_CHAR != ' ' ]]; then
-    typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_FOREGROUND=244
-    typeset -g POWERLEVEL9K_EMPTY_LINE_LEFT_PROMPT_FIRST_SEGMENT_END_SYMBOL='%{%}'
-    typeset -g POWERLEVEL9K_EMPTY_LINE_RIGHT_PROMPT_FIRST_SEGMENT_START_SYMBOL='%{%}'
-  fi
-  typeset -g POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR='\uE0B5'
-  typeset -g POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR='\uE0B7'
-  typeset -g POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR='\uE0B4'
-  typeset -g POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR='\uE0B6'
-  typeset -g POWERLEVEL9K_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL='\uE0B4'
-  typeset -g POWERLEVEL9K_RIGHT_PROMPT_FIRST_SEGMENT_START_SYMBOL='\uE0B6'
-  typeset -g POWERLEVEL9K_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL='░▒▓'
-  typeset -g POWERLEVEL9K_RIGHT_PROMPT_LAST_SEGMENT_END_SYMBOL='▓▒░'
-  typeset -g POWERLEVEL9K_EMPTY_LINE_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL=
-  #################################[ os_icon: os identifier ]##################################
-  typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=232
-  typeset -g POWERLEVEL9K_OS_ICON_BACKGROUND=green
-  ################################[ prompt_char: prompt symbol ]################################
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_BACKGROUND=
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=76
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=196
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='❮'
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIVIS_CONTENT_EXPANSION='V'
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIOWR_CONTENT_EXPANSION='▶'
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_OVERWRITE_STATE=true
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL=
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL=
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_{LEFT,RIGHT}_WHITESPACE=
-  ##################################[ dir: current directory ]##################################
-  typeset -g POWERLEVEL9K_DIR_BACKGROUND=4
-  typeset -g POWERLEVEL9K_DIR_FOREGROUND=254
-  typeset -g POWERLEVEL9K_SHORTEN_STRATEGY=truncate_to_unique
-  typeset -g POWERLEVEL9K_SHORTEN_DELIMITER=
-  typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND=250
-  typeset -g POWERLEVEL9K_DIR_ANCHOR_FOREGROUND=255
-  typeset -g POWERLEVEL9K_DIR_ANCHOR_BOLD=true
-  local anchor_files=(
-    .bzr
-    .citc
-    .git
-    .hg
-    .node-version
-    .python-version
-    .go-version
-    .ruby-version
-    .lua-version
-    .java-version
-    .perl-version
-    .php-version
-    .tool-version
-    .shorten_folder_marker
-    .svn
-    .terraform
-    CVS
-    Cargo.toml
-    composer.json
-    go.mod
-    package.json
-    stack.yaml
-  )
-  typeset -g POWERLEVEL9K_SHORTEN_FOLDER_MARKER="(${(j:|:)anchor_files})"
-  #
-  typeset -g POWERLEVEL9K_DIR_TRUNCATE_BEFORE_MARKER=false
-  typeset -g POWERLEVEL9K_SHORTEN_DIR_LENGTH=1
-  typeset -g POWERLEVEL9K_DIR_MAX_LENGTH=80
-  typeset -g POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS=40
-  typeset -g POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS_PCT=50
-  typeset -g POWERLEVEL9K_DIR_HYPERLINK=false
-  typeset -g POWERLEVEL9K_DIR_SHOW_WRITABLE=v3
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #####################################[ vcs: git status ]######################################
-  typeset -g POWERLEVEL9K_VCS_CLEAN_BACKGROUND=2
-  typeset -g POWERLEVEL9K_VCS_MODIFIED_BACKGROUND=3
-  typeset -g POWERLEVEL9K_VCS_UNTRACKED_BACKGROUND=2
-  typeset -g POWERLEVEL9K_VCS_CONFLICTED_BACKGROUND=3
-  typeset -g POWERLEVEL9K_VCS_LOADING_BACKGROUND=8
-  typeset -g POWERLEVEL9K_VCS_BRANCH_ICON='\uF126 '
-  typeset -g POWERLEVEL9K_VCS_UNTRACKED_ICON='?'
-  #
-  #
-  #
-  function my_git_formatter() {
-    emulate -L zsh
-    if [[ -n $P9K_CONTENT ]]; then
-      typeset -g my_git_format=$P9K_CONTENT
-      return
-    fi
-    local       meta='%7F' 
-    local      clean='%0F' 
-    local   modified='%0F' 
-    local  untracked='%0F' 
-    local conflicted='%1F' 
-    local res
-    if [[ -n $VCS_STATUS_LOCAL_BRANCH ]]; then
-      local branch=${(V)VCS_STATUS_LOCAL_BRANCH}
-      (( $#branch > 32 )) && branch[13,-13]="…"  
-      res+="${clean}${(g::)POWERLEVEL9K_VCS_BRANCH_ICON}${branch//\%/%%}"
-    fi
-    if [[ -n $VCS_STATUS_TAG
-          && -z $VCS_STATUS_LOCAL_BRANCH  
-        ]]; then
-      local tag=${(V)VCS_STATUS_TAG}
-      (( $#tag > 32 )) && tag[13,-13]="…"  
-      res+="${meta}#${clean}${tag//\%/%%}"
-    fi
-    [[ -z $VCS_STATUS_LOCAL_BRANCH && -z $VCS_STATUS_TAG ]] &&  
-      res+="${meta}@${clean}${VCS_STATUS_COMMIT[1,8]}"
-    if [[ -n ${VCS_STATUS_REMOTE_BRANCH:#$VCS_STATUS_LOCAL_BRANCH} ]]; then
-      res+="${meta}:${clean}${(V)VCS_STATUS_REMOTE_BRANCH//\%/%%}"
-    fi
-    if [[ $VCS_STATUS_COMMIT_SUMMARY == (|*[^[:alnum:]])(wip|WIP)(|[^[:alnum:]]*) ]]; then
-      res+=" ${modified}wip"
-    fi
-    (( VCS_STATUS_COMMITS_BEHIND )) && res+=" ${clean}⇣${VCS_STATUS_COMMITS_BEHIND}"
-    (( VCS_STATUS_COMMITS_AHEAD && !VCS_STATUS_COMMITS_BEHIND )) && res+=" "
-    (( VCS_STATUS_COMMITS_AHEAD  )) && res+="${clean}⇡${VCS_STATUS_COMMITS_AHEAD}"
-    (( VCS_STATUS_PUSH_COMMITS_BEHIND )) && res+=" ${clean}⇠${VCS_STATUS_PUSH_COMMITS_BEHIND}"
-    (( VCS_STATUS_PUSH_COMMITS_AHEAD && !VCS_STATUS_PUSH_COMMITS_BEHIND )) && res+=" "
-    (( VCS_STATUS_PUSH_COMMITS_AHEAD  )) && res+="${clean}⇢${VCS_STATUS_PUSH_COMMITS_AHEAD}"
-    (( VCS_STATUS_STASHES        )) && res+=" ${clean}*${VCS_STATUS_STASHES}"
-    [[ -n $VCS_STATUS_ACTION     ]] && res+=" ${conflicted}${VCS_STATUS_ACTION}"
-    (( VCS_STATUS_NUM_CONFLICTED )) && res+=" ${conflicted}~${VCS_STATUS_NUM_CONFLICTED}"
-    (( VCS_STATUS_NUM_STAGED     )) && res+=" ${modified}+${VCS_STATUS_NUM_STAGED}"
-    (( VCS_STATUS_NUM_UNSTAGED   )) && res+=" ${modified}!${VCS_STATUS_NUM_UNSTAGED}"
-    (( VCS_STATUS_NUM_UNTRACKED  )) && res+=" ${untracked}${(g::)POWERLEVEL9K_VCS_UNTRACKED_ICON}${VCS_STATUS_NUM_UNTRACKED}"
-    (( VCS_STATUS_HAS_UNSTAGED == -1 )) && res+=" ${modified}─"
-    typeset -g my_git_format=$res
-  }
-  functions -M my_git_formatter 2>/dev/null
-  #
-  typeset -g POWERLEVEL9K_VCS_MAX_INDEX_SIZE_DIRTY=-1
-  typeset -g POWERLEVEL9K_VCS_DISABLED_WORKDIR_PATTERN='~'
-  typeset -g POWERLEVEL9K_VCS_DISABLE_GITSTATUS_FORMATTING=true
-  typeset -g POWERLEVEL9K_VCS_CONTENT_EXPANSION='${$((my_git_formatter()))+${my_git_format}}'
-  typeset -g POWERLEVEL9K_VCS_{STAGED,UNSTAGED,UNTRACKED,CONFLICTED,COMMITS_AHEAD,COMMITS_BEHIND}_MAX_NUM=-1
-  typeset -g POWERLEVEL9K_VCS_PREFIX='on '
-  typeset -g POWERLEVEL9K_VCS_BACKENDS=(git)
-  ##########################[ status: exit code of the last command ]###########################
-  typeset -g POWERLEVEL9K_STATUS_EXTENDED_STATES=true
-  typeset -g POWERLEVEL9K_STATUS_OK=true
-  typeset -g POWERLEVEL9K_STATUS_OK_VISUAL_IDENTIFIER_EXPANSION='✔'
-  typeset -g POWERLEVEL9K_STATUS_OK_FOREGROUND=2
-  typeset -g POWERLEVEL9K_STATUS_OK_BACKGROUND=0
-  typeset -g POWERLEVEL9K_STATUS_OK_PIPE=true
-  typeset -g POWERLEVEL9K_STATUS_OK_PIPE_VISUAL_IDENTIFIER_EXPANSION='✔'
-  typeset -g POWERLEVEL9K_STATUS_OK_PIPE_FOREGROUND=2
-  typeset -g POWERLEVEL9K_STATUS_OK_PIPE_BACKGROUND=0
-  typeset -g POWERLEVEL9K_STATUS_ERROR=true
-  typeset -g POWERLEVEL9K_STATUS_ERROR_VISUAL_IDENTIFIER_EXPANSION='✘'
-  typeset -g POWERLEVEL9K_STATUS_ERROR_FOREGROUND=3
-  typeset -g POWERLEVEL9K_STATUS_ERROR_BACKGROUND=1
-  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL=true
-  typeset -g POWERLEVEL9K_STATUS_VERBOSE_SIGNAME=false
-  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_VISUAL_IDENTIFIER_EXPANSION='✘'
-  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_FOREGROUND=3
-  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_BACKGROUND=1
-  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE=true
-  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE_VISUAL_IDENTIFIER_EXPANSION='✘'
-  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE_FOREGROUND=3
-  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE_BACKGROUND=1
-  ###################[ command_execution_time: duration of the last command ]###################
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND=0
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND=66
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_THRESHOLD=0
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=4
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT='d h m s'
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PREFIX='took '
-  #######################[ background_jobs: presence of background jobs ]#######################
-  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND=6
-  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_BACKGROUND=0
-  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_VERBOSE=false
-  #######################[ direnv: direnv status (https://direnv.net/) ]########################
-  typeset -g POWERLEVEL9K_DIRENV_FOREGROUND=3
-  typeset -g POWERLEVEL9K_DIRENV_BACKGROUND=0
-  ###############[ asdf: asdf version manager (https://github.com/asdf-vm/asdf) ]###############
-  typeset -g POWERLEVEL9K_ASDF_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_BACKGROUND=7
-  #
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_ASDF_SOURCES=(shell local global)
-  #
-  typeset -g POWERLEVEL9K_ASDF_PROMPT_ALWAYS_SHOW=false
-  #
-  typeset -g POWERLEVEL9K_ASDF_SHOW_SYSTEM=true
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_ASDF_SHOW_ON_UPGLOB=
-  typeset -g POWERLEVEL9K_ASDF_RUBY_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_RUBY_BACKGROUND=1
-  typeset -g POWERLEVEL9K_ASDF_PYTHON_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_PYTHON_BACKGROUND=4
-  typeset -g POWERLEVEL9K_ASDF_GOLANG_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_GOLANG_BACKGROUND=4
-  typeset -g POWERLEVEL9K_ASDF_NODEJS_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_NODEJS_BACKGROUND=2
-  typeset -g POWERLEVEL9K_ASDF_RUST_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_RUST_BACKGROUND=208
-  typeset -g POWERLEVEL9K_ASDF_DOTNET_CORE_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_DOTNET_CORE_BACKGROUND=5
-  typeset -g POWERLEVEL9K_ASDF_FLUTTER_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_FLUTTER_BACKGROUND=4
-  typeset -g POWERLEVEL9K_ASDF_LUA_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_LUA_BACKGROUND=4
-  typeset -g POWERLEVEL9K_ASDF_JAVA_FOREGROUND=1
-  typeset -g POWERLEVEL9K_ASDF_JAVA_BACKGROUND=7
-  typeset -g POWERLEVEL9K_ASDF_PERL_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_PERL_BACKGROUND=4
-  typeset -g POWERLEVEL9K_ASDF_ERLANG_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_ERLANG_BACKGROUND=1
-  typeset -g POWERLEVEL9K_ASDF_ELIXIR_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_ELIXIR_BACKGROUND=5
-  typeset -g POWERLEVEL9K_ASDF_POSTGRES_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_POSTGRES_BACKGROUND=6
-  typeset -g POWERLEVEL9K_ASDF_PHP_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_PHP_BACKGROUND=5
-  typeset -g POWERLEVEL9K_ASDF_HASKELL_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_HASKELL_BACKGROUND=3
-  typeset -g POWERLEVEL9K_ASDF_JULIA_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ASDF_JULIA_BACKGROUND=2
-  ##########[ nordvpn: nordvpn connection status, linux only (https://nordvpn.com/) ]###########
-  typeset -g POWERLEVEL9K_NORDVPN_FOREGROUND=7
-  typeset -g POWERLEVEL9K_NORDVPN_BACKGROUND=4
-  typeset -g POWERLEVEL9K_NORDVPN_{DISCONNECTED,CONNECTING,DISCONNECTING}_CONTENT_EXPANSION=
-  typeset -g POWERLEVEL9K_NORDVPN_{DISCONNECTED,CONNECTING,DISCONNECTING}_VISUAL_IDENTIFIER_EXPANSION=
-  #################[ ranger: ranger shell (https://github.com/ranger/ranger) ]##################
-  typeset -g POWERLEVEL9K_RANGER_FOREGROUND=3
-  typeset -g POWERLEVEL9K_RANGER_BACKGROUND=0
-  ######################[ nnn: nnn shell (https://github.com/jarun/nnn) ]#######################
-  typeset -g POWERLEVEL9K_NNN_FOREGROUND=0
-  typeset -g POWERLEVEL9K_NNN_BACKGROUND=6
-  ##################[ xplr: xplr shell (https://github.com/sayanarijit/xplr) ]##################
-  typeset -g POWERLEVEL9K_XPLR_FOREGROUND=0
-  typeset -g POWERLEVEL9K_XPLR_BACKGROUND=6
-  ###########################[ vim_shell: vim shell indicator (:sh) ]###########################
-  typeset -g POWERLEVEL9K_VIM_SHELL_FOREGROUND=0
-  typeset -g POWERLEVEL9K_VIM_SHELL_BACKGROUND=2
-  ######[ midnight_commander: midnight commander shell (https://midnight-commander.org/) ]######
-  typeset -g POWERLEVEL9K_MIDNIGHT_COMMANDER_FOREGROUND=3
-  typeset -g POWERLEVEL9K_MIDNIGHT_COMMANDER_BACKGROUND=0
-  #[ nix_shell: nix shell (https://nixos.org/nixos/nix-pills/developing-with-nix-shell.html) ]##
-  typeset -g POWERLEVEL9K_NIX_SHELL_FOREGROUND=0
-  typeset -g POWERLEVEL9K_NIX_SHELL_BACKGROUND=4
-  ##################################[ disk_usage: disk usage ]##################################
-  typeset -g POWERLEVEL9K_DISK_USAGE_NORMAL_FOREGROUND=3
-  typeset -g POWERLEVEL9K_DISK_USAGE_NORMAL_BACKGROUND=0
-  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_FOREGROUND=0
-  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_BACKGROUND=3
-  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_FOREGROUND=7
-  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_BACKGROUND=1
-  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_LEVEL=90
-  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_LEVEL=95
-  typeset -g POWERLEVEL9K_DISK_USAGE_ONLY_WARNING=false
-  ###########[ vi_mode: vi mode (you don't need this if you've enabled prompt_char) ]###########
-  typeset -g POWERLEVEL9K_VI_MODE_FOREGROUND=0
-  typeset -g POWERLEVEL9K_VI_COMMAND_MODE_STRING=NORMAL
-  typeset -g POWERLEVEL9K_VI_MODE_NORMAL_BACKGROUND=2
-  typeset -g POWERLEVEL9K_VI_VISUAL_MODE_STRING=VISUAL
-  typeset -g POWERLEVEL9K_VI_MODE_VISUAL_BACKGROUND=4
-  typeset -g POWERLEVEL9K_VI_OVERWRITE_MODE_STRING=OVERTYPE
-  typeset -g POWERLEVEL9K_VI_MODE_OVERWRITE_BACKGROUND=3
-  typeset -g POWERLEVEL9K_VI_INSERT_MODE_STRING=
-  typeset -g POWERLEVEL9K_VI_MODE_INSERT_FOREGROUND=8
-  ######################################[ ram: free RAM ]#######################################
-  typeset -g POWERLEVEL9K_RAM_FOREGROUND=0
-  typeset -g POWERLEVEL9K_RAM_BACKGROUND=9
-  #####################################[ swap: used swap ]######################################
-  typeset -g POWERLEVEL9K_SWAP_FOREGROUND=0
-  typeset -g POWERLEVEL9K_SWAP_BACKGROUND=3
-  ######################################[ load: CPU load ]######################################
-  typeset -g POWERLEVEL9K_LOAD_WHICH=5
-  typeset -g POWERLEVEL9K_LOAD_NORMAL_FOREGROUND=0
-  typeset -g POWERLEVEL9K_LOAD_NORMAL_BACKGROUND=2
-  typeset -g POWERLEVEL9K_LOAD_WARNING_FOREGROUND=0
-  typeset -g POWERLEVEL9K_LOAD_WARNING_BACKGROUND=3
-  typeset -g POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND=0
-  typeset -g POWERLEVEL9K_LOAD_CRITICAL_BACKGROUND=1
-  ################[ todo: todo items (https://github.com/todotxt/todo.txt-cli) ]################
-  typeset -g POWERLEVEL9K_TODO_FOREGROUND=0
-  typeset -g POWERLEVEL9K_TODO_BACKGROUND=8
-  typeset -g POWERLEVEL9K_TODO_HIDE_ZERO_TOTAL=true
-  typeset -g POWERLEVEL9K_TODO_HIDE_ZERO_FILTERED=false
-  #
-  #
-  #
-  #
-  #
-  ###########[ timewarrior: timewarrior tracking status (https://timewarrior.net/) ]############
-  typeset -g POWERLEVEL9K_TIMEWARRIOR_FOREGROUND=255
-  typeset -g POWERLEVEL9K_TIMEWARRIOR_BACKGROUND=8
-  typeset -g POWERLEVEL9K_TIMEWARRIOR_CONTENT_EXPANSION='${P9K_CONTENT:0:24}${${P9K_CONTENT:24}:+…}'
-  ##############[ taskwarrior: taskwarrior task count (https://taskwarrior.org/) ]##############
-  typeset -g POWERLEVEL9K_TASKWARRIOR_FOREGROUND=0
-  typeset -g POWERLEVEL9K_TASKWARRIOR_BACKGROUND=6
-  #
-  #
-  #
-  #
-  #
-  ##################################[ context: user@hostname ]##################################
-  typeset -g POWERLEVEL9K_CONTEXT_ROOT_FOREGROUND=1
-  typeset -g POWERLEVEL9K_CONTEXT_ROOT_BACKGROUND=0
-  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND=3
-  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_BACKGROUND=0
-  typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND=3
-  typeset -g POWERLEVEL9K_CONTEXT_BACKGROUND=0
-  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE='%n@%m'
-  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_TEMPLATE='%n@%m'
-  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE='%n@%m'
-  typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO}_{CONTENT,VISUAL_IDENTIFIER}_EXPANSION=
-  typeset -g POWERLEVEL9K_CONTEXT_PREFIX='with '
-  ###[ virtualenv: python virtual environment (https://docs.python.org/3/library/venv.html) ]###
-  typeset -g POWERLEVEL9K_VIRTUALENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_VIRTUALENV_BACKGROUND=4
-  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_PYTHON_VERSION=false
-  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_WITH_PYENV=false
-  typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
-  #####################[ anaconda: conda environment (https://conda.io/) ]######################
-  typeset -g POWERLEVEL9K_ANACONDA_FOREGROUND=0
-  typeset -g POWERLEVEL9K_ANACONDA_BACKGROUND=4
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_ANACONDA_CONTENT_EXPANSION='${${${${CONDA_PROMPT_MODIFIER#\(}% }%\)}:-${CONDA_PREFIX:t}}'
-  ################[ pyenv: python environment (https://github.com/pyenv/pyenv) ]################
-  typeset -g POWERLEVEL9K_PYENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PYENV_BACKGROUND=4
-  typeset -g POWERLEVEL9K_PYENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_PYENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_PYENV_SHOW_SYSTEM=true
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_PYENV_CONTENT_EXPANSION='${P9K_CONTENT}${${P9K_CONTENT:#$P9K_PYENV_PYTHON_VERSION(|/*)}:+ $P9K_PYENV_PYTHON_VERSION}'
-  ################[ goenv: go environment (https://github.com/syndbg/goenv) ]################
-  typeset -g POWERLEVEL9K_GOENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_GOENV_BACKGROUND=4
-  typeset -g POWERLEVEL9K_GOENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_GOENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_GOENV_SHOW_SYSTEM=true
-  ##########[ nodenv: node.js version from nodenv (https://github.com/nodenv/nodenv) ]##########
-  typeset -g POWERLEVEL9K_NODENV_FOREGROUND=2
-  typeset -g POWERLEVEL9K_NODENV_BACKGROUND=0
-  typeset -g POWERLEVEL9K_NODENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_NODENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_NODENV_SHOW_SYSTEM=true
-  ##############[ nvm: node.js version from nvm (https://github.com/nvm-sh/nvm) ]###############
-  typeset -g POWERLEVEL9K_NVM_FOREGROUND=0
-  typeset -g POWERLEVEL9K_NVM_BACKGROUND=5
-  ############[ nodeenv: node.js environment (https://github.com/ekalinin/nodeenv) ]############
-  typeset -g POWERLEVEL9K_NODEENV_FOREGROUND=2
-  typeset -g POWERLEVEL9K_NODEENV_BACKGROUND=0
-  typeset -g POWERLEVEL9K_NODEENV_SHOW_NODE_VERSION=false
-  typeset -g POWERLEVEL9K_NODEENV_{LEFT,RIGHT}_DELIMITER=
-  ##############################[ node_version: node.js version ]###############################
-  typeset -g POWERLEVEL9K_NODE_VERSION_FOREGROUND=7
-  typeset -g POWERLEVEL9K_NODE_VERSION_BACKGROUND=2
-  typeset -g POWERLEVEL9K_NODE_VERSION_PROJECT_ONLY=true
-  #######################[ go_version: go version (https://golang.org) ]########################
-  typeset -g POWERLEVEL9K_GO_VERSION_FOREGROUND=255
-  typeset -g POWERLEVEL9K_GO_VERSION_BACKGROUND=2
-  typeset -g POWERLEVEL9K_GO_VERSION_PROJECT_ONLY=true
-  #################[ rust_version: rustc version (https://www.rust-lang.org) ]##################
-  typeset -g POWERLEVEL9K_RUST_VERSION_FOREGROUND=0
-  typeset -g POWERLEVEL9K_RUST_VERSION_BACKGROUND=208
-  typeset -g POWERLEVEL9K_RUST_VERSION_PROJECT_ONLY=true
-  ###############[ dotnet_version: .NET version (https://dotnet.microsoft.com) ]################
-  typeset -g POWERLEVEL9K_DOTNET_VERSION_FOREGROUND=7
-  typeset -g POWERLEVEL9K_DOTNET_VERSION_BACKGROUND=5
-  typeset -g POWERLEVEL9K_DOTNET_VERSION_PROJECT_ONLY=true
-  #####################[ php_version: php version (https://www.php.net/) ]######################
-  typeset -g POWERLEVEL9K_PHP_VERSION_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PHP_VERSION_BACKGROUND=5
-  typeset -g POWERLEVEL9K_PHP_VERSION_PROJECT_ONLY=true
-  ##########[ laravel_version: laravel php framework version (https://laravel.com/) ]###########
-  typeset -g POWERLEVEL9K_LARAVEL_VERSION_FOREGROUND=1
-  typeset -g POWERLEVEL9K_LARAVEL_VERSION_BACKGROUND=7
-  #############[ rbenv: ruby version from rbenv (https://github.com/rbenv/rbenv) ]##############
-  typeset -g POWERLEVEL9K_RBENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_RBENV_BACKGROUND=1
-  typeset -g POWERLEVEL9K_RBENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_RBENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_RBENV_SHOW_SYSTEM=true
-  ####################[ java_version: java version (https://www.java.com/) ]####################
-  typeset -g POWERLEVEL9K_JAVA_VERSION_FOREGROUND=1
-  typeset -g POWERLEVEL9K_JAVA_VERSION_BACKGROUND=7
-  typeset -g POWERLEVEL9K_JAVA_VERSION_PROJECT_ONLY=true
-  typeset -g POWERLEVEL9K_JAVA_VERSION_FULL=false
-  ###[ package: name@version from package.json (https://docs.npmjs.com/files/package.json) ]####
-  typeset -g POWERLEVEL9K_PACKAGE_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PACKAGE_BACKGROUND=6
-  #
-  #
-  #######################[ rvm: ruby version from rvm (https://rvm.io) ]########################
-  typeset -g POWERLEVEL9K_RVM_FOREGROUND=0
-  typeset -g POWERLEVEL9K_RVM_BACKGROUND=240
-  typeset -g POWERLEVEL9K_RVM_SHOW_GEMSET=false
-  typeset -g POWERLEVEL9K_RVM_SHOW_PREFIX=false
-  ###########[ fvm: flutter version management (https://github.com/leoafarias/fvm) ]############
-  typeset -g POWERLEVEL9K_FVM_FOREGROUND=0
-  typeset -g POWERLEVEL9K_FVM_BACKGROUND=4
-  ##########[ luaenv: lua version from luaenv (https://github.com/cehoffman/luaenv) ]###########
-  typeset -g POWERLEVEL9K_LUAENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_LUAENV_BACKGROUND=4
-  typeset -g POWERLEVEL9K_LUAENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_LUAENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_LUAENV_SHOW_SYSTEM=true
-  ###############[ jenv: java version from jenv (https://github.com/jenv/jenv) ]################
-  typeset -g POWERLEVEL9K_JENV_FOREGROUND=1
-  typeset -g POWERLEVEL9K_JENV_BACKGROUND=7
-  typeset -g POWERLEVEL9K_JENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_JENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_JENV_SHOW_SYSTEM=true
-  ###########[ plenv: perl version from plenv (https://github.com/tokuhirom/plenv) ]############
-  typeset -g POWERLEVEL9K_PLENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PLENV_BACKGROUND=4
-  typeset -g POWERLEVEL9K_PLENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_PLENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_PLENV_SHOW_SYSTEM=true
-  ############[ phpenv: php version from phpenv (https://github.com/phpenv/phpenv) ]############
-  typeset -g POWERLEVEL9K_PHPENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PHPENV_BACKGROUND=5
-  typeset -g POWERLEVEL9K_PHPENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_PHPENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_PHPENV_SHOW_SYSTEM=true
-  #######[ scalaenv: scala version from scalaenv (https://github.com/scalaenv/scalaenv) ]#######
-  typeset -g POWERLEVEL9K_SCALAENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_SCALAENV_BACKGROUND=1
-  typeset -g POWERLEVEL9K_SCALAENV_SOURCES=(shell local global)
-  typeset -g POWERLEVEL9K_SCALAENV_PROMPT_ALWAYS_SHOW=false
-  typeset -g POWERLEVEL9K_SCALAENV_SHOW_SYSTEM=true
-  ##########[ haskell_stack: haskell version from stack (https://haskellstack.org/) ]###########
-  typeset -g POWERLEVEL9K_HASKELL_STACK_FOREGROUND=0
-  typeset -g POWERLEVEL9K_HASKELL_STACK_BACKGROUND=3
-  #
-  typeset -g POWERLEVEL9K_HASKELL_STACK_SOURCES=(shell local)
-  typeset -g POWERLEVEL9K_HASKELL_STACK_ALWAYS_SHOW=true
-  ################[ terraform: terraform workspace (https://www.terraform.io) ]#################
-  typeset -g POWERLEVEL9K_TERRAFORM_SHOW_DEFAULT=false
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_TERRAFORM_CLASSES=(
-      '*'         OTHER)
-  typeset -g POWERLEVEL9K_TERRAFORM_OTHER_FOREGROUND=4
-  typeset -g POWERLEVEL9K_TERRAFORM_OTHER_BACKGROUND=0
-  #############[ kubecontext: current kubernetes context (https://kubernetes.io/) ]#############
-  typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|oc|istioctl|kogito|k9s|helmfile|flux|fluxctl|stern'
-  #
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_KUBECONTEXT_CLASSES=(
-      '*'       DEFAULT)
-  typeset -g POWERLEVEL9K_KUBECONTEXT_DEFAULT_FOREGROUND=7
-  typeset -g POWERLEVEL9K_KUBECONTEXT_DEFAULT_BACKGROUND=5
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_KUBECONTEXT_DEFAULT_CONTENT_EXPANSION=
-  POWERLEVEL9K_KUBECONTEXT_DEFAULT_CONTENT_EXPANSION+='${P9K_KUBECONTEXT_CLOUD_CLUSTER:-${P9K_KUBECONTEXT_NAME}}'
-  POWERLEVEL9K_KUBECONTEXT_DEFAULT_CONTENT_EXPANSION+='${${:-/$P9K_KUBECONTEXT_NAMESPACE}:#/default}'
-  typeset -g POWERLEVEL9K_KUBECONTEXT_PREFIX='at '
-  #[ aws: aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) ]#
-  typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|awless|terraform|pulumi|terragrunt'
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_AWS_CLASSES=(
-      '*'       DEFAULT)
-  typeset -g POWERLEVEL9K_AWS_DEFAULT_FOREGROUND=7
-  typeset -g POWERLEVEL9K_AWS_DEFAULT_BACKGROUND=1
-  #
-  typeset -g POWERLEVEL9K_AWS_CONTENT_EXPANSION='${P9K_AWS_PROFILE//\%/%%}${P9K_AWS_REGION:+ ${P9K_AWS_REGION//\%/%%}}'
-  #[ aws_eb_env: aws elastic beanstalk environment (https://aws.amazon.com/elasticbeanstalk/) ]#
-  typeset -g POWERLEVEL9K_AWS_EB_ENV_FOREGROUND=2
-  typeset -g POWERLEVEL9K_AWS_EB_ENV_BACKGROUND=0
-  ##########[ azure: azure account name (https://docs.microsoft.com/en-us/cli/azure) ]##########
-  typeset -g POWERLEVEL9K_AZURE_SHOW_ON_COMMAND='az|terraform|pulumi|terragrunt'
-  typeset -g POWERLEVEL9K_AZURE_FOREGROUND=7
-  typeset -g POWERLEVEL9K_AZURE_BACKGROUND=4
-  ##########[ gcloud: google cloud account and project (https://cloud.google.com/) ]###########
-  typeset -g POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND='gcloud|gcs'
-  typeset -g POWERLEVEL9K_GCLOUD_FOREGROUND=7
-  typeset -g POWERLEVEL9K_GCLOUD_BACKGROUND=4
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_GCLOUD_PARTIAL_CONTENT_EXPANSION='${P9K_GCLOUD_PROJECT_ID//\%/%%}'
-  typeset -g POWERLEVEL9K_GCLOUD_COMPLETE_CONTENT_EXPANSION='${P9K_GCLOUD_PROJECT_NAME//\%/%%}'
-  typeset -g POWERLEVEL9K_GCLOUD_REFRESH_PROJECT_NAME_SECONDS=60
-  #[ google_app_cred: google application credentials (https://cloud.google.com/docs/authentication/production) ]#
-  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_SHOW_ON_COMMAND='terraform|pulumi|terragrunt'
-  #
-  #
-  #
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_CLASSES=(
-      '*'             DEFAULT)
-  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_DEFAULT_FOREGROUND=7
-  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_DEFAULT_BACKGROUND=4
-  #
-  #
-  #
-  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_DEFAULT_CONTENT_EXPANSION='${P9K_GOOGLE_APP_CRED_PROJECT_ID//\%/%%}'
-  ###############################[ public_ip: public IP address ]###############################
-  typeset -g POWERLEVEL9K_PUBLIC_IP_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PUBLIC_IP_BACKGROUND=5
-  ########################[ vpn_ip: virtual private network indicator ]#########################
-  typeset -g POWERLEVEL9K_VPN_IP_FOREGROUND=0
-  typeset -g POWERLEVEL9K_VPN_IP_BACKGROUND=6
-  typeset -g POWERLEVEL9K_VPN_IP_CONTENT_EXPANSION=
-  typeset -g POWERLEVEL9K_VPN_IP_INTERFACE='(gpd|wg|(.*tun)|tailscale)[0-9]*'
-  typeset -g POWERLEVEL9K_VPN_IP_SHOW_ALL=false
-  ###########[ ip: ip address and bandwidth usage for a specified network interface ]###########
-  typeset -g POWERLEVEL9K_IP_BACKGROUND=4
-  typeset -g POWERLEVEL9K_IP_FOREGROUND=0
-  #
-  #typeset -g POWERLEVEL9K_IP_CONTENT_EXPANSION='${P9K_IP_RX_RATE:+⇣$P9K_IP_RX_RATE }${P9K_IP_TX_RATE:+⇡$P9K_IP_TX_RATE }$P9K_IP_IP'
-  typeset -g POWERLEVEL9K_IP_CONTENT_EXPANSION='$P9K_IP_IP'
-  typeset -g POWERLEVEL9K_IP_INTERFACE='[ew].*'
-  typeset -g POWERLEVEL9K_IP_VISUAL_IDENTIFIER_EXPANSION='󰀑 '
-  #########################[ proxy: system-wide http/https/ftp proxy ]##########################
-  typeset -g POWERLEVEL9K_PROXY_FOREGROUND=4
-  typeset -g POWERLEVEL9K_PROXY_BACKGROUND=0
-  ################################[ battery: internal battery ]#################################
-  typeset -g POWERLEVEL9K_BATTERY_LOW_THRESHOLD=20
-  typeset -g POWERLEVEL9K_BATTERY_LOW_FOREGROUND=1
-  typeset -g POWERLEVEL9K_BATTERY_{CHARGING,CHARGED}_FOREGROUND=2
-  typeset -g POWERLEVEL9K_BATTERY_DISCONNECTED_FOREGROUND=7
-  typeset -g POWERLEVEL9K_BATTERY_STAGES='\uf58d\uf579\uf57a\uf57b\uf57c\uf57d\uf57e\uf57f\uf580\uf581\uf578'
-  typeset -g POWERLEVEL9K_BATTERY_VERBOSE=true
-  typeset -g POWERLEVEL9K_BATTERY_BACKGROUND=55
-  #####################################[ wifi: wifi speed ]#####################################
-  typeset -g POWERLEVEL9K_WIFI_FOREGROUND=0
-  typeset -g POWERLEVEL9K_WIFI_BACKGROUND=4
-  #
-  #
-  #
-  #
-  ####################################[ time: current time ]####################################
-  typeset -g POWERLEVEL9K_TIME_FOREGROUND=0
-  typeset -g POWERLEVEL9K_TIME_BACKGROUND=7
-  typeset -g POWERLEVEL9K_TIME_FORMAT='%D{%H:%M:%S}'
-  typeset -g POWERLEVEL9K_TIME_UPDATE_ON_COMMAND=false
-  typeset -g POWERLEVEL9K_TIME_PREFIX='at '
-  #
-  #function prompt_example() {
-  #}
-  function prompt_static_username() {
-    p10k segment -b 1 -f black -i '' -t 'Rex Ackermann'
-  }
-  #
-  #
-  function instant_prompt_example() {
-    prompt_example
-  }
-  typeset -g POWERLEVEL9K_EXAMPLE_FOREGROUND=0
-  typeset -g POWERLEVEL9K_EXAMPLE_BACKGROUND=red
-  #
-  typeset -g POWERLEVEL9K_TRANSIENT_PROMPT=off
-  #
-  typeset -g POWERLEVEL9K_INSTANT_PROMPT=verbose
-function prompt_incognito_flag() {
-     if [[ $incognito == "true" ]]; then
-          p10k segment -b green -f black   -t "Incognito"
-     fi
-}
-function prompt_nvidia_flag() {
-     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then
-          nvidia_available="0"
-     else 
-          nvidia_available=$((lsmod | grep -q nvidia) && echo '1' || echo '0')
-     fi
-     if [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 1 ]]; then
-          p10k segment -b green -f black   -t "nvidia"
-     elif [[ $__NV_PRIME_RENDER_OFFLOAD == "1" && $nvidia_available == 0 ]]; then
-          p10k segment -b white -f black   -t "nvidia[unavailable]"
-     fi
-}
-function prompt_shell_mommy() {
-     preexec(){
-          cmd=$1
-     }
-     precmd(){
-          if [ "$cmd" ]; then
-               lcmd=$cmd &&
-                    if (( $? != 0 )); then
-                         mommy false
-                    else
-                         mommy true
-                    fi
-               cmd=
-          else
-               mommy_did_not_run=true
-          fi
-     }
-}
-function prompt_my_cpu_temp() {
-if [[ $(uname -o) == "Android" ]]; then
-  break
-elif [[ $(uname -o) == "Msys" ]]; then
-  break
-elif [[ $(uname -o) == "GNU/Linux" ]]; then
-  integer cpu_temp="$(</sys/class/thermal/thermal_zone0/temp) / 1000"
-  if (( cpu_temp >= 80 )); then
-    p10k segment -s HOT -b yollow -f red    -t "${cpu_temp}"$'\uE339' -i $'\uF737'
-  elif (( cpu_temp >= 60 )); then
-    p10k segment -s WARM -b yollow -f green -t "${cpu_temp}"$'\uE339' -i $'\uE350'
-  fi
-else
-    break
-fi
-}
-function prompt_username() {
-    username="$(whoami)"
-    p10k segment -b black -f green -t "$(whoami)" -i $'@'
-}
-function prompt_sudocheck() {
-    if [[ $EUID -eq 0 ]]; then
-        p10k segment -b red -f black -t "sudo" -i $'@'
-    else
-        sudo -n true >> /dev/null &> /dev/null
-        if [[ $? -eq 0 ]]; then
-            p10k segment -b red -f black -t "sudo" -i $'@'
-        else
-        fi
-    fi
-}
-  typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
-  (( ! $+functions[p10k] )) || p10k reload
-}
-typeset -g POWERLEVEL9K_CONFIG_FILE=${${(%):-%x}:a}
-(( ${#p10k_config_opts} )) && setopt ${p10k_config_opts[@]}
-'builtin' 'unset' 'p10k_config_opts'
-source $ZSH/oh-my-zsh.sh
-[ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
-export PATH=$HOME/.yarn/bin:$PATH
-fpath+=${ZDOTDIR:-~}/.zsh_functions
-autoload bashcompinit
-bashcompinit
-export DENO_INSTALL="$HOME/.deno"
-export PATH="$DENO_INSTALL/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="/data/data/com.termux/files/home/.local/share/go/bin:$PATH"
-export PATH="$HOME/.emacs.d/bin:$PATH"
-export PATH="$HOME/.config/emacs/bin:$PATH"
-export PATH="$HOME/.config/.emacs/bin:$PATH"
-export PATH="$HOME/shell/bin:$PATH"
-export PATH="$HOME/.local/share/cargo/bin:$PATH"
-export PATH="$HOME/.config/bin:$PATH"
-export PATH="$GOPATH/bin:$PATH"
-export PATH="$HOME/.config/zsh/bin:$PATH"
-export PATH="/data/data/com.termux/files/usr/bin:$PATH"
-export PATH="/data/data/com.termux/files/home/.config/zsh/bin:$PATH"
-[ -f $XDG_CONFIG_HOME/zsh/history ] && export HISTFILE=$XDG_CONFIG_HOME/zsh/history
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+export ZDOTDIR="${ZDOTDIR:-$XDG_CONFIG_HOME/zsh}"
+
+export GNUPGHOME="$XDG_DATA_HOME/gnupg"
+export CARGO_HOME="$XDG_DATA_HOME/cargo"
+export GOPATH="$XDG_DATA_HOME/go"
+export GTK2_RC_FILES="$XDG_CONFIG_HOME/gtk-2.0/gtkrc"
+export XCURSOR_PATH="/usr/share/icons:$XDG_DATA_HOME/icons"
+export KDEHOME="$XDG_CONFIG_HOME/kde"
+export LESSHISTFILE="$XDG_STATE_HOME/less/history"
+export ICEAUTHORITY="$XDG_CACHE_HOME/ICEauthority"
+export MPLAYER_HOME="$XDG_CONFIG_HOME/mplayer"
+export NODE_REPL_HISTORY="$XDG_DATA_HOME/node_repl_history"
+export DENO_INSTALL="${DENO_INSTALL:-$HOME/.deno}"
+export NVM_DIR="$XDG_DATA_HOME/nvm"
+export PYTHONSTARTUP="${PYTHONSTARTUP:-/etc/python/pythonrc}"
+export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
+export WINEPREFIX="$XDG_DATA_HOME/wine"
+export SSB_HOME="$XDG_DATA_HOME/zoom"
+export ZO_DATA_DIR="$XDG_DATA_HOME/zoxide"
+
+export ZIM_HOME="${ZIM_HOME:-$XDG_DATA_HOME/zim}"
+export ZIM_CONFIG_FILE="${ZIM_CONFIG_FILE:-$ZDOTDIR/zimrc}"
+
+# Canonical history location: keep the original XDG config path exactly.
+export HISTFILE="$XDG_CONFIG_HOME/zsh/history"
+mkdir -p "${HISTFILE:h}"
+
 export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
 setopt EXTENDED_HISTORY
-source $XDG_CONFIG_HOME/zsh/.zshrc_private
-autoload -Uz compinit
-compinit -C
-if command -v flatpak &> /dev/null
-then
-function fp() {
-#PURPOSE: Wrapper for $(flatpak run)
-##check if flatpak is installed and accesible to $PATH
-command -v flatpak >/dev/null 2>&1 || { printf "Flatpak package was not found.\n"; exit 1; }
-##check if any flatpak packages are installed
-test "$(flatpak list --all | head -c1 | wc -c)" -eq "0" && { printf "No Flatpak packages are installed.\n"; exit 1; }
-##check if an app name was entered
-[ "$#" -eq "0" ] && { printf "%s\n\n%s\n%s\n%s" "Usage: fp [APP] [OPTION]" "INSTALLED APPS:" "$(flatpak list --all)"; exit 1; }
-##store reverse dns name for package
-app=$(flatpak list --app | cut -f2 | awk -F. -v app="$1" '(tolower($0) ~ tolower(app))')
-##check if entered app name is valid
-[ -z "$app" ] && { printf "Entered app name is invalid.\n"; exit 1; }
-##remove app name from "$@" array
-shift 1;
-##main
-flatpak run "$app" "$@"
-}
-function _fp_completion() {
-  local applications
-  applications=($(flatpak list --app | awk -F '\t' '{print $2}'))
-  _arguments '1: :("${applications[@]}")'
-}
-compdef _fp_completion fp
+setopt APPEND_HISTORY
+
+typeset -U path PATH
+path=(
+  "$HOME/.nimble/bin"
+  "$HOME/.local/bin"
+  "$HOME/.config/bin"
+  "$HOME/.config/zsh/bin"
+  "$HOME/.config/zsh/.bin"
+  "$HOME/.cargo/bin"
+  "$HOME/.config/emacs/bin"
+  "$HOME/.config/.emacs/bin"
+  "$HOME/.emacs.d/bin"
+  "$HOME/shell/bin"
+  "$GOPATH/bin"
+  "$DENO_INSTALL/bin"
+  "$HOME/.yarn/bin"
+  $path
+)
+[[ -d /home/linuxbrew/.linuxbrew/bin ]] && path=(/home/linuxbrew/.linuxbrew/bin $path)
+[[ -d /data/data/com.termux/files/usr/bin ]] && path=(/data/data/com.termux/files/usr/bin $path)
+[[ -d /data/data/com.termux/files/home/.local/share/go/bin ]] && path=(/data/data/com.termux/files/home/.local/share/go/bin $path)
+[[ -d /data/data/com.termux/files/home/.config/zsh/bin ]] && path=(/data/data/com.termux/files/home/.config/zsh/bin $path)
+export PATH
+
+fpath+=("${ZDOTDIR:-$HOME/.config/zsh}/.zsh_functions")
+
+export LIBVA_DRIVER_NAME="iHD"
+export ANDROID_HOME="$XDG_DATA_HOME/android"
+
+# Deliberately opt-in. The old auto-attach code is preserved as a reference,
+# but this configuration will not silently move an interactive shell into tmux.
+# if command -v tmux >/dev/null 2>&1 && [[ -o interactive ]] && [[ -z $TMUX ]]; then
+#   exec tmux new -AD -t main
+# fi
+
+# Keep this switchable. Set ZIM_AUTO_UPDATE=0 before sourcing to disable.
+export ZIM_AUTO_UPDATE="${ZIM_AUTO_UPDATE:-1}"
+export ZIM_AUTO_UPDATE_DAYS="${ZIM_AUTO_UPDATE_DAYS:-14}"
+export ZIM_AUTO_UPGRADE_DAYS="${ZIM_AUTO_UPGRADE_DAYS:-30}"
+
+# Zim is optional. Never download or execute a remote installer implicitly.
+# An existing installation is used when present; otherwise the rest of the
+# configuration continues with native Zsh/default-tool fallbacks.
+setopt EXTENDED_GLOB
+
+if [[ -r "$ZIM_HOME/zimfw.zsh" ]]; then
+  if [[ ! -r "$ZIM_HOME/init.zsh" || ! "$ZIM_HOME/init.zsh" -nt "$ZIM_CONFIG_FILE" ]]; then
+    source "$ZIM_HOME/zimfw.zsh" init >/dev/null 2>&1 || true
+  fi
+
+  # Repair a stale/incomplete fzf-tab checkout before it is sourced below.
+  if [[ -d "$ZIM_HOME/modules/fzf-tab" && ! -r "$ZIM_HOME/modules/fzf-tab/lib/-ftb-generate-query" ]]; then
+    source "$ZIM_HOME/zimfw.zsh" reinstall -q >/dev/null 2>&1 || true
+  fi
+
+  # Completion-sensitive modules use --cmd ':' in zimrc and are explicitly
+  # sourced later after compinit.
+  [[ -r "$ZIM_HOME/init.zsh" ]] && source "$ZIM_HOME/init.zsh"
 fi
-alias lc='exa'
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  
-eval "$(register-python-argcomplete pipx)"
-[ -s /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+# -----------------------------------------------------------------------------
+# COMPLETION FOUNDATION
+# -----------------------------------------------------------------------------
+#
+# This is intentionally explicit instead of delegating compinit to the Zim
+# completion module. Termux has historically initialized compinit early in its
+# global zsh startup; making our own order deterministic eliminates the exact
+# `compdef: command not found` failure seen in the earlier generations.
+#
+# We load completion definitions first, initialize compsys once here, then load
+# fzf-tab and the higher-level completion engines.
+zmodload zsh/complist 2>/dev/null || true
+autoload -Uz compinit
+typeset -g REX_ZCOMP_DUMP="${ZDOTDIR:-$HOME}/.zcompdump"
+
+if [[ -r "$REX_ZCOMP_DUMP" ]]; then
+  compinit -C -d "$REX_ZCOMP_DUMP" >/dev/null 2>&1 || compinit -d "$REX_ZCOMP_DUMP" >/dev/null 2>&1
+else
+  compinit -d "$REX_ZCOMP_DUMP" >/dev/null 2>&1
+fi
+
+unset REX_ZCOMP_DUMP
+
+# fzf-tab is optional. If fzf itself is absent, keep native Zsh menu-select
+# completion instead of loading a plugin whose UI backend cannot run.
+typeset -g REX_FZF_TAB_ACTIVE=0
+if (( $+commands[fzf] )); then
+  if [[ -r "$ZIM_HOME/modules/fzf-tab/fzf-tab.plugin.zsh" ]]; then
+    source "$ZIM_HOME/modules/fzf-tab/fzf-tab.plugin.zsh"
+    REX_FZF_TAB_ACTIVE=1
+  elif [[ -r "$ZIM_HOME/modules/fzf-tab/fzf-tab.zsh" ]]; then
+    source "$ZIM_HOME/modules/fzf-tab/fzf-tab.zsh"
+    REX_FZF_TAB_ACTIVE=1
+  fi
+fi
+
+# Native completion remains the fallback when fzf-tab is unavailable.
+(( REX_FZF_TAB_ACTIVE )) || bindkey '^I' complete-word 2>/dev/null || true
+
+# F-Sy-H must be loaded after fzf-tab. If it is absent, syntax highlighting is
+# simply unavailable; nothing else depends on it.
+if [[ -r "$ZIM_HOME/modules/F-Sy-H/F-Sy-H.plugin.zsh" ]]; then
+  source "$ZIM_HOME/modules/F-Sy-H/F-Sy-H.plugin.zsh"
+fi
+
+# History substring search is optional and can be loaded safely after the
+# completion UI.
+if [[ -r "$ZIM_HOME/modules/zsh-history-substring-search/zsh-history-substring-search.zsh" ]]; then
+  source "$ZIM_HOME/modules/zsh-history-substring-search/zsh-history-substring-search.zsh"
+fi
+
+# Autosuggestions come last so they wrap the final widget stack.
+if [[ -r "$ZIM_HOME/modules/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+  source "$ZIM_HOME/modules/zsh-autosuggestions/zsh-autosuggestions.zsh"
+fi
+
+# Self-maintenance is done outside the interactive startup critical path.
+autoload -Uz add-zsh-hook
+zmodload zsh/datetime
+
+_zim_auto_maintenance() {
+  emulate -L zsh
+  (( ${ZIM_AUTO_UPDATE:-1} )) || return 0
+  [[ -r "$ZIM_HOME/zimfw.zsh" ]] || return 0
+
+  local now=$EPOCHSECONDS
+  local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
+  local stamp="$state_dir/zim-maintenance"
+  local lock="$state_dir/.zim-maintenance.lock"
+  local last=0
+
+  [[ -r "$stamp" ]] && last=$(<"$stamp")
+  [[ "$last" == <-> ]] || last=0
+  (( now - last >= ZIM_AUTO_UPDATE_DAYS * 86400 )) || return 0
+
+  mkdir "$lock" 2>/dev/null || return 0
+
+  (
+    mkdir -p "$state_dir"
+    print -r -- "$now" >| "$stamp"
+
+    # Update modules in a separate Zsh process so the current shell keeps
+    # using the already-loaded static bundle safely.
+    zsh "$ZIM_HOME/zimfw.zsh" update >/dev/null 2>&1 || true
+
+    local core_stamp="$state_dir/zim-core-upgrade"
+    local core_last=0
+    [[ -r "$core_stamp" ]] && core_last=$(<"$core_stamp")
+    [[ "$core_last" == <-> ]] || core_last=0
+
+    if (( now - core_last >= ZIM_AUTO_UPGRADE_DAYS * 86400 )); then
+      zsh "$ZIM_HOME/zimfw.zsh" upgrade >/dev/null 2>&1 || true
+      print -r -- "$now" >| "$core_stamp"
+    fi
+
+    rmdir "$lock" 2>/dev/null || true
+  ) </dev/null >/dev/null 2>&1 &!
+}
+
+add-zsh-hook precmd _zim_auto_maintenance
+
+# mise — one runtime/tool manager instead of separate NVM/RVM/pyenv/asdf/etc.
+# Current mise releases also provide faster shell activation and project tooling.
+if (( $+commands[mise] )); then
+  # Keep .nvmrc compatibility without making package.json decide the Node
+  # runtime. This avoids the old ~/package.json false-positive while letting
+  # existing Node projects keep their familiar version files.
+  export MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS="${MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS:-node}"
+  export MISE_IDIOMATIC_VERSION_FILE_DISABLE_FILES="${MISE_IDIOMATIC_VERSION_FILE_DISABLE_FILES:-node:package.json}"
+  eval "$(mise activate zsh)"
+
+  # mise's own completion covers tool versions, tasks, envs, and subcommands.
+  # Generate the shell code once, then evaluate exactly that copy.
+  if (( $+functions[compdef] )); then
+    _rex_mise_completion="$(command mise completion zsh 2>/dev/null)" || _rex_mise_completion=
+    [[ -n $_rex_mise_completion ]] && eval "$_rex_mise_completion"
+    unset _rex_mise_completion
+  fi
+fi
+
+# zoxide — modern directory jumper replacing the old OMZ `z` plugin.
+# Missing zoxide never blocks the shell; fall back to a tiny `z` -> `cd` helper.
+if (( $+commands[zoxide] )); then
+  eval "$(zoxide init zsh)"
+else
+  z() {
+    emulate -L zsh
+    if (( $# )); then
+      builtin cd -- "$1"
+    else
+      builtin cd -- "$HOME"
+    fi
+  }
+fi
+
+# Kubernetes integration is strictly command-gated. The old Zim `k` module
+# initializes kubectl completion even when kubectl is not installed, which can
+# produce the distro's "Packages providing this file are ..." startup message.
+# Never run kubectl at startup unless it is actually available.
+if (( $+commands[kubectl] )); then
+  alias k='kubectl'
+  source <(kubectl completion zsh) 2>/dev/null || true
+  (( $+functions[compdef] )) && compdef k=kubectl 2>/dev/null || true
+fi
+
+# Atuin — structured searchable command history.
+if (( $+commands[atuin] )); then
+  export ATUIN_NOBIND="${ATUIN_NOBIND:-true}"
+  eval "$(atuin init zsh)"
+
+  # Never let Atuin record an `incognito` invocation (it logs from its own
+  # preexec hook, independent of zshaddhistory).
+  if (( $+functions[_atuin_preexec] )); then
+    functions[_rex_atuin_preexec_orig]=$functions[_atuin_preexec]
+    _atuin_preexec() {
+      if _rex_is_incognito_cmd "$1"; then
+        ATUIN_HISTORY_ID=
+        return 0
+      fi
+      _rex_atuin_preexec_orig "$@"
+    }
+  fi
+  bindkey '^R' atuin-search 2>/dev/null || true
+
+  # Import the existing custom Zsh history once so the new Atuin search UI
+  # starts with the history the old configuration actually used. Atuin leaves
+  # the original HISTFILE in place and continues capturing new commands.
+  typeset _atuin_marker="${XDG_STATE_HOME:-$HOME/.local/state}/atuin/rex-zsh-history-imported"
+  if [[ -s "$HISTFILE" && ! -e "$_atuin_marker" ]]; then
+    (
+      mkdir -p "${_atuin_marker:h}" &&
+      HISTFILE="$HISTFILE" command atuin import zsh >/dev/null 2>&1 &&
+      : >| "$_atuin_marker"
+    ) </dev/null >/dev/null 2>&1 &!
+  fi
+else
+  # Native fallback: keep Ctrl-R useful when Atuin is not installed.
+  bindkey '^R' history-incremental-pattern-search-backward 2>/dev/null || true
+fi
+
+# delta — syntax-aware Git pager.
+if (( $+commands[delta] )); then
+  export GIT_PAGER=delta
+  export GIT_DIFF_OPTS="${GIT_DIFF_OPTS:-}"
+  export DELTA_FEATURES="${DELTA_FEATURES:-decorations line-numbers navigate side-by-side}"
+fi
+
+# difftastic — opt-in structural comparison.
+if (( $+commands[difft] && $+commands[git] )); then
+  git-diff-structural() {
+    command git difftool --no-prompt --extcmd=difft "$@"
+  }
+elif (( $+commands[git] )); then
+  git-diff-structural() {
+    command git diff "$@"
+  }
+fi
+
+# lazygit — optional full-screen Git UI.
+if (( $+commands[lazygit] )); then
+  alias lg='lazygit'
+fi
+
+# Yazi — optional modern terminal file manager; keep existing openfzf as a
+# compatibility path and add `y`/`yy` only when yazi is actually installed.
+if (( $+commands[yazi] )); then
+  function y() {
+    local tmp cwd
+    tmp="$(mktemp -t yazi-cwd.XXXXXX)" || return 1
+    command yazi "$@" --cwd-file="$tmp"
+    if [[ -s $tmp ]]; then
+      cwd="$(<"$tmp")"
+      [[ -n $cwd && -d $cwd && $cwd != "$PWD" ]] && builtin cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+  }
+  alias yy='y'
+fi
+
+# taskwarrior-tui — richer UI for Taskwarrior, without replacing `task`.
+if (( $+commands[taskwarrior-tui] )); then
+  alias tt='taskwarrior-tui'
+elif (( $+commands[taskwarrior_tui] )); then
+  alias tt='taskwarrior_tui'
+fi
+
+# chafa — maintained terminal image renderer.  Used by `wallpaper` when
+# kitty's native image protocol isn't available.
+if (( $+commands[kitty] )); then
+  alias imgcat='kitty +kitten icat'
+elif (( $+commands[chafa] )); then
+  alias imgcat='chafa --format=symbols --colors=full'
+elif (( $+commands[tiv] )); then
+  alias imgcat='tiv'
+fi
+
+# btop — modern interactive process/system monitor; top is the default fallback.
+if (( $+commands[btop] )); then
+  alias bt='btop'
+elif (( $+commands[top] )); then
+  alias bt='top'
+fi
+
+export REX_INCOGNITO="${REX_INCOGNITO:-}"
+export REX_NVIDIA="${REX_NVIDIA:-}"
+export REX_SUDO="${REX_SUDO:-}"
+export REX_LOCAL_IP="${REX_LOCAL_IP:-}"
+export REX_PUBLIC_IP="${REX_PUBLIC_IP:-}"
+
+# Public-IP lookups are cached and refreshed in the background. The prompt
+# never blocks on a network request.
+_rex_network_context() {
+  emulate -L zsh
+
+  local state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/rex-shell"
+  local public_cache="$state_dir/public-ip"
+  local public_stamp="$state_dir/public-ip.stamp"
+  local public_lock="$state_dir/.public-ip.lock"
+  local now=${EPOCHSECONDS:-0}
+  local local_ip
+
+  mkdir -p "$state_dir" 2>/dev/null || true
+
+  if (( $+commands[ip] )); then
+    local_ip=$(command ip -4 route get 1.1.1.1 2>/dev/null |
+      sed -n 's/.* src \([0-9.]\+\).*/\1/p' | head -n1)
+  fi
+
+  if [[ -z $local_ip ]] && (( $+commands[hostname] )); then
+    local_ip=$(command hostname -I 2>/dev/null | awk '{print $1}')
+  fi
+
+  if [[ -n $local_ip ]]; then
+    REX_LOCAL_IP=$local_ip
+  else
+    REX_LOCAL_IP=
+  fi
+  export REX_LOCAL_IP
+
+  if [[ -r $public_cache ]]; then
+    REX_PUBLIC_IP=$(<$public_cache)
+  else
+    REX_PUBLIC_IP=
+  fi
+  export REX_PUBLIC_IP
+
+  local last=0
+  [[ -r $public_stamp ]] && last=$(<$public_stamp)
+  [[ $last == <-> ]] || last=0
+
+  # Refresh at most every 15 minutes, in the background.
+  if (( now - last >= 900 )) && (( $+commands[curl] )); then
+    if mkdir "$public_lock" 2>/dev/null; then
+      (
+        local public
+        public=$(command curl -4 -fsS --max-time 2 https://api.ipify.org 2>/dev/null) || public=
+        if [[ $public == <->.<->.<->.<-> ]]; then
+          print -r -- "$public" >| "$public_cache"
+        fi
+        print -r -- "$now" >| "$public_stamp"
+        rmdir "$public_lock" 2>/dev/null || true
+      ) >/dev/null 2>&1 &!
+    fi
+  fi
+}
+
+_rex_prompt_context() {
+  emulate -L zsh
+
+  [[ ${incognito:-false} == true ]] && REX_INCOGNITO=1 || REX_INCOGNITO=
+  [[ ${__NV_PRIME_RENDER_OFFLOAD:-0} == 1 ]] && REX_NVIDIA=1 || REX_NVIDIA=
+
+  if (( EUID == 0 )); then
+    REX_SUDO=root
+  elif (( $+commands[sudo] )) && sudo -n true >/dev/null 2>&1; then
+    REX_SUDO=sudo
+  else
+    REX_SUDO=
+  fi
+
+  export REX_INCOGNITO REX_NVIDIA REX_SUDO
+}
+
+autoload -Uz add-zsh-hook
+zmodload zsh/datetime 2>/dev/null || true
+add-zsh-hook precmd _rex_prompt_context
+add-zsh-hook precmd _rex_network_context
+
+# Populate IPs immediately on first shell start so the prompt shows them right
+# away (precmd only fires after the first command or prompt redraw).
+_rex_network_context
+
+# P10k is optional. Only load its configuration when the renderer itself is
+# present; otherwise retain a native prompt so the shell remains usable.
+if (( $+functions[p10k] )) && [[ -r "$HOME/.p10k.zsh" ]]; then
+  source "$HOME/.p10k.zsh"
+else
+  typeset -g PROMPT='[%n@%m] %F{117}%~%f %# '
+  typeset -g RPROMPT='%F{245}%D{%H:%M}%f'
+fi
+
+[[ -r "$XDG_CONFIG_HOME/zsh/.zshrc_private" ]] && source "$XDG_CONFIG_HOME/zsh/.zshrc_private"
+
+# -----------------------------------------------------------------------------
+# Carapace — large maintained completion catalog
+# -----------------------------------------------------------------------------
+
+export CARAPACE_BRIDGES="${CARAPACE_BRIDGES:-zsh,fish,bash}"
+
+if (( $+commands[carapace] )); then
+  # Carapace registers command-specific completers via compdef. compinit has
+  # already completed above, so this is now deliberate and safe.
+  source <(command carapace _carapace zsh 2>/dev/null)
+fi
+
+# -----------------------------------------------------------------------------
+# Adaptive `--help` fallback
+# -----------------------------------------------------------------------------
+
+_rex_help_complete() {
+  emulate -L zsh
+  setopt EXTENDED_GLOB NO_BANG_HIST
+
+  local current=${words[CURRENT]-}
+  local -a cmdline=() candidates=() seen=() parts=()
+  local first=${words[1]-} token candidate line output line_lc
+  local command_path
+  integer i section_mode=0
+
+  if [[ $first == (sudo|doas|command|exec|nice|nohup|time|env) ]]; then
+    i=1
+    while (( i < CURRENT )); do
+      token=${words[i]}
+      case $token in
+        sudo|doas|command|exec|nice|nohup|time|env|*=*) (( i++ )) ;;
+        *) break ;;
+      esac
+    done
+    first=${words[i]-}
+    (( i < CURRENT )) && cmdline=( "${words[i,CURRENT-1]}" )
+  else
+    (( CURRENT > 1 )) && cmdline=( "${words[1,CURRENT-1]}" )
+  fi
+
+  [[ -n $first && -n ${cmdline[*]} ]] || return 1
+
+  # Resolve only a real executable. Do not execute arbitrary shell functions
+  # or aliases merely to obtain help text.
+  command_path=$(whence -p -- "$first" 2>/dev/null) || return 1
+  [[ -x $command_path ]] || return 1
+
+  [[ ${cmdline[-1]-} == "$current" ]] && cmdline[-1]=()
+  ((${#cmdline[@]})) || cmdline=( "$first" )
+
+  local -a helper_env=(
+    PAGER=cat
+    GIT_PAGER=cat
+    MANPAGER=cat
+    SYSTEMD_PAGER=cat
+    LESS=FRX
+  )
+  local -a help_argv=( "$command_path" "${cmdline[2,-1]}" --help )
+
+  if (( $+commands[timeout] )); then
+    output=$(env "${helper_env[@]}" "$commands[timeout]" 1.25s "${help_argv[@]}" 2>&1) || output=
+  else
+    output=$(env "${helper_env[@]}" "${help_argv[@]}" 2>&1) || output=
+  fi
+
+  if [[ -z ${output//[[:space:]]/} ]]; then
+    help_argv[-1]='-h'
+    if (( $+commands[timeout] )); then
+      output=$(env "${helper_env[@]}" "$commands[timeout]" 1.25s "${help_argv[@]}" 2>&1) || output=
+    else
+      output=$(env "${helper_env[@]}" "${help_argv[@]}" 2>&1) || output=
+    fi
+  fi
+
+  [[ -n ${output//[[:space:]]/} ]] || return 1
+  output=${output:0:60000}
+
+  while IFS= read -r line; do
+    parts=( ${(z)line} )
+
+    for token in $parts; do
+      if [[ $token =~ '^(-{2}[A-Za-z0-9_][A-Za-z0-9_-]*|-[A-Za-z0-9])([=:].*)?$' ]]; then
+        candidate=${match[1]}
+        [[ $candidate == --help || $candidate == --version ]] && continue
+        [[ " ${seen[*]} " == *" $candidate "* ]] && continue
+        seen+=( "$candidate" )
+        candidates+=( "$candidate:$line" )
+      fi
+    done
+
+    line_lc=${line:l}
+    if [[ $line_lc == *commands:* || $line_lc == commands:* || $line_lc == *subcommands* ]]; then
+      section_mode=1
+      continue
+    fi
+
+    if (( section_mode )); then
+      if [[ -z ${line//[[:space:]]/} || $line != [[:space:]]##* ]]; then
+        section_mode=0
+      else
+        local sub=${line##[[:space:]]##}
+        sub=${sub%%[[:space:]]*}
+        if [[ $sub == [A-Za-z0-9][A-Za-z0-9._:-]## && $sub != --* && $sub != -* ]]; then
+          [[ " ${seen[*]} " == *" $sub "* ]] || {
+            seen+=( "$sub" )
+            candidates+=( "$sub:subcommand" )
+          }
+        fi
+      fi
+    fi
+  done <<< "$output"
+
+  ((${#candidates[@]})) || return 1
+  _describe "help for ${cmdline[*]}" candidates
+}
+
+zstyle ':completion:*' completer _complete _rex_help_complete _ignored
+
+# -----------------------------------------------------------------------------
+# Completion UX / fzf-tab previews
+# -----------------------------------------------------------------------------
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" 'ma=7;1'
+
+zstyle ':fzf-tab:*' fzf-bindings 'ctrl-j:down,ctrl-k:up,ctrl-h:backward-kill-word,ctrl-l:accept'
+zstyle ':fzf-tab:*' switch-group '<' '>'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always --icons --group-directories-first -- "$realpath" 2>/dev/null || command ls -la -- "$realpath" 2>/dev/null'
+zstyle ':fzf-tab:complete:-command-:*' fzf-preview 'command -v -- "$word" 2>/dev/null || true'
+zstyle ':fzf-tab:complete:*:options' fzf-preview ''
+zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview 'case "$group" in "recent commit object name") git show --color=always "$word" 2>/dev/null ;; *) git log --color=always --oneline --decorate -- "$word" 2>/dev/null ;; esac'
+zstyle ':fzf-tab:complete:git-show:*' fzf-preview 'git show --color=always "$word" 2>/dev/null'
+zstyle ':fzf-tab:complete:git-log:*' fzf-preview 'git show --color=always "$word" 2>/dev/null'
+
+completion-doctor() {
+  emulate -L zsh
+  print -r -- 'Rex Shell 2026 — completion doctor'
+  print -r -- '──────────────────────────────────────'
+  print -r -- "compinit: $(( $+functions[compinit] ? 1 : 0 ))"
+  print -r -- "compdef:  $(( $+functions[compdef] ? 1 : 0 ))"
+  if (( $+functions[enable-fzf-tab] || $+functions[disable-fzf-tab] )); then
+    print -r -- 'fzf-tab:  OK'
+  else
+    print -r -- 'fzf-tab:  unavailable'
+  fi
+  if (( $+commands[carapace] )); then
+    print -r -- "carapace: $(command carapace --version 2>/dev/null | head -n1)"
+    if command carapace --list 2>/dev/null | command grep -qE '^adb([[:space:]]|$)'; then
+      print -r -- 'adb spec: available'
+    else
+      print -r -- 'adb spec: not reported by this carapace build'
+    fi
+  else
+    print -r -- 'carapace: not installed (help fallback remains active)'
+  fi
+  print -r -- 'help fallback: active'
+}
+alias zshcompletion='completion-doctor'
+
+# compdef dnf=yum
+
+# The completion engine above owns compinit explicitly.
+
+if (( $+commands[flatpak] )); then
+  fp() {
+    emulate -L zsh
+    local query=${1-}
+    shift || true
+
+    if [[ -z $query ]]; then
+      print -r -- 'Usage: fp <application> [args...]'
+      print -r -- 'Installed applications:'
+      command flatpak list --app
+      return 2
+    fi
+
+    local app
+    app=$(command flatpak list --app --columns=application 2>/dev/null |
+          command grep -i -F -- "$query" | head -n1)
+    [[ -n $app ]] || app=$(
+      command flatpak list --app --columns=application 2>/dev/null |
+      command awk -v q="$query" 'tolower($0) ~ tolower(q) {print; exit}'
+    )
+
+    if [[ -z $app ]]; then
+      print -u2 -- "Flatpak application not found: $query"
+      return 1
+    fi
+
+    command flatpak run "$app" "$@"
+  }
+
+  _fp_completion() {
+    emulate -L zsh
+    local -a applications
+    applications=( "${(@f)$(command flatpak list --app --columns=application 2>/dev/null)}" )
+    _describe 'Flatpak applications' applications
+  }
+  (( $+functions[compdef] )) && compdef _fp_completion fp
+fi
+
+if (( $+commands[eza] )); then
+  alias lc='eza'
+elif (( $+commands[exa] )); then
+  alias lc='exa'
+fi
+
+export NVM_DIR="${NVM_DIR:-$XDG_DATA_HOME/nvm}"
+export NVM_COMPLETION=true
+
+# NVM is strictly optional. If its real entrypoint is absent, no nvm/node/npm
+# compatibility layer is created; the system or mise-managed commands remain intact.
+if [[ -r "$NVM_DIR/nvm.sh" ]]; then
+_rex_npm_aliases() {
+  (( $+commands[npm] )) || return 0
+  alias npmg='npm install --global'
+  alias npmS='npm install --save'
+  alias npmD='npm install --save-dev'
+  alias npmF='npm install --force'
+  alias npmO='npm outdated'
+  alias npmU='npm update'
+}
+
+_rex_load_nvm() {
+  emulate -L zsh
+
+  [[ -r "$NVM_DIR/nvm.sh" ]] || {
+    print -u2 "NVM is not installed at $NVM_DIR"
+    return 127
+  }
+
+  # Drop our compatibility wrapper before sourcing real NVM.
+  unfunction nvm 2>/dev/null || true
+  source "$NVM_DIR/nvm.sh"
+
+  # Some machines have no system npm, but NVM provides it after loading. Add
+  # the convenience aliases at that point rather than assuming npm exists at
+  # startup.
+  _rex_npm_aliases
+
+  # NVM ships Bash-style completion. Enable the compatibility layer only when
+  # NVM is actually requested, keeping normal startup fast and clean.
+  if [[ -r "$NVM_DIR/bash_completion" ]]; then
+    autoload -Uz +X bashcompinit
+    bashcompinit 2>/dev/null || true
+    source "$NVM_DIR/bash_completion" 2>/dev/null || true
+  fi
+
+  return 0
+}
+
+# Keep the familiar `nvm ...` command without loading NVM until it is used.
+nvm() {
+  _rex_load_nvm || return
+  nvm "$@"
+}
+
+# Autocomplete the compatibility wrapper even before real NVM has been loaded.
+# Once NVM's own completion is sourced, it can replace this lightweight stub.
+_rex_nvm_stub_complete() {
+  local -a commands
+  commands=(
+    'install:install a Node version'
+    'use:switch Node version'
+    'ls:list installed versions'
+    'list:list installed versions'
+    'current:show active version'
+    'alias:manage aliases'
+    'unalias:remove an alias'
+    'run:run a command with a Node version'
+    'exec:execute with a Node version'
+    'which:show Node binary path'
+    'cache:manage NVM cache'
+    'clear:clear NVM cache'
+    'deactivate:deactivate Node'
+    'upgrade:upgrade NVM itself'
+  )
+  _describe 'nvm command' commands
+}
+(( $+functions[compdef] )) && compdef _rex_nvm_stub_complete nvm 2>/dev/null || true
+
+# When mise exists, node/npm/npx remain mise-owned and are never shadowed by
+# NVM. Without mise, provide the same lazy compatibility for legacy systems.
+if (( ! $+commands[mise] )); then
+  node() { _rex_load_nvm || return; command node "$@" }
+  npm()  { _rex_load_nvm || return; command npm "$@" }
+  npx()  { _rex_load_nvm || return; command npx "$@" }
+fi
+
+# Common npm muscle-memory aliases are capability-gated.
+_rex_npm_aliases
+
+# NVM is still discoverable from the prompt/completion system, but it never
+# participates in runtime selection when mise is active.
+
+fi
+
+# OMZ-style sudo widget: press Esc twice to prefix the current/last command
+# with sudo. Register it as a real ZLE widget before binding it.
+__rex_sudo_replace_buffer() {
+  local old=$1 new=$2 space=${2:+ }
+  if [[ $CURSOR -le ${#old} ]]; then
+    BUFFER="${new}${space}${BUFFER#$old }"
+    CURSOR=${#new}
+  else
+    LBUFFER="${new}${space}${LBUFFER#$old }"
+  fi
+}
+
+sudo-command-line() {
+  emulate -L zsh
+  local editor=${SUDO_EDITOR:-${VISUAL:-${EDITOR:-}}}
+
+  # Empty buffer: operate on the most recent command.
+  if [[ -z $BUFFER ]]; then
+    BUFFER="$(fc -ln -1)"
+    CURSOR=${#BUFFER}
+  fi
+
+  # Preserve leading-space history semantics.
+  local whitespace=
+  if [[ ${LBUFFER:0:1} == ' ' ]]; then
+    whitespace=' '
+    LBUFFER=${LBUFFER# }
+  fi
+
+  # Check sudo -e before generic sudo so the editor form is reachable.
+  if [[ $LBUFFER == 'sudo -e '* ]]; then
+    __rex_sudo_replace_buffer 'sudo -e' ''
+  elif [[ $LBUFFER == sudo\ * ]]; then
+    __rex_sudo_replace_buffer 'sudo' ''
+  elif [[ -n $editor && ${LBUFFER%% *} == $editor ]]; then
+    __rex_sudo_replace_buffer "$editor" 'sudo -e'
+  else
+    LBUFFER="sudo $LBUFFER"
+    CURSOR=${#BUFFER}
+  fi
+
+  [[ -n $whitespace ]] && LBUFFER="$whitespace$LBUFFER"
+}
+zle -N sudo-command-line
+
+# Esc-Esc in all common keymaps.
+bindkey -M emacs $'\e\e' sudo-command-line
+bindkey -M viins $'\e\e' sudo-command-line
+bindkey -M vicmd $'\e\e' sudo-command-line
+
+# OMZ web-search replacement without carrying its framework.
+_rex_urlencode() {
+  emulate -L zsh
+  local value=$1
+  if (( $+commands[python3] )); then
+    command python3 -c 'import sys, urllib.parse; print(urllib.parse.quote_plus(sys.argv[1]))' "$value"
+  elif (( $+commands[python] )); then
+    command python -c 'import sys, urllib.parse; print(urllib.parse.quote_plus(sys.argv[1]))' "$value"
+  else
+    value=${value//%/%25}
+    value=${value// /+}
+    value=${value//\&/%26}
+    value=${value//#/%23}
+    print -r -- "$value"
+  fi
+}
+
+web_search() {
+  emulate -L zsh
+  local context=${1:-duckduckgo}
+  shift || true
+  local q url
+  q="$(_rex_urlencode "${(j: :)argv}")"
+  case $context in
+    google) url='https://www.google.com/search?q=' ;;
+    bing) url='https://www.bing.com/search?q=' ;;
+    brave) url='https://search.brave.com/search?q=' ;;
+    ddg|duckduckgo) url='https://duckduckgo.com/?q=' ;;
+    github) url='https://github.com/search?q=' ;;
+    stackoverflow) url='https://stackoverflow.com/search?q=' ;;
+    reddit) url='https://www.reddit.com/search/?q=' ;;
+    youtube) url='https://www.youtube.com/results?search_query=' ;;
+    chatgpt) url='https://chatgpt.com/?q=' ;;
+    claudeai) url='https://claude.ai/new?q=' ;;
+    grokcom) url='https://grok.com/?q=' ;;
+    ppai|perplexity) url='https://www.perplexity.ai/search/new?q=' ;;
+    scholar) url='https://scholar.google.com/scholar?q=' ;;
+    *) print -u2 "Unknown search context: $context"; return 2 ;;
+  esac
+  if (( $+commands[xdg-open] )); then
+    xdg-open "${url}${q}" >/dev/null 2>&1 &!
+  elif (( $+commands[open] )); then
+    command open "${url}${q}" >/dev/null 2>&1 &!
+  else
+    print -r -- "${url}${q}"
+  fi
+}
+
+for _engine in google bing brave ddg duckduckgo github stackoverflow reddit youtube chatgpt claudeai grokcom scholar perplexity ppai; do
+  alias "$_engine=web_search $_engine"
+done
+
+# OMZ systemd aliases: kept explicit rather than loading the entire framework.
+if (( $+commands[systemctl] )); then
+  alias sc-failed='systemctl --failed'
+  alias sc-list-units='systemctl list-units'
+  alias sc-is-active='systemctl is-active'
+  alias sc-status='systemctl status'
+  alias sc-show='systemctl show'
+  alias sc-help='systemctl help'
+  alias sc-list-unit-files='systemctl list-unit-files'
+  alias sc-is-enabled='systemctl is-enabled'
+  alias sc-list-jobs='systemctl list-jobs'
+  alias sc-show-environment='systemctl show-environment'
+  alias sc-unmask='sudo systemctl unmask'
+  alias sc-link='sudo systemctl link'
+  alias sc-load='sudo systemctl load'
+  alias sc-cancel='sudo systemctl cancel'
+  alias sc-set-environment='sudo systemctl set-environment'
+  alias sc-unset-environment='sudo systemctl unset-environment'
+  alias sc-edit='sudo systemctl edit'
+  alias sc-enable-now='sudo systemctl enable --now'
+  alias sc-disable-now='sudo systemctl disable --now'
+  alias sc-mask-now='sudo systemctl mask --now'
+  alias scu-list-units='systemctl --user list-units'
+  alias scu-status='systemctl --user status'
+fi
+
+# Taskwarrior completion is supplied by Taskwarrior itself when available.
+if (( $+commands[task] )); then
+  typeset task_share="${commands[task]:h}/../share/zsh/site-functions"
+  [[ -r "$task_share/_task" ]] && fpath=("$task_share" $fpath)
+  [[ -r "$HOME/.taskrc" && -r "$task_share/_task" ]] && fpath=("$task_share" $fpath)
+fi
+
+# Torrent plugin replacement: convert a magnet URI to a .torrent file.
+# magnet2torrent is purpose-built for this operation; webtorrent remains a
+# fallback only for clients that can retrieve metadata from a magnet.
+torrent() {
+  emulate -L zsh
+  local magnet=$1 out=${2:-}
+  [[ -n $magnet ]] || { print -u2 'usage: torrent <magnet-uri> [output.torrent]'; return 2; }
+
+  if (( $+commands[magnet2torrent] )); then
+    if [[ -n $out ]]; then
+      command magnet2torrent fetch "$magnet" >| "$out"
+    else
+      command magnet2torrent fetch "$magnet"
+    fi
+    return $?
+  fi
+
+  if (( $+commands[webtorrent] )); then
+    command webtorrent "$magnet"
+    return $?
+  fi
+
+  print -u2 'Install magnet2torrent or webtorrent for magnet URI support.'
+  print -u2 'Source: https://github.com/JohnDoee/magnet2torrent'
+  return 127
+}
+
+# Avoid stale register-python-argcomplete wrappers (their shebang may point at
+# a removed Python version). Generate pipx's Zsh completion from the live Python
+# installation through argcomplete's supported shellcode API instead.
+_rex_argcomplete_python=${commands[python3]:-${commands[python]:-}}
+if (( $+commands[pipx] )) && [[ -n $_rex_argcomplete_python ]] && [[ -x $_rex_argcomplete_python ]] &&
+   "$_rex_argcomplete_python" -c 'import argcomplete' >/dev/null 2>&1; then
+  _rex_pipx_argcomplete="$("$_rex_argcomplete_python" -c 'import argcomplete; print(argcomplete.shellcode(["pipx"], shell="zsh"))' 2>/dev/null)" || _rex_pipx_argcomplete=
+  if [[ -n $_rex_pipx_argcomplete ]] && (( $+functions[compdef] )); then
+    eval "$_rex_pipx_argcomplete"
+  fi
+  unset _rex_pipx_argcomplete
+fi
+unset _rex_argcomplete_python
+if (( $+commands[brew] )); then
+  eval "$(brew shellenv)" 2>/dev/null || true
+fi
+
 export GTK_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
 export QT_IM_MODULE=ibus
+
 export LIBVIRT_DEFAULT_URI='qemu:///system'
+
 binpath() {
-  bin_path="$(type -a "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3 ; exit}')"
-  echo "$bin_path"
+  emulate -L zsh
+  local path
+  path=$(whence -p -- "$1" 2>/dev/null) || return 1
+  [[ -n $path ]] || return 1
+  print -r -- "$path"
 }
+
 load_colors() {
+     # Regular Colors=
+
+
       export FG_R_Black="\e[0;30m"
       export FG_R_Red="\e[0;31m"
       export FG_R_Green="\e[0;32m"
@@ -899,6 +944,10 @@ load_colors() {
       export FG_R_Purple="\e[0;35m"
       export FG_R_Cyan="\e[0;36m"
       export FG_R_White="\e[0;37m"
+
+     # Bold=
+
+
       export FG_B_Black="\e[1;30m"
       export FG_B_Red="\e[1;31m"
       export FG_B_Green="\e[1;32m"
@@ -907,6 +956,10 @@ load_colors() {
       export FG_B_Purple="\e[1;35m"
       export FG_B_Cyan="\e[1;36m"
       export FG_B_White="\e[1;37m"
+
+     # Underline=
+
+
       export FG_U_Black="\e[4;30m"
       export FG_U_Red="\e[4;31m"
       export FG_U_Green="\e[4;32m"
@@ -915,6 +968,10 @@ load_colors() {
       export FG_U_Purple="\e[4;35m"
       export FG_U_Cyan="\e[4;36m"
       export FG_U_White="\e[4;37m"
+
+     # Background=
+
+
       export BG_R_Black="\e[40m"
       export BG_R_Red="\e[41m"
       export BG_R_Green="\e[42m"
@@ -923,6 +980,10 @@ load_colors() {
       export BG_R_Purple="\e[45m"
       export BG_R_Cyan="\e[46m"
       export BG_R_White="\e[47m"
+
+     # High Intensty=
+
+
       export FG_HI_Black="\e[0;90m"
       export FG_HI_Red="\e[0;91m"
       export FG_HI_Green="\e[0;92m"
@@ -931,6 +992,10 @@ load_colors() {
       export FG_HI_Purple="\e[0;95m"
       export FG_HI_Cyan="\e[0;96m"
       export FG_HI_White="\e[0;97m"
+
+     # Bold High Intensty=
+
+
       export FG_BHI_Black="\e[1;90m"
       export FG_BHI_Red="\e[1;91m"
       export FG_BHI_Green="\e[1;92m"
@@ -939,6 +1004,10 @@ load_colors() {
       export FG_BHI_Purple="\e[1;95m"
       export FG_BHI_Cyan="\e[1;96m"
       export FG_BHI_White="\e[1;97m"
+
+     # High Intensty backgrounds=
+
+
       export BG_HI_Black="\e[0;100m"
       export BG_HI_Red="\e[0;101m"
       export BG_HI_Green="\e[0;102m"
@@ -947,389 +1016,451 @@ load_colors() {
       export BG_HI_Purple="\e[0;105m"
       export BG_HI_Cyan="\e[0;106m"
       export BG_HI_White="\e[0;107m"
+
+     # Reset=
+
+
+  export ClearColor=$'\e[0m'
 }
 load_colors
-init() {
-     while getopts hie:l:s:f: option; do
-          case "$option" in
-               h)
-                    echo -e ""
-                    echo -e "${FG_R_White}${BG_R_Black}This is${ClearColor} ${FG_B_Black}${BG_R_Red}Command${BG_R_Green}Scrach${BG_R_White}Pad${ClearColor} ${FG_B_White}${BG_R_Black}or${ClearColor} ${FG_B_Black}${BG_R_Red}c${BG_R_Green}s${BG_R_White}p${ClearColor}\n"
-                    echo -e "${FG_B_Cyan}${BG_R_Black}This script lets you create a script and execute it on the fly.\n"
-                    echo -e "${FG_R_Green}-f${ClearColor}  ${FG_R_White}file/script/path${ClearColor}"
-                    echo -e "${FG_R_Green}-s${ClearColor}  ${FG_R_White}script_in_your_path${ClearColor}"
-                    echo -e "${FG_R_Green}-i${ClearColor}  ${FG_R_White}edit dirrectly \(use with -f or -s\)"
-                    echo -e ""
-                    ;;
-               s)
-                    loc=$OPTARG
-                    s=true
-                    ;;
-               f)
-                    loc=$OPTARG
-                    f=true
-                    ;;
-               i)
-                    i=true
-                    ;;
-               e)
-                    "$EDITOR" "$(which "$OPTARG" | head -n 1)"
-                    exit
-                    ;;
-               l)
-                    hisline=$OPTARG
-                    ;;
-               *)
-                    exit
-                    ;;
-          esac
-     done
-     parsed_options=$(
-       getopt -n "$0" -o hislRef -- "$@"
-     ) || exit
-     eval "set -- $parsed_options"
-     while [ "$#" -gt 0 ]; do
-       case $1 in
-         (-[Rsielf]) shift;;
-         (-t) shift 2;;
-         (--) shift; break;;
-         (*) exit 1
-       esac
-     done
+
+# Command ScratchPad
+# Usage examples:
+#   c echo hello
+#   c -f script.sh
+#   c -s myscript
+#   printf 'echo hello\n' | c
+_csp_init() {
+  emulate -L zsh
+  typeset -g CSP_SOURCE_MODE=
+  typeset -g CSP_SOURCE_PATH=
+  typeset -g CSP_EDIT_MODE=0
+  typeset -g CSP_HISTORY_LINES=10
+  typeset -ga CSP_COMMANDS
+  typeset -g CSP_OPEN_ONLY=0
+
+  local OPTIND=1 opt
+  while getopts ':hie:l:s:f:' opt; do
+    case $opt in
+      h)
+        print -r -- 'Command ScratchPad'
+        print -r -- '  c [options] [command ...]'
+        print -r -- '  -s PATH   copy a command from PATH'
+        print -r -- '  -f FILE   copy a script FILE'
+        print -r -- '  -i        edit the generated script directly'
+        print -r -- '  -l N      include the last N history lines as comments'
+        print -r -- '  -e CMD    open CMD in the editor'
+        return 10
+        ;;
+      i) CSP_EDIT_MODE=1 ;;
+      l) CSP_HISTORY_LINES=${OPTARG:-10} ;;
+      s) CSP_SOURCE_MODE=s; CSP_SOURCE_PATH=$OPTARG ;;
+      f) CSP_SOURCE_MODE=f; CSP_SOURCE_PATH=$OPTARG ;;
+      e)
+        local target
+        target=$(whence -p -- "$OPTARG" 2>/dev/null) || {
+          print -u2 -- "c: command not found: $OPTARG"
+          return 127
+        }
+        "$REX_EDITOR" "$target"
+        CSP_OPEN_ONLY=1
+        return 11
+        ;;
+      :)
+        print -u2 -- "c: option -$OPTARG requires an argument"
+        return 2
+        ;;
+      \?)
+        print -u2 -- "c: unknown option -$OPTARG"
+        return 2
+        ;;
+    esac
+  done
+  shift $(( OPTIND - 1 ))
+  CSP_COMMANDS=( "$@" )
+  return 0
 }
-addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
-getnamedir () {
-     if [[ $getnamedirpass == true ]] ; then
-          echo working
-          echo ""
-     else
-          t=$(date +%s)
-          cdr=$(pwd)
-     fi
+
+_csp_script_has_code() {
+  local file=$1
+  [[ -s $file ]] || return 1
+  command grep -Eq '^[[:space:]]*[^#[:space:]]' -- "$file"
 }
-inject () {
-     echo "#!/usr/bin/env bash" > c"$t".c.sh &&
-     echo "$pipe" >> c"$t".c.sh &&
-     echo "" >> c"$t".c.sh &&
-     tail -n "${hisline:-10}" "$HISTFILE" | sed 's/:.*;/#c /' >> c"$t".c.sh &&
-     echo "" >> c"$t".c.sh &&
-     echo '#c Tip: To get a increamental sequence in numbers select with Ctrl-v and g-v-g and then Ctrl-a' >> c"$t".c.sh &&
-     echo "" >> c"$t".c.sh &&
-     echo -e "$comm" >> c"$t".c.sh
-}
-makekscript () {
-     ${EDITOR:-vi} ./c"$t".c.sh &&
-     scripttxt="$(echo "$cdr"/c"$t".c.sh | grep "^[^#]" | grep -v "^$")"
-     if [[ $scripttxt == "" ]] ; then
-          echo "Nothing to Execute" && rm "$cdr"/c"$t".c.sh && exit
-     fi
-     echo Executuing: &&
-     tput setaf 198
-     command -v bat >/dev/null && bat -P c"$t".c.sh || cat .c.sh &&
-     tput setaf 7
-     chmod +x c"$t".c.sh
-     mkdir -p ~/c
-}
-ifpiped () {
-     echo "Data was piped to this script!"
-     echo -e "#\ Warning : Piping is being used.Therefore, script will execute on save and exit.If you do not want it executing do not save just quit." >> c"$t".c.sh &&
-     echo -e "" >> c"$t".c.sh
-     while IFS= read  pipe; do
-          echo "${pipe}" >> c"$t".c.sh
-     done
-}
-askc () {
-     echo -e "${ClearColor}Do you want to                                    ${FG_B_Black}${BG_R_Green}Execute${ClearColor} it ?  Press ${FG_B_Black}${BG_R_Green}y${ClearColor}"
-     echo -e "${ClearColor}Do you want to                                    ${FG_B_Black}${BG_R_Red}Discard${ClearColor} it ?  Press ${FG_B_Black}${BG_R_Red}n${ClearColor} or ${FG_B_Black}${BG_R_Red}d${ClearColor}"
-     echo -e "${ClearColor}Or perhaps you want to save the script with a     ${FG_B_Black}${BG_R_Purple}new name${ClearColor}   ?  Press ${FG_B_Black}${BG_R_Purple}r${ClearColor}"
-     echo -e "${ClearColor}Or maybe you want to save the script without a    ${FG_B_Black}${BG_R_Yellow}new name${ClearColor}   ?  Press ${FG_B_Black}${BG_R_Yellow}c${ClearColor}"
-     echo -e "${ClearColor}Or maybe you want to rework the script, I mean    ${FG_B_Black}${BG_R_Cyan}rework${ClearColor}     ?  Press ${FG_B_Black}${BG_R_Cyan}e${ClearColor}"
-     echo -e "${ClearColor}Oh ,and if you end up pressing enter or anything else except Ctrl-c ,it will count like c\n"
-     read -k confirmation
-     echo ""
-     if [[ $confirmation == "y" ]] ; then
-          export run=true
-     elif [[ $confirmation == "n" || $confirmation == "d" ]] ; then
-          rm "$cdr"/c"$t".c.sh && echo removed
-          break
-     elif [[ $confirmation == "r" ]] ; then
-          echo -e "What\'s the new name ? It will be saved in ~/c btw !\n"
-          read newname
-          mv "$cdr"/c"$t".c.sh ~/c/"$(echo "$newname" | addESC)" && echo "saved ~/c/$newname"
-          break
-     elif [[ $confirmation == "c" ]] ; then
-          mv "$cdr"/c"$t".c.sh ~/c && echo -e "saved ~/c/c$t.c.sh"
-          break
-     elif [[ $confirmation == "e" ]] ; then
-          getnamedirpass=true
-          mainscript "$cdr"/c"$t".c.sh
-          break
-     else
-          mv "$cdr"/c"$t".c.sh ~/c && echo "saved ~/c/c$t.c.sh"
-          break
-     fi
-}
-executeandsave () {
-     ./c"$t".c.sh && echo -e "\n\e[30m\e[42mExecuted\e[0m\n"
-     scripttxt="$(echo "$cdr"/c"$t".c.sh | grep "^[^#]" | grep -v "^$")"
-     if [[ $scripttxt == "" ]] ; then
-          rm "$cdr"/c"$t".c.sh
-     else
-          echo -e ""
-          echo -e "${ClearColor}Do you want to                                    ${FG_B_Black}${BG_R_Green}save${ClearColor} it           ?       Press ${FG_B_Black}${BG_R_Green}y${ClearColor}"
-          echo -e "${ClearColor}Or perhaps you want to                            ${FG_R_Black}${BG_R_Red}delete${ClearColor} the script ?       Press ${FG_R_Black}${BG_R_Red}d${ClearColor} or ${FG_R_Black}${BG_R_Red}n${ClearColor}"
-          echo -e "${ClearColor}Do you want to save it with a                     ${FG_R_Black}${BG_R_Purple}custom name${ClearColor}       ?       Press ${FG_R_Black}${BG_R_Purple}r${ClearColor}"
-          echo -e "${ClearColor}Or maybe you want to rework the script, I mean    ${FG_B_Black}${BG_R_Cyan}rework${ClearColor}            ?       Press ${FG_B_Black}${BG_R_Cyan}e${ClearColor}"
-          echo -e "${ClearColor}Oh ,and if you end up pressing enter or anything else ,it will count like y"
-          read -k confirmation
-          echo ""
-          echo -e ""
-          if [[ $confirmation == "y" ]] ; then
-               mv "$cdr"/c"$t".c.sh ~/c && echo "saved ~c/c$t.c.sh"
-          elif [[ $confirmation == "n" || $confirmation == "d" ]] ; then
-               rm "$cdr"/c"$t".c.sh && echo removed
-          elif [[ $confirmation == "r" ]] ; then
-               echo -e "What\'s the new name ? It will be saved in ~/c btw !\n"
-               read newname
-               mv "$cdr"/c"$t".c.sh ~/c/"$(echo "$newname" | addESC)" && echo -e "saved ~/c/$newname"
-          elif [[ $confirmation == "e" ]] ; then
-               getnamedirpass=true
-               mainscript "$cdr"/c"$t".c.sh
-               break
-               ut enter
-          else
-               mv "$cdr"/c"$t".c.sh ~/c && echo -e "saved ~c/c$t.c.sh"
-          fi
-     fi
-}
-s () {
-     if [[ $s == "true" ]] ; then
-          if [[ $i == "true" ]] ; then
-               cat "$(which "$loc" | head -n 1)" >> "$cdr"/c"$t".c.sh
-          else
-               cp "$(which "$loc")" "$cdr"/c"$t".c.sh
-          fi
-     fi
-}
-f () {
-     if [[ $f == "true" ]] ; then
-          if [[ $i == "true" ]] ; then
-               cat "$(realpath "$loc")" >> "$cdr"/c"$t".c.sh
-          else
-               cp "$(realpath "$loc")" "$cdr"/c"$t".c.sh
-          fi
-     fi
-}
-comm=$*
-c () {
-     init "$comm"
-     getnamedir
-     inject
-     if [ -p /dev/stdin ]; then
-          ifpiped
-          makekscript
-          executeandsave
-     else
-          s
-          f
-          makekscript
-          askc
-          executeandsave
-     fi
-}
-align_center() {
-    local terminal_width=$(tput cols)     
-    local text="${1:?}"                   
-    local glyph="${2:-=}"                 
-    local glyph2="${3:-=}"                 
-    local padding="${4:-2}"               
-    local text_width=${#text}
-    local glyph_width="${#glyph}"                 
-    local glyph2_width="${#glyph2}"                 
-    local border_width=$(( ((terminal_width - (padding * 2) - text_width) / 2) / $glyph_width ))
-    local border=                         
-    for ((i=0; i<border_width; i++))
-    do
-        border+="${glyph}"
-    done
-    if (( ( terminal_width - ( padding * 2 ) - text_width ) % 2 == 0 ))
-    then
-        local left_border=$border
-        local right_border=$left_border
-    else
-        local left_border=$border
-        local right_border="${border}${glyph}"
+
+_csp_inject_sources() {
+  emulate -L zsh
+  local file=$1
+  shift
+  local -a words=( "$@" )
+
+  {
+    print -r -- '#!/usr/bin/env bash'
+    print -r -- '# Generated by Rex Command ScratchPad.'
+    if [[ -n ${CSP_SOURCE_PATH:-} ]]; then
+      local path
+      path=$(realpath -- "$CSP_SOURCE_PATH" 2>/dev/null) || path=$CSP_SOURCE_PATH
+      if [[ $CSP_SOURCE_MODE == s ]]; then
+        local source_cmd
+        source_cmd=$(whence -p -- "$CSP_SOURCE_PATH" 2>/dev/null) || source_cmd=
+        [[ -n $source_cmd && -r $source_cmd ]] && command cat -- "$source_cmd"
+      else
+        [[ -r $path ]] && command cat -- "$path"
+      fi
+      print -r -- ''
     fi
-    local spacing=
-    for ((i=0; i<$padding; i++))
-    do
-        spacing+=" "
-    done
-    for i in {1..$(($terminal_width/$glyph2_width))}; do echo -n "$glyph2"; done
-    for i in {1..$(($terminal_width%$glyph2_width))}; do echo -n "${glyph2:0:$(($terminal_width%$glyph2_width))}"; done
-    printf "${left_border}${spacing}${text}${spacing}${right_border}"
-    for i in {1..$(($terminal_width%$glyph_width))}; do echo -n "${glyph:0:$(($terminal_width%$glyph2_width))}"; done
-    for i in {1..$(($terminal_width/$glyph2_width))}; do echo -n "$glyph2"; done
-    for i in {1..$(($terminal_width%$glyph2_width))}; do echo -n "${glyph2:0:$(($terminal_width%$glyph2_width))}"; done
-}
-incognito() {
-     if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
-          fc -P && incognito=false
-          clear &&
-          rm -rfv /tmp/.zsh_history.tmp && echo "Temporary history removed" &&
-          echo -e "${FG_R_Black}${BG_R_Red}" &&
-          align_center "Incognito Mode Disabled" "󱐡 " "󰗹 " &&
-          echo -e "${ClearColor}\n"
-     else
-          sed -i '$d' "$HISTFILE"
-          "$(binpath cp)" "$HISTFILE" /tmp/.zsh_history.tmp &&
-          fc -p /tmp/.zsh_history.tmp && incognito=true
-          clear &&
-          echo -e "${FG_R_Black}${BG_R_Green}" &&
-          align_center "Incognito Mode Enabled" "󱐡 " "󰗹 " &&
-          echo -e "${ClearColor}\n"
-     fi
-}
-nvidia() {
-     if [[ $1 == "off" || $1 == "disable" || $1 == "--off" || $1 == "--disable" || $1 == "d" || $1 == "-d" ]] ; then
-          fc -P && nvidia=false
-          export __NV_PRIME_RENDER_OFFLOAD=0
-     else
-          export __NV_PRIME_RENDER_OFFLOAD=1 && $@
-     fi
-}
-function command_permission() {
-  local cmd="${1}"
-  local cmd=$(echo "${cmd}" | awk '{print $1}' )
-  if [[ "${cmd}" =~ ^\./ && ! -x "${cmd#./}" ]]; then
-    read -rq "REPLY?${cmd#./} is not executable. Do you want to make it executable (y/n)? "
-    "$cmd" "$@"
-    if [[ "${REPLY}" =~ ^[Yy]$ ]]; then
-      chmod +x "${cmd#./}"
+
+    if ((${#words[@]})); then
+      printf '%q ' "${words[@]}"
+      print
     fi
-    echo ""
+
+    if [[ -s $HISTFILE && ${CSP_HISTORY_LINES:-0} -gt 0 ]]; then
+      print -r -- '# Recent history:'
+      command tail -n "$CSP_HISTORY_LINES" -- "$HISTFILE" |
+        command sed 's/^[^;]*;//' |
+        command sed 's/^/#c /'
+    fi
+  } >| "$file"
+}
+
+_csp_preview() {
+  local file=$1
+  print -r -- 'Executing:'
+  if (( $+commands[bat] )); then
+    command bat -P --paging=never -- "$file"
+  else
+    command cat -- "$file"
   fi
 }
+
+_csp_ask() {
+  local answer
+  print -rn -- 'Execute? [y]es [n]o [r]ename [c]opy [e]dit: '
+  read -rk1 answer
+  print
+  case ${answer:l} in
+    y) return 0 ;;
+    n|d) return 1 ;;
+    e) return 2 ;;
+    r) return 3 ;;
+    c) return 4 ;;
+    *) return 4 ;;
+  esac
+}
+
+c() {
+  emulate -L zsh
+  _csp_init "$@"
+  local rc=$?
+  (( rc == 10 )) && return 0
+  (( rc == 11 )) && return 0
+  (( rc != 0 )) && return $rc
+  (( CSP_OPEN_ONLY )) && return 0
+
+  local stamp="${EPOCHSECONDS:-$(date +%s)}"
+  local cdir=$PWD
+  local script="$cdir/c${stamp}.c.sh"
+  local -a commands=( "${CSP_COMMANDS[@]}" )
+
+  if [[ -p /dev/stdin ]]; then
+    {
+      print -r -- '#!/usr/bin/env bash'
+      print -r -- '# Generated by Rex Command ScratchPad.'
+      command cat
+    } >| "$script"
+  else
+    _csp_inject_sources "$script" "${commands[@]}"
+  fi
+
+  mkdir -p "$HOME/c" || return 1
+
+  if ! _csp_script_has_code "$script"; then
+    print -r -- 'Nothing to execute.'
+    rm -f -- "$script"
+    return 0
+  fi
+
+  if (( CSP_EDIT_MODE )); then
+    "$REX_EDITOR" "$script" || return
+  else
+    _csp_preview "$script"
+  fi
+
+  if ! _csp_script_has_code "$script"; then
+    print -r -- 'Nothing to execute.'
+    rm -f -- "$script"
+    return 0
+  fi
+
+  local answer
+  if (( CSP_EDIT_MODE )); then
+    answer=y
+  else
+    _csp_ask
+    rc=$?
+    case $rc in
+      1) rm -f -- "$script"; return 0 ;;
+      2) "$REX_EDITOR" "$script" || return; answer=y ;;
+      3)
+        local newname
+        print -rn -- 'New name: '
+        read -r newname
+        [[ -n $newname ]] || return 1
+        mv -- "$script" "$HOME/c/$newname"
+        return $?
+        ;;
+      4)
+        mv -- "$script" "$HOME/c/"
+        return $?
+        ;;
+      *) answer=y ;;
+    esac
+  fi
+
+  if [[ $answer == y ]]; then
+    chmod +x -- "$script" 2>/dev/null || true
+    "$script"
+    rc=$?
+    if (( rc != 0 )); then
+      print -u2 -- "ScratchPad command failed with status $rc"
+    fi
+    if _csp_script_has_code "$script"; then
+      print -rn -- 'Save generated script to ~/c? [y/N]: '
+      read -rk1 answer
+      print
+      if [[ ${answer:l} == y ]]; then
+        mv -- "$script" "$HOME/c/"
+      else
+        rm -f -- "$script"
+      fi
+    else
+      rm -f -- "$script"
+    fi
+  fi
+}
+
+align_center() {
+  emulate -L zsh
+  local terminal_width=${COLUMNS:-$(tput cols 2>/dev/null || print 80)}
+  local text=${1:?}
+  local glyph=${2:-=}
+  local glyph2=${3:-$glyph}
+  local padding=${4:-2}
+  local text_width=${#text}
+  local glyph_width=${#glyph}
+  local glyph2_width=${#glyph2}
+  local left_count right_count
+  local left_border='' right_border='' spacing=''
+
+  (( terminal_width > 0 )) || terminal_width=80
+  (( glyph_width > 0 )) || { glyph='-'; glyph_width=1; }
+  (( glyph2_width > 0 )) || { glyph2=$glyph; glyph2_width=$glyph_width; }
+
+  local inner=$(( terminal_width - padding * 2 - text_width ))
+  (( inner < 0 )) && inner=0
+  left_count=$(( inner / 2 / glyph_width ))
+  right_count=$(( (inner + 1) / 2 / glyph2_width ))
+
+  local i
+  for (( i=0; i<left_count; i++ )); do left_border+=$glyph; done
+  for (( i=0; i<right_count; i++ )); do right_border+=$glyph2; done
+  for (( i=0; i<padding; i++ )); do spacing+=' '; done
+
+  print -rn -- "$left_border$spacing$text$spacing$right_border"
+  print
+}
+
+# True when LINE would run the `incognito` function/command. Tokenizes with
+# ${(z)} so quoting, newlines, ;, &&, ||, |, &, subshells/braces, assignment
+# prefixes, command/builtin/noglob/sudo/time prefixes and eval "..." are handled.
+# `echo incognito`, `man incognito`, `git commit -m incognito` do NOT match.
+_rex_is_incognito_cmd() {
+  emulate -L zsh
+  setopt extendedglob noshwordsplit
+  local line=$1 depth=${2:-0} t u
+  (( depth > 3 )) && return 1
+  [[ $line == *incognito* ]] || return 1
+  local -a toks
+  toks=( ${(z)line} ) 2>/dev/null
+  local cmdpos=1 evalarg=0
+  for t in $toks; do
+    case $t in
+      ';'|';;'|';&'|';|'|'&&'|'||'|'|'|'|&'|'&'|'&!'|'&|'|'('|')'|'{'|'}'|'(('|'))'|$'\n')
+        cmdpos=1; evalarg=0; continue ;;
+      if|then|elif|else|do|while|until|'!'|'[['|time|coproc)
+        (( cmdpos )) && continue ;;
+    esac
+    u=${(Q)t}
+    if (( cmdpos )); then
+      case $u in
+        [A-Za-z_]*([A-Za-z0-9_])=*) continue ;;                       # VAR=val prefix
+        command|builtin|noglob|nocorrect|exec|sudo|doas|env|nohup|-*) continue ;;
+        eval) evalarg=1; cmdpos=0; continue ;;
+        incognito|\\incognito) return 0 ;;
+      esac
+      cmdpos=0
+    elif (( evalarg )); then
+      _rex_is_incognito_cmd "$u" $(( depth + 1 )) && return 0
+    fi
+  done
+  return 1
+}
+
+# Keep `incognito` invocations out of history entirely. A non-zero return from a
+# zshaddhistory hook means the line is never stored (list or $HISTFILE).
+_rex_incognito_addhistory() {
+  _rex_is_incognito_cmd "$1" && return 1
+  return 0
+}
 autoload -Uz add-zsh-hook
-add-zsh-hook preexec command_permission
+add-zsh-hook zshaddhistory _rex_incognito_addhistory
+
+# Safety net: remove any existing entries that invoke incognito from a history
+# file. Understands EXTENDED_HISTORY (": ts:dur;cmd") and multiline commands
+# (backslash-continued). Rewrites atomically (private temp file + mv); the file
+# is untouched if nothing matches.
+_rex_history_scrub() {
+  emulate -L zsh
+  setopt extendedglob noclobber
+  local hf=${1:-$HISTFILE} tmp line entry= body trail removed=0 have=0
+  [[ -f $hf && -r $hf ]] || return 0
+  command grep -q incognito -- "$hf" 2>/dev/null || return 0
+  tmp=$(umask 077; command mktemp "${hf}.scrub.XXXXXX") || return 1
+  _rex_scrub_flush() {
+    (( have )) || return 0
+    body=${entry#: [0-9]##:[0-9]##;}
+    body=${body//\\$'\n'/$'\n'}
+    if _rex_is_incognito_cmd "$body"; then
+      (( removed++ ))
+    else
+      print -r -- "$entry" >>| "$tmp"
+    fi
+    entry= have=0
+  }
+  while IFS= read -r line || [[ -n $line ]]; do
+    if (( have )); then entry+=$'\n'$line; else entry=$line have=1; fi
+    trail=${line##*[^\\]}                       # trailing backslashes
+    (( ${#trail} % 2 )) || _rex_scrub_flush     # even count => entry complete
+  done < "$hf"
+  _rex_scrub_flush
+  unfunction _rex_scrub_flush
+  if (( removed )); then
+    command chmod --reference="$hf" -- "$tmp" 2>/dev/null || command chmod 600 -- "$tmp"
+    command mv -f -- "$tmp" "$hf" || { command rm -f -- "$tmp"; return 1 }
+  else
+    command rm -f -- "$tmp"
+  fi
+  return 0
+}
+
+# If the shell exits while incognito, restore the real history list first (so
+# the incognito commands are not saved) and delete the private temp file.
+_rex_incognito_cleanup() {
+  [[ ${incognito:-false} == true ]] || return 0
+  fc -P 2>/dev/null
+  [[ -n ${REX_INCOGNITO_FILE:-} ]] && command rm -f -- "$REX_INCOGNITO_FILE"
+}
+add-zsh-hook zshexit _rex_incognito_cleanup
+
+incognito() {
+  emulate -L zsh
+  local mode=${1:-on}
+  case $mode in
+    off|disable|--off|--disable|d|-d)
+      [[ ${incognito:-false} == true ]] || { print -r -- 'Incognito Mode is not active'; return 0 }
+      fc -P 2>/dev/null || true
+      incognito=false
+      export REX_INCOGNITO=
+      [[ -n ${REX_INCOGNITO_FILE:-} ]] && command rm -f -- "$REX_INCOGNITO_FILE"
+      typeset -g REX_INCOGNITO_FILE=
+      if (( $+functions[_atuin_preexec] )); then
+        add-zsh-hook preexec _atuin_preexec
+        (( $+functions[_atuin_precmd] )) && add-zsh-hook precmd _atuin_precmd
+      fi
+      clear
+      print -r -- 'Incognito Mode Disabled'
+      ;;
+    on|enable|--on|--enable|e|-e)
+      [[ ${incognito:-false} == true ]] && { print -r -- 'Incognito Mode is already active'; return 0 }
+      # Scrub first so the private copy below can never contain it either.
+      _rex_history_scrub
+      local tmp
+      tmp=$(umask 077; command mktemp "${TMPDIR:-/tmp}/.zsh_incognito.XXXXXX") || return 1
+      [[ -f $HISTFILE ]] && command cp -- "$HISTFILE" "$tmp"
+      typeset -g REX_INCOGNITO_FILE=$tmp
+      fc -p "$tmp"
+      incognito=true
+      export REX_INCOGNITO=1
+      if (( $+functions[_atuin_preexec] )); then
+        add-zsh-hook -d preexec _atuin_preexec
+        (( $+functions[_atuin_precmd] )) && add-zsh-hook -d precmd _atuin_precmd
+      fi
+      clear
+      print -r -- 'Incognito Mode Enabled'
+      ;;
+    scrub|--scrub)
+      _rex_history_scrub && print -r -- 'History scrubbed of incognito entries'
+      ;;
+    *)
+      print -u2 -- 'usage: incognito [on|off|scrub]'
+      return 2
+      ;;
+  esac
+}
+
+nvidia() {
+  emulate -L zsh
+  case ${1:-} in
+    off|disable|--off|--disable|d|-d)
+      export __NV_PRIME_RENDER_OFFLOAD=0
+      nvidia=false
+      ;;
+    on|enable|--on|--enable|e|-e)
+      shift
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      if (($#)); then
+        "$@"
+      fi
+      ;;
+    *)
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      "$@"
+      ;;
+  esac
+}
+
+# Interactive execute-permission gate. This is a ZLE accept-line wrapper rather
+# than a preexec hook, because preexec cannot reliably stop a command that is
+# already about to execute.
+_rex_accept_line_with_permission() {
+  emulate -L zsh
+  if [[ $BUFFER == ./* ]]; then
+    local -a words
+    words=( ${(z)BUFFER} )
+    local cmd=${words[1]-}
+    if [[ -n $cmd && -e ${cmd#./} && ! -x ${cmd#./} ]]; then
+      print -rn -- "${cmd#./} is not executable. Make it executable? [y/N] "
+      local answer
+      read -rk1 answer
+      print
+      if [[ ${answer:l} == y ]]; then
+        chmod +x -- "${cmd#./}" || return 1
+      else
+        print -r -- 'Command not submitted.'
+        return 0
+      fi
+    fi
+  fi
+  zle .accept-line
+}
+if [[ -o interactive ]] && (( $+widgets[accept-line] )); then
+  zle -N accept-line _rex_accept_line_with_permission
+fi
+
 unixtime() {
   date +%s
 }
-mommy() (
-  COLORS_LIGHT_PINK='\e[38;5;217m'
-  COLORS_LIGHT_BLUE='\e[38;5;117m'
-  COLORS_FAINT='\e[2m'
-  COLORS_RESET='\e[0m'
-  DEF_WORDS_LITTLE="girl"
-  DEF_WORDS_PRONOUNS="her"
-  DEF_WORDS_ROLES="mommy"
-  DEF_MOMMY_COLOR="${COLORS_LIGHT_PINK}"
-  DEF_ONLY_NEGATIVE="false"
-  NEGATIVE_RESPONSES="do you need MOMMYS_ROLE's help~? ❤️
-Don't give up, my love~ ❤️
-Don't worry, MOMMYS_ROLE is here to help you~ ❤️
-I believe in you, my sweet AFFECTIONATE_TERM~ ❤️
-It's okay to make mistakes, my dear~ ❤️
-just a little further, sweetie~ ❤️
-Let's try again together, okay~? ❤️
-MOMMYS_ROLE believes in you, and knows you can overcome this~ ❤️
-MOMMYS_ROLE believes in you~ ❤️
-MOMMYS_ROLE is always here for you, no matter what~ ❤️
-MOMMYS_ROLE is here to help you through it~ ❤️
-MOMMYS_ROLE is proud of you for trying, no matter what the outcome~ ❤️
-MOMMYS_ROLE knows it's tough, but you can do it~ ❤️
-MOMMYS_ROLE knows MOMMYS_PRONOUN little AFFECTIONATE_TERM can do better~ ❤️
-MOMMYS_ROLE knows you can do it, even if it's tough~ ❤️
-MOMMYS_ROLE knows you're feeling down, but you'll get through it~ ❤️
-MOMMYS_ROLE knows you're trying your best~ ❤️
-MOMMYS_ROLE loves you, and is here to support you~ ❤️
-MOMMYS_ROLE still loves you no matter what~ ❤️
-You're doing your best, and that's all that matters to MOMMYS_ROLE~ ❤️
-MOMMYS_ROLE is always here to encourage you~ ❤️"
-  POSITIVE_RESPONSES="*pets your head*
-awe, what a good AFFECTIONATE_TERM~\nMOMMYS_ROLE knew you could do it~ ❤️
-good AFFECTIONATE_TERM~\nMOMMYS_ROLE's so proud of you~ ❤️
-Keep up the good work, my love~ ❤️
-MOMMYS_ROLE is proud of the progress you've made~ ❤️
-MOMMYS_ROLE is so grateful to have you as MOMMYS_PRONOUN little AFFECTIONATE_TERM~ ❤️
-I'm so proud of you, my love~ ❤️
-MOMMYS_ROLE is so proud of you~ ❤️
-MOMMYS_ROLE loves seeing MOMMYS_PRONOUN little AFFECTIONATE_TERM succeed~ ❤️
-MOMMYS_ROLE thinks MOMMYS_PRONOUN little AFFECTIONATE_TERM earned a big hug~ ❤️
-that's a good AFFECTIONATE_TERM~ ❤️
-you did an amazing job, my dear~ ❤️
-you're such a smart cookie~ ❤️"
-  if [ -n "$SHELL_MOMMYS_LITTLE" ]; then
-    DEF_WORDS_LITTLE="${SHELL_MOMMYS_LITTLE}"
-  fi
-  if [ -n "$SHELL_MOMMYS_PRONOUNS" ]; then
-    DEF_WORDS_PRONOUNS="${SHELL_MOMMYS_PRONOUNS}"
-  fi
-  if [ -n "$SHELL_MOMMYS_ROLES" ]; then
-    DEF_WORDS_ROLES="${SHELL_MOMMYS_ROLES}"
-  fi
-  if [ -n "$SHELL_MOMMYS_COLOR" ]; then
-    DEF_MOMMY_COLOR="${SHELL_MOMMYS_COLOR}"
-  fi
-  if [ "$SHELL_MOMMYS_ONLY_NEGATIVE" = "true" ]; then
-    DEF_ONLY_NEGATIVE="true"
-  fi
-  if [ -n "$SHELL_MOMMYS_POSITIVE_RESPONSES" ]; then
-    POSITIVE_RESPONSES="$SHELL_MOMMYS_POSITIVE_RESPONSES"
-  fi
-  if [ -n "$SHELL_MOMMYS_NEGATIVE_RESPONSES" ]; then
-    NEGATIVE_RESPONSES="$SHELL_MOMMYS_NEGATIVE_RESPONSES"
-  fi
-  pick_word() {
-    echo "$1" | tr '/' '\n' | shuf | sed 1q
-  }
-  pick_response() { 
-    if [ "$1" = "positive" ]; then
-      element=$(echo "$POSITIVE_RESPONSES" | shuf | sed 1q)
-    elif [ "$1" = "negative" ]; then
-      element=$(echo "$NEGATIVE_RESPONSES" | shuf | sed 1q)
-    else
-      echo "Invalid response type: $1"
-      exit 1
-    fi
-    echo "$element"
-  }
-  sub_terms() { 
-    response="$1"
-    affectionate_term="$(pick_word "${DEF_WORDS_LITTLE}")"
-    pronoun="$(pick_word "${DEF_WORDS_PRONOUNS}")"
-    role="$(pick_word "${DEF_WORDS_ROLES}")"
-    response="$(echo "$response" | sed "s/AFFECTIONATE_TERM/$affectionate_term/g")"
-    response="$(echo "$response" | sed "s/MOMMYS_PRONOUN/$pronoun/g")"
-    response="$(echo "$response" | sed "s/MOMMYS_ROLE/$role/g")"
-    printf "\n${DEF_MOMMY_COLOR}$response${COLORS_RESET}\n\n"
-  }
-  success() {
-    (
-      if [ "$DEF_ONLY_NEGATIVE" = "true" ]; then
-        return 0
-      fi
-      response="$(pick_response "positive")"
-      sub_terms "$response" >&2
-    )
-    return 0
-  }
-  failure() {
-    rc=$?
-    (
-      response="$(pick_response "negative")"
-      sub_terms "$response" >&2
-    )
-    return $rc
-  }
-  eval "$@" && success || failure
-  return $?
-)
-SHELL_MOMMYS_LITTLE="kid"
-SHELL_MOMMYS_PRONOUNS="her"
-SHELL_MOMMYS_ROLES="mommy"
-SHELL_MOMMYS_COLOR=""
-SHELL_MOMMYS_ONLY_NEGATIVE="false"
+
 color256() {
      awk -v cols="$(tput cols)" 'BEGIN{
          for (colnum = 0; colnum<cols; colnum++) {
@@ -1345,152 +1476,246 @@ color256() {
          printf "\n";
      }'
 }
+
 playepisodes() {
-    ulimit -s 9999999
-    video="${1}"
-    sub="${2}"
-    ep="${3:-25}"
-    for (( i=01; i<="$ep"; i++ ))
-    do
-        ii=$(printf '%02d\n' $i)
-        linkv=${video/episode_nung/$ii}
-        links=${sub/episode_nung/$ii}
-        linkvs+=("$linkv")
-        linkss+=("$links")
-    done
-    [[ "$sub" != "" ]] && comm="$(printf '%s --sub-files-append=%s %s ' "mpv" "${linkss[@]}" "${linkvs[@]}")"
-    comm="$(printf '%s %s ' "mpv" "${linkvs[@]}")"
-    printf '%s' "$comm"
-    echo print now playing:
-    eval ${comm}
-}
-extract() {
-	for archive in "$@"; do
-		if [ -f "$archive" ]; then
-			case $archive in
-			*.tar.bz2) tar xvjf $archive ;;
-			*.tar.gz) tar xvzf $archive ;;
-			*.bz2) bunzip2 $archive ;;
-			*.rar) rar x $archive ;;
-			*.gz) gunzip $archive ;;
-			*.tar) tar xvf $archive ;;
-			*.tbz2) tar xvjf $archive ;;
-			*.tgz) tar xvzf $archive ;;
-			*.zip) unzip $archive ;;
-			*.Z) uncompress $archive ;;
-			*.7z) 7z x $archive ;;
-			*) echo "don't know how to extract '$archive'..." ;;
-			esac
-		else
-			echo "'$archive' is not a valid file!"
-		fi
-	done
-}
-escapestring() {
-  if [ -p /dev/stdin ]; then
-    while IFS= read  pipe; do
-      string="$string\n$pipe"
-    done
-  else
-    string="$@"
+  emulate -L zsh
+  local video=${1-}
+  local sub=${2-}
+  local ep=${3:-25}
+  [[ -n $video ]] || { print -u2 'usage: playepisodes <video-template> [subtitle-template] [count]'; return 2; }
+
+  local -a videos subtitles
+  local i ii
+  for (( i = 1; i <= ep; i++ )); do
+    ii=$(printf '%02d' "$i")
+    videos+=( "${video/episode_nung/$ii}" )
+    [[ -n $sub ]] && subtitles+=( "${sub/episode_nung/$ii}" )
+  done
+
+  if (( ! $+commands[mpv] )); then
+    print -u2 -- 'playepisodes: mpv is not installed'
+    return 127
   fi
-  echo "$string" | sed -e 's/[[:punct:]|[:space:]]/\\&/g' | sed -e 's/\\-/-/g'| sed -e 's/\\\//\//g' | sed '1d'
+
+  for (( i = 1; i <= ${#videos[@]}; i++ )); do
+    if [[ -n $sub ]]; then
+      command mpv --sub-files-append="${subtitles[i]}" "${videos[i]}"
+    else
+      command mpv "${videos[i]}"
+    fi || return $?
+  done
 }
+
+extract() {
+  emulate -L zsh
+  local archive
+  for archive in "$@"; do
+    if [[ ! -f $archive ]]; then
+      print -u2 -- "'$archive' is not a valid file!"
+      continue
+    fi
+    case $archive in
+      *.tar.bz2) command tar --extract --verbose --bzip2 --file="$archive" ;;
+      *.tar.gz)  command tar --extract --verbose --gzip --file="$archive" ;;
+      *.bz2)     command bunzip2 -- "$archive" ;;
+      *.rar)     command rar x -- "$archive" ;;
+      *.gz)      command gunzip -- "$archive" ;;
+      *.tar)     command tar --extract --verbose --file="$archive" ;;
+      *.tbz2)    command tar --extract --verbose --bzip2 --file="$archive" ;;
+      *.tgz)     command tar --extract --verbose --gzip --file="$archive" ;;
+      *.zip)     command unzip -- "$archive" ;;
+      *.Z)       command uncompress -- "$archive" ;;
+      *.7z)      command 7z x -- "$archive" ;;
+      *) print -u2 -- "don't know how to extract '$archive'..." ;;
+    esac
+  done
+}
+
+escapestring() {
+  emulate -L zsh
+  local string
+  if [[ -t 0 ]]; then
+    string="$*"
+  else
+    string="$(command cat)"
+  fi
+
+  # Keep the original intent (escape punctuation/whitespace for shell-ish uses)
+  # without deleting the first line of piped input.
+  print -r -- "$string" |
+    command sed -e 's/[[:punct:][:space:]]/\\&/g' \
+                -e 's/\\-/-/g' \
+                -e 's/\\\//\//g'
+}
+
 org-toc-update() {
-  generate_toc_arrays() {
-    IFS=''
-    seg1col=()
-    linecol=()
-    seg1old=()
-    seg2old=()
-    tabcol=()
-    while read -r line; do
-      if [[ "$(echo "$line" | grep -o '^**')" ]]; then
-        linecol+=("$line")
-        seg1=$(echo "$line" | sed 's/\ /-/g' | tr -cd '[:alnum:]._-' | sed 's/-//' | sed -e 's/\(.*\)/\L\1/' | sed 's/\.//g')
-        seg2=$(echo "$line" | sed 's/^\**//g' | sed 's/^\ //')
-        seg1old+=($seg1)
-        seg2old+=($seg2)
-        tab=$(echo "$line" | grep -o '^**' | wc -c)
-        ((tab--))
-        tab=$(printf "%${tab}c" ' ')
-        tabcol+=("$tab")
-      fi
-    done < "$1"
-    declare -A counts
-    for element in "${seg1old[@]}"; do
-      ((counts["$element"]++))
-      if ((counts["$element"] == 1)); then
-        new_element="$element"
-      elif ((counts["$element"] > 1)); then
-        ((temcou=${counts["$element"]}-1))
-        new_element="${element}-${temcou}"
-      else
-        new_element="$element"
-      fi
-      seg1+=("$new_element")
-    done
-    echo "* TABLE OF CONTENTS :toc:"
-    c=0
-    for line in "${seg1old[@]}"
-    do
-      if [[ ${seg1[(($c+1))]} == "table-of-contents-toc" ]]
-      then
-        ((c++))
-      else
-        echo "${tabcol[$c]}- [[#${seg1[(($c+1))]}][${seg2old[$c]}]]" | sed 's/^\ -/-/'    
-        ((c++))
-      fi
-    done
+  emulate -L zsh
+  setopt local_options extendedglob
+  local file=${1-}
+  [[ -n $file && -f $file ]] || {
+    print -u2 -- 'usage: org-toc-update FILE'
+    return 2
   }
-  oldtoc="$(sed -n '/^\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
-  newtoc="$(generate_toc_arrays "$1")"
-  oldfile=$(cat "$1")
-  newfile=${oldfile//"${oldtoc}"/"${newtoc}"}
-  echo "$newfile" > "$1"
+
+  local -a lines headings slugs counts
+  lines=( "${(@f)$(command cat -- "$file")}" )
+  headings=()
+  slugs=()
+  counts=()
+
+  local line stars title slug count idx
+  for line in "${lines[@]}"; do
+    if [[ $line =~ '^(\*{1,6})[[:space:]]+(.+)$' ]]; then
+      stars=${match[1]}
+      title=${match[2]}
+      [[ $title == 'TABLE OF CONTENTS'* ]] && continue
+
+      slug=${title:l}
+      slug=${slug//[^[:alnum:]_.-]/-}
+      slug=${slug##-}
+      slug=${slug%%-}
+      [[ -n $slug ]] || slug='section'
+
+      idx=0
+      while (( 1 )); do
+        if (( idx == 0 )); then
+          count=$slug
+        else
+          count="${slug}-${idx}"
+        fi
+        if (( ! ${slugs[(I)$count]} )); then
+          slugs+=( "$count" )
+          break
+        fi
+        (( idx++ ))
+      done
+
+      headings+=( "$stars|$title|$count" )
+    fi
+  done
+
+  local -a toc
+  toc=( '* TABLE OF CONTENTS :toc:' )
+  for line in "${headings[@]}"; do
+    stars=${line%%|*}
+    local rest=${line#*|}
+    title=${rest%%|*}
+    slug=${rest#*|}
+    if (( ${#stars} > 1 )); then
+      toc+=( "${stars//\*/ }- [[#$slug][$title]]" )
+    fi
+  done
+
+  local tmp="${file}.tmp.$$"
+  local emitted=0 in_toc=0
+  {
+    for line in "${lines[@]}"; do
+      if [[ $line == '* TABLE OF CONTENTS :toc:' ]]; then
+        (( emitted )) && continue
+        for local_toc_line in "${toc[@]}"; do
+          print -r -- "$local_toc_line"
+        done
+        emitted=1
+        in_toc=1
+        continue
+      fi
+      if (( in_toc )); then
+        if [[ -z $line ]]; then
+          in_toc=0
+          print
+        fi
+        continue
+      fi
+      print -r -- "$line"
+    done
+    (( emitted )) || {
+      print
+      for local_toc_line in "${toc[@]}"; do
+        print -r -- "$local_toc_line"
+      done
+    }
+  } >| "$tmp" || { rm -f -- "$tmp"; return 1; }
+
+  command mv -- "$tmp" "$file"
 }
+
 org-tangle-from-zsh() {
   emacs --batch -l org --eval "(org-babel-tangle-file \"$1\")"
 }
-alias fehr="feh -ZnzrF"
-alias feh="feh -nZrF -S mtime"
-feho() {
-  pwd="$(pwd)"
-  cd "$1"
-  find . -type f -maxdepth 999 | xargs feh -ZnFS mtime
-  cd "$pwd"
-}
+
+if (( $+commands[feh] )); then
+  alias fehr='feh -ZnzrF'
+  alias feh='feh -nZrF -S mtime'
+
+  feho() {
+    emulate -L zsh
+    local dir=${1:-$PWD}
+    [[ -d $dir ]] || { print -u2 -- "feho: not a directory: $dir"; return 2; }
+    command feh -ZnFS mtime -- "$dir"/*(.N)
+  }
+fi
+
+if (( $+commands[mpv] )); then
 play() {
-  args="$@"
-  complay=" /home/rex/Music/songs/ -iname \"idonnowhattoputinhere\" "
-  for ((i = 1 ; i <= $( echo "$@" | wc -w ) ; i++)); do
-    if [[ $@[$i] == "-n" ]] ; then
-      i=i+1
-      ncomplay=" "$ncomplay" -a -not -iname \"*"${@["$i"]}"*\" "
-    elif [[ $@[$i] == "-N" ]] ; then
-      i=i+1
-      ncomplay=" "$ncomplay" -a -not -name \"*"${@["$i"]}"*\" "
-    fi
+  emulate -L zsh
+  local music_dir="$HOME/Music/songs"
+  [[ -d $music_dir ]] || { print -u2 -- "play: directory not found: $music_dir"; return 1; }
+
+  local -a include_expr=() exclude_expr=() find_args files
+  local mode=include
+  local arg
+  while (($#)); do
+    arg=$1
+    shift
+    case $arg in
+      -n)
+        [[ $# -gt 0 ]] || { print -u2 -- 'play: -n needs a pattern'; return 2; }
+        exclude_expr+=( -not -iname "*$1*" )
+        shift
+        ;;
+      -N)
+        [[ $# -gt 0 ]] || { print -u2 -- 'play: -N needs a pattern'; return 2; }
+        exclude_expr+=( -not -name "*$1*" )
+        shift
+        ;;
+      -E)
+        [[ $# -gt 0 ]] || { print -u2 -- 'play: -E needs a pattern'; return 2; }
+        include_expr+=( -name "*$1*" )
+        shift
+        ;;
+      *)
+        include_expr+=( -iname "*$arg*" )
+        ;;
+    esac
   done
-  for ((i = 1 ; i <= $( echo "$@" | wc -w ) ; i++)); do
-    if [[ $@[$i] == "-E" ]] ; then
-      i=i+1
-      complay=" "$complay" "$ncomplay" -o -name \"*"${@["$i"]}"*\" "
-    else
-      complay=" "$complay" "$ncomplay" -o -iname \"*"${@["$i"]}"*\" "
-    fi
+
+  ((${#include_expr[@]})) || include_expr+=( -true )
+
+  find_args=( "$music_dir" -type f '(' )
+  local i
+  for (( i = 1; i <= ${#include_expr[@]}; i++ )); do
+    (( i > 1 )) && find_args+=( -o )
+    find_args+=( "${include_expr[i]}" )
   done
-  complay="$complay $ncomplay"
-  listplay=$(eval find "$complay" |sed -e 's/[[:punct:]|[:space:]]/\\&/g' | sed -e 's/\\-/-/g'| sed -e 's/\\\//\//g')
-  echo "find $complay"
-  echo "$listplay"
-  echo "$listplay" | sed -e 's/\n/\ /g' | xargs mpv --no-resume-playback
+  find_args+=( ')' "${exclude_expr[@]}" )
+
+  while IFS= read -r -d '' arg; do
+    files+=( "$arg" )
+  done < <(command find "${find_args[@]}" -print0)
+
+  ((${#files[@]})) || { print -r -- 'No matching files.'; return 0; }
+  command mpv --no-resume-playback "${files[@]}"
 }
+fi
+
+if (( $+commands[fdupes] && $+commands[find] )); then
 duplicateseachdirectoryseparatelyremove() {
-  find ./ -type d -exec fdupes -Nd {} \; #removeduplicateseachdirectoryseparately
+  command find ./ -type d -exec fdupes -Nd {} \; #removeduplicateseachdirectoryseparately
 }
-if ! command -v ftpplay &> /dev/null
-then
+fi
+
+if ! command -v ftpplay &> /dev/null && (( $+commands[curl] && $+commands[mpv] )); then
+
   ftpplay() {
     url="$1"
     mkdir -p ~/playlist/
@@ -1508,446 +1733,925 @@ then
     done <<< "$html0"
     mpv --playlist=/tmp/"$name".playlist
   }
+
 fi
+
+# ftpplay() {
+  # url="$1"
+  # domain="$(echo "$url" | awk -F "FILE" '{print $1}')"
+  # show_name=$(basename "$(dirname "$(dirname "$url")")")
+  # name="$(echo "${show_name//[ %()\[\]+-]/}" | tr '[:upper:]' '[:lower:]' | sed -e 's/20//g')"
+  # url="$(dirname "$url")"
+  # mkdir -p ~/playlist/
+  # curl -s "$url"/ | sed -e 's/\<a\ href\=\"\/FILE/\nPAUSEFILE/g' | awk -F "PAUSE" '{print "'"$domain"'"$2}' | awk -F "\"" '{print $1}' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' > "$HOME"/playlist/"$name".playlist
+  # mpv --playlist="$HOME"/playlist/"$name".playlist
+# }
+
+# ftpplay() {
+# 
+#     if [[ "${@: -1}" == *10.16.100.244* ]] ; then
+#         link="${@: -1}"
+#         # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
+#         links="$(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$link" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) )"
+# 
+#         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+# 
+#         # Generate playlist folder
+#         mkdir -p ~/.config/ftpplaycircle/
+# 
+#         echo "$links"
+#         # Print the extracted MKV file links to the playlist file
+#         echo "$links" > "$mpv_playlist"
+# 
+#         # Play the playlist
+#         if [[ "$1" == 'd' ]] ; then
+#             cd ~/Downloads
+#             xargs -a "$mpv_playlist" -L1 wget
+#             # parallel --gnu -a "$mpv_playlist" wget
+#         elif [[ "$1" == 'f' ]] ; then
+#             mpv_flags="$2"
+#         else
+#             if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+#         fi
+#         return 1
+#     fi
+# 
+#     if [[ $1 == "s" ]]; then
+#         P_URL="http://circleftp.net/?s=${2// /+}"
+#         # P_URL="http://new.circleftp.net/search%q=${2// /+}"
+#         # point="$(echo "$2" | awk '{print $1}')"
+#         echo "$P_URL"
+# 	      URL="$(curl -s "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=\"//g' | sed 's/\">//g' | sed 's/\ //g' | uniq | fzf)"
+#     fi
+# 
+#     if [[ $1 == "c" ]] || [[ $1 == "s" ]]; then
+# 
+#         if [[ $1 == "c" ]]; then
+#           link="${@: -1}"
+#         elif [[ $1 == "s" ]]; then
+#           link="$URL"
+#         fi
+# 
+#         echo "$link"
+# 
+#         # links="$(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(curl -s "$1" | grep -o 'https\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) / 2 )) )) | sed "s/.*/'&'/" | tr '\n' ' ' )"
+#         links="$(echo "$link" | tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | tail -n $(( $(( $(echo "$link" |tr -d '"' | xargs curl -v | grep -o 'http\?://[^"]*' | grep -E '\.(mp4|avi|mkv|mov|wmv|flv)' | wc -l) )) )) )"
+# 
+#         # links="$(echo "$link" | tr -d '"' | xargs curl )"
+# 
+#         echo "$links"
+# 
+#         mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+# 
+#         # Generate playlist folder
+#         mkdir -p ~/.config/ftpplaycircle/
+# 
+#         echo "$links"
+#         # Print the extracted MKV file links to the playlist file
+#         echo "$links" > "$mpv_playlist"
+# 
+#         # Play the playlist
+#         if [[ "$1" == 'd' ]] ; then
+#             cd ~/Downloads
+#             xargs -a "$mpv_playlist" -L1 wget
+#             # parallel --gnu -a "$mpv_playlist" wget
+#         elif [[ "$1" == 'f' ]] ; then
+#             mpv_flags="$2"
+#         else
+#             if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+#         fi
+#         return 1
+#     fi
+# 
+#     # Circle ftp player
+# 
+#     # URL of the webpage to scrape
+# 
+# 
+#     if [[ $1 == "sn" ]]; then
+#         # P_URL="http://circleftp.net/?s=${2// /+}"
+#         # P_URL="http://new.circleftp.net/search?q=${2// /+}"
+#         base_URL="http://103.170.204.84/"
+#         P_URL=search?q=${base_URL}${2// /+}
+#         echo "$P_URL"
+#         URL="$(node ~/puppeteer/test.js "$P_URL")"
+#         # echo "$URL"text="$(while IFS= read -r line ; do echo "Received: $line" ; done | sed 's/></>\n</g')"
+#         URL="$(echo "$URL" | sed 's/></>\n</g')"
+# 
+#         # Replace 'input.html' with the actual HTML file you want to parse
+#         # html_file="input.html"
+# 
+#         # Extract div class and href using grep, awk, and sed
+#         # div_class_list=$(echo "$IFS" | grep -o '<div[^>]*class="[^"]*"' | awk -F 'class="' '{print $2}' | awk -F '"' '{print $1}')
+#         # href_list=$(echo "text" | grep -o '<a[^>]*href="[^"]*"' | awk -F 'href="' '{print $2}' | awk -F '"' '{print $1}')
+# 
+#         # Extract div class and href using grep, awk, and sed
+#         URL=$(echo "$URL" | grep -A 1 -i 'rounded SinglePost_singlePost_card__MLfCk' | awk -F '[ef]="' '{print $2}' | awk -F '"' '{print $1}' | sed 's/\/content\///' | sed 's/>//' | sed '/^$/d' | awk '{ORS = (NR % 2 == 0) ? "\n" : " IDCONTENT ";} 1' )
+# 
+#         # Print the extracted data
+#         # echo "Div Classes:"
+#         # echo "$div_class_list"
+# 
+#         URL="$(echo "$URL" | fzf | awk -F "IDCONTENT " '{print $2}')"
+#         echo "$URL"
+#         URL=${base_URL}${URL}
+#     elif [[ $1 == "s" ]]; then
+#         P_URL="http://circleftp.net/?s=${2// /+}"
+#         # P_URL="http://new.circleftp.net/search%q=${2// /+}"
+#         # point="$(echo "$2" | awk '{print $1}')"
+#         echo "$P_URL"
+# 	      URL="$(curl "$P_URL" | sed -n '/main-content/,/nav_menu-3/p' | grep /cn/ | sed 's/<a href\=//g' | sed 's/>//g' | sed 's/\ //g' | uniq | fzf)"
+#     else
+#         URL="$1"
+#     fi
+# 
+#     echo "$URL"
+# 
+#     # Fetch the webpage content using curl
+#     page_content=$(curl -s "$URL")
+#     page_content=$(node ~/puppeteer/test.js "$URL")
+# 
+#     echo "$page_content" | grep -oP '(?<=<h2 class="text-white text-bolder">).*?(?=</h2)'
+# 
+#     # Use grep to extract all MKV file links
+#     mkv_links=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mkv')
+#     mkv_links+=$(echo "$page_content" | grep -oP 'href="\K[^"]*\.mp4')
+# 
+#     # Generate a playlist file name with path
+#     # mpv_playlist=~/.config/ftpplaycircle/mpv_playlist_"$(date +%s)"
+#     mpv_playlist=~/.config/ftpplaycircle/"${URL//\//_}"_"$(date +%s)"
+# 
+#     # Generate playlist folder
+#     mkdir -p ~/.config/ftpplaycircle/
+# 
+#     # Print the extracted MKV file links to the playlist file
+#     echo "$mkv_links" > "$mpv_playlist"
+# 
+#     # Play the playlist
+#     if [[ $(uname -a | awk '{print $14}') == "Android" ]]; then xdg-open --content-type video $mpv_playlist ; else mpv "$mpv_flags" --playlist="$mpv_playlist" ; fi
+# 
+#     # rm -rfv "$mpv_playlist"
+# 
+# }
+
 ccr() {
-local dir
-dir="$(dirname "$1")"
-c_file_name="$(basename "$1")"
-if [ -z "$1" ]; then
-    echo "Error: No file specified"
+  emulate -L zsh
+  local source=$1
+  shift || true
+
+  [[ -n $source ]] || { print -u2 -- 'usage: ccr FILE [args...]'; return 2; }
+  [[ -f $source ]] || { print -u2 -- "Error: file not found: $source"; return 1; }
+
+  local dir=${source:h}
+  local name=${source:t}
+  local base compiler output rc=0
+  local -a flags=( -g -O2 )
+  case $name in
+    *.c)
+      base=${name%.c}; compiler=${CC:-cc}; flags+=( ${=CFLAGS:-} );;
+    *.cc|*.cxx|*.cpp)
+      base=${name%.*}; compiler=${CXX:-c++}; flags+=( ${=CXXFLAGS:-} );;
+    *)
+      print -u2 -- "Error: $name is not a C/C++ source file"
+      return 2;;
+  esac
+
+  if [[ $compiler == */* ]]; then
+    [[ -x $compiler ]] || { print -u2 -- "Error: compiler not found: $compiler"; return 127; }
+  else
+    whence -p -- "$compiler" >/dev/null 2>&1 || {
+      print -u2 -- "Error: compiler not found: $compiler"
+      return 127
+    }
+  fi
+
+  output="$dir/$base"
+  [[ -e $output ]] && { print -u2 -- "Error: refusing to overwrite existing output: $output"; return 1; }
+
+  command "$compiler" "${flags[@]}" ${=LDFLAGS:+${LDFLAGS}} -o "$output" "$source" || {
+    print -u2 -- 'Error: compilation failed'
     return 1
-fi
-if [ ! -f "$1" ]; then
-    echo "Error: File $c_file_name not found"
-    return 1
-fi
-if [[ "$c_file_name" != *.c && "$1" != *.cpp ]]; then
-    echo "Error: $c_file_name is not a C or C++ source file"
-    return 1
-fi
-file_base=$(basename -s .c "$c_file_name")
-file_base=$(basename -s .cpp "$file_base")
-if [[ "$c_file_name" == *.c ]]; then
-    gcc -g -O -o "$dir"/"$file_base" "$dir"/"$c_file_name" -lncurses -lm -lX11
-else
-    g++ -g -O -o "$dir"/"$file_base" "$dir"/"$c_file_name" -lncurses -lm -lX11
-fi
-if [ $? -ne 0 ]; then
-    echo "Error: Compilation failed"
-    return 1
-fi
-shift
-echo -e "\nProvided arguments : $@ \n"
-echo -ne "Binary size: "
-du -h "$dir"/"$file_base" | awk '{print $1}' | xargs echo -n
-echo -ne " to "
-strip "$dir"/"$file_base"
-du -h "$dir"/"$file_base" | awk '{print $1}'
-echo ""
-echo "Executing binary:"
-line="$(printf %"$(tput cols)"s |tr " " "-")"
-echo "$line"
-"$dir"/"$file_base" "$@"
-rm "$dir"/"$file_base"
-}
-encryptdir() {
-cp -rfv $(which encryptdir) $(pwd)/close
-echo "Do you really wanna continue ? All files and folder in this dirrectory will be encrypted if you do this !"
-echo "You are currently in the dirrectory : "
-echo $(pwd)
-echo "If you want to continue type password.You will have to retype it to confirm.Keep the password !!!"
-tar -czf - * --remove-files | openssl enc -e -aes256 -salt -out secured && echo "done" &&
-echo "#!/usr/bin/env bash" > open &&
-echo "openssl enc -d -aes256 -in secured | tar xz && rm -rfv secured open && echo done &&" >> open &&
-echo "ls" >> open &&
-echo "dust -n 100" >> open &&
-echo "mv -fv open .open" &&
-chmod +x open &&
-ls &&
-dust -n 100 &&
-echo ""
-echo "The contents of the folder has been encrypted.(Or not ! Look at the file list.)"
-echo "If they were encrpted and you want to get them back run the 'open' script using ./open ."
-}
-pdfmerge() {
-mkdir ./tmp
-tp="./tmp/tmp.pdf"
-td="./tmp/data"
-for i in *.pdf; do
-    echo "Bookmarking $i"
-    printf "BookmarkBegin\nBookmarkTitle: %s\nBookmarkLevel: 1\nBookmarkPageNumber: 1\n" "${i%.*}"> "$td"
-    pdftk "$i" update_info "$td" output "$tp"
-    mv "$tp" "$i"
-done
-pdftk *.pdf cat output ${1:-merged.pdf}
- rm -rfv ./tmp
- echo "\ndone"
-}
-srhs() {
-     rg "$*" "$HISTFILE" || cat $HISTFILE | grep "$*"
-}
-alias :q="exit"
-is_mounted() { 
-  grep -q "$1" /proc/mounts; 
   }
-termuxexec() {
-     if [[ "$(command -v getprop && getprop ro.build.version.release)" =~ ^[0-9]$ ]]; then
-          android=true
-          if is_mounted /storage/emulated; then
-            PHONE_ON=1
-          else
-            PHONE_ON=0
-            powerlevel10k_plugin_unload
-          fi
-          export PATH="/data/data/com.termux/files/usr/bin:$PATH"
-          termux-wake-lock
-          sshd -p 43434
-          alias mpv="xdg-open"
-          TERM="kitty"
-     else
-          android=false
-     fi
+
+  print -r -- "Provided arguments: $*"
+  print -r -- "Binary: $output"
+  "$output" "$@"
+  rc=$?
+  rm -f -- "$output"
+  return $rc
 }
+
+if (( $+commands[tar] && $+commands[openssl] )); then
+encryptdir() {
+  emulate -L zsh
+
+  local out=${1:-secured.enc}
+  local tmp_script="$PWD/.open.$$"
+  local tmp_archive
+  [[ ! -e open ]] || { print -u2 -- 'encryptdir: refusing to overwrite existing ./open'; return 1; }
+  tmp_archive=$(mktemp "${TMPDIR:-/tmp}/rex-encrypt.XXXXXX") || return 1
+
+  local -a entries kept
+  entries=( *(D.N) )
+  for entry in "${entries[@]}"; do
+    [[ $entry == ${out#./} ]] && continue
+    [[ $entry == ${tmp_script:t} ]] && continue
+    kept+=( "$entry" )
+  done
+  ((${#kept[@]})) || { print -u2 -- 'encryptdir: directory is empty'; rm -f -- "$tmp_archive"; return 1; }
+
+  print -r -- "Encrypting current directory into $out"
+  print -r -- "Source files are NOT deleted."
+
+  if ! command tar -czf - -- "${kept[@]}" |
+      command openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -out "$tmp_archive"; then
+    rm -f -- "$tmp_archive"
+    return 1
+  fi
+
+  command mv -- "$tmp_archive" "$out" || {
+    rm -f -- "$tmp_archive"
+    return 1
+  }
+
+  command cat >| "$tmp_script" <<EOF
+#!/usr/bin/env zsh
+set -e
+tmp=\$(mktemp "\${TMPDIR:-/tmp}/rex-decrypt.XXXXXX.tar.gz")
+trap 'rm -f "\$tmp"' EXIT INT TERM
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in ${(q-)out} -out "\$tmp"
+tar xzf "\$tmp"
+print -r -- "done"
+EOF
+  chmod +x -- "$tmp_script"
+  mv -- "$tmp_script" open
+  print -r -- "done: $out"
+  print -r -- "decrypt with ./open"
+}
+fi
+
+if (( $+commands[pdftk] )); then
+pdfmerge() {
+  emulate -L zsh
+
+  local out=${1:-merged.pdf}
+  local tmpdir
+  tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/rex-pdfmerge.XXXXXX") || return 1
+
+  local rc=1
+  {
+    local -a inputs bookmarked
+    inputs=( ./*.pdf(N) )
+    (( ${#inputs[@]} )) || { print -u2 -- 'pdfmerge: no PDF files found'; return 1; }
+
+    local f base info temp
+    for f in "${inputs[@]}"; do
+      [[ $f:t == ${out:t} ]] && continue
+      base=${f:t}
+      info="$tmpdir/$base.info"
+      temp="$tmpdir/$base.bookmarked.pdf"
+      print -r -- "Bookmarking $f"
+      printf 'BookmarkBegin\nBookmarkTitle: %s\nBookmarkLevel: 1\nBookmarkPageNumber: 1\n' "${base%.pdf}" >| "$info" || return 1
+      command pdftk "$f" update_info "$info" output "$temp" || return 1
+      bookmarked+=( "$temp" )
+    done
+
+    (( ${#bookmarked[@]} )) || { print -u2 -- 'pdfmerge: no input PDFs after excluding output'; return 1; }
+    command pdftk "${bookmarked[@]}" cat output "$out"
+    rc=$?
+  } always {
+    rm -rf -- "$tmpdir"
+  }
+
+  [[ $rc -eq 0 ]] && print -r -- "done: $out"
+  return $rc
+}
+fi
+
+
+
+srhs() {
+  emulate -L zsh
+  local query="$*"
+  [[ -n $query ]] || { print -u2 -- 'usage: srhs PATTERN'; return 2; }
+  if (( $+commands[rg] )); then
+    command rg -F -- "$query" "$HISTFILE"
+  else
+    command grep -F -- "$query" "$HISTFILE"
+  fi
+}
+
+alias :q="exit"
+
+is_mounted() {
+  emulate -L zsh
+  local target=${1-}
+  [[ -n $target ]] || return 2
+
+  if (( $+commands[mountpoint] )); then
+    command mountpoint -q -- "$target"
+    return $?
+  fi
+
+  if (( $+commands[findmnt] )); then
+    command findmnt -rn --target "$target" >/dev/null 2>&1
+    return $?
+  fi
+
+  if [[ -r /proc/mounts ]]; then
+    command awk -v t="$target" '$2 == t {found=1} END {exit !found}' /proc/mounts
+    return $?
+  fi
+
+  if (( $+commands[mount] )); then
+    command mount | command grep -F -- " on $target " >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
+termuxexec() {
+  emulate -L zsh
+
+  # Termux is an environment; only the central platform detector may decide
+  # whether the current root is actually Android. Chroots/PROOT guests must not
+  # trigger Android integration merely because TERMUX_VERSION was inherited.
+  [[ ${REX_TERMUX:-0} == 1 && ${REX_PLATFORM_ID:-} == android ]] || return 0
+
+  typeset -g android=true
+
+  if is_mounted /storage/emulated; then
+    typeset -g PHONE_ON=1
+  else
+    typeset -g PHONE_ON=0
+    (( $+functions[powerlevel10k_plugin_unload] )) && powerlevel10k_plugin_unload
+  fi
+
+  (( ${path[(I)/data/data/com.termux/files/usr/bin]} )) ||
+    path=(/data/data/com.termux/files/usr/bin $path)
+  export PATH
+
+  if [[ -z ${SSH_CONNECTION:-} && ${EUID:-0} -ne 0 ]]; then
+    (( $+commands[termux-wake-lock] )) && command termux-wake-lock
+
+    local listening=0
+    if (( $+commands[ss] )); then
+      if command ss -lnt 2>/dev/null |
+          command awk '$4 ~ /:43434$/ {found=1} END {exit !found}'; then
+        listening=1
+      fi
+    elif (( $+commands[pgrep] )); then
+      command pgrep -x sshd >/dev/null 2>&1 && listening=1
+    fi
+
+    if (( ! listening )) && (( $+commands[sshd] )); then
+      command sshd -p 43434 >/dev/null 2>&1 || true
+    fi
+  fi
+
+  # Do not replace a real mpv binary with xdg-open. Keep an explicit helper.
+  if (( $+commands[xdg-open] )); then
+    alias mpv-open='xdg-open'
+  fi
+}
+
+# Example aliases
 #alias walfix="dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval "string:global.reexec_self()""
 #alias minimize="$bash xdotool windowminimize $(xdotool getactivewindow)"
-alias zshconfig="$EDITOR ~/.zshrc"
-alias ohmyzsh="$EDITOR ~/.oh-my-zsh"
-alias tvp="mplayer -vo fbdev2 -fs -zoom -xy"
-alias beelogger="sudo python /home/rex/BeeLogger/bee.py"
-alias bh="sync && sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2"
-alias fullscreen="wmctrl -r ':ACTIVE:' -b add,fullscreen"
-alias unfullscreen="wmctrl -r ':ACTIVE:' -b add,fullscreen"
-alias sublime="/opt/sublime_text/sublime_text"
-alias glances="glances -C $HOME/Documents/glances.conf"
-alias vm.drop="sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2 && sudo sysctl -w vm.drop_caches=1"
-alias iris="xwinwrap -fs -fdt -ni -b -nf -un -o 1.0 -debug -- mpv -wid WID --loop --no-audio ~/Videos/video.mp4 /home/rex/Videos/iris.mp4 &; disown"
-alias irisk="pkill -f "xwinwrap""
-alias pk="pkill -9 -e"
-alias ssh="ssh -F ~/.ssh/config"
-alias wallpaper="tiv /home/rex/.config/autowallp/wall-dark0 && tiv /home/rex/.config/autowallp/wall-dark1 && tiv /home/rex/.config/autowallp/wall-dark2 && tiv /home/rex/.config/autowallp/wall-dark3 && tiv /home/rex/.config/autowallp/wall-dark4"
-alias m="mpv --demuxer-max-bytes=50M"
-alias define="sdcv"
-alias fetch="cpufetch -Fs fancy -c intel && neofetch"
-alias magick="magick -limit memory 2GiB "
-alias mvi='mpv --config-dir=$HOME/.config/mvi'
-alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
-alias emacs="emacsclient -ca "emacs""
-alias pipupgrade="pip-review --local --auto"
-alias tik="$(binpath kitty) +kitten icat"
-alias icat="~/.local/kitty.app/bin/kitty +kitten icat"
-alias gdown="gdown --fuzzy --continue"
-alias gdownf="gdown --fuzzy --continue --folder"
-alias rename="vidir --verbose"
-alias music=musikcube
-alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
-alias wget=wget --hsts-file="$XDG_DATA_HOME/wget-hsts"
-if command -v newcommand &> /dev/null
-then
-     alias command="newcommand"
-else
-     alias command="command"
+alias zshconfig="$EDITOR $ZDOTDIR/.zshrc"
+alias zshrc="$EDITOR ${ZDOTDIR:-$HOME/.config/zsh}/.zshrc"
+alias zimrc="$EDITOR $ZIM_CONFIG_FILE"
+alias zimconfig="$EDITOR $ZIM_CONFIG_FILE"
+if (( $+commands[mplayer] )); then
+  alias tvp="mplayer -vo fbdev2 -fs -zoom -xy"
 fi
-if command -v lvim &> /dev/null
-then
-     alias vi="lvim"
-     export EDITOR="lvim"
-elif command -v nvim &> /dev/null
-then
-     alias vi="vim"
-     export EDITOR="vim"
-else
-     alias vi="vi"
-     export EDITOR="vi"
+# alias sndcpy="$HOME/./sndcpy"
+# alias ls="exa -a --icons || ls -a"
+# alias l="exa -alihgSUFHum --icons || ls -alihgSUFHu --color"
+# alias lst="exa --tree || ls --tree"
+if (( $+commands[sudo] )) && [[ -x "$HOME/BeeLogger/bee.py" || -f "$HOME/BeeLogger/bee.py" ]]; then
+  if (( $+commands[python3] )); then
+    alias beelogger="sudo python3 $HOME/BeeLogger/bee.py"
+  elif (( $+commands[python] )); then
+    alias beelogger="sudo python $HOME/BeeLogger/bee.py"
+  fi
 fi
-alias nvim="lvim"
-if command -v lvim &> /dev/null
-then
-     alias vim="lvim"
-elif command -v nvim &> /dev/null
-then
-     alias vim="nvim"
-elif command -v vim &> /dev/null
-then
-     alias vim="vim"
-else
-     alias vim="vi"
+if (( $+commands[sudo] && $+commands[sync] && $+commands[sysctl] )); then
+  alias bh="sync && sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2"
+  alias vm.drop="sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2 && sudo sysctl -w vm.drop_caches=1"
 fi
-cat() {
-    args=("$@")
-    args_bat=("$@")
-    for arg in "${args[@]}" ; do
-        if [[ ! -f "$arg" ]]
-        then
-            args=("${(@)args:#"$arg"}")
-        fi
-    done
-    for arg in "${args[@]}" ; do
-        if [[ -f "$arg" ]]
-        then
-            args_bat=("${(@)args_bat:#"$arg"}")
-        fi
-    done
-    if [[ -p /dev/stdin ]]
-    then
-        bat -p --paging=never "${args_bat[@]}" /dev/stdin
-        return 0
-    fi
-    for arg in "${args[@]}" ; do
-        if file --mime-type "$arg" | grep -i image >> /dev/null
-        then
-            if command -v viu &> /dev/null
-            then
-                viu -1 -t "$arg"
-            else
-                img2txt -f utf8 -W "$(tput cols)" "$arg"
-            fi
-        fi
-        if file --mime-type "$arg" | grep -v image >> /dev/null
-        then
-            bat --style=plain --paging=never "${args_bat[@]}" "$arg"
-        fi
-    done
+# alias ftp-start="sudo systemctl start vsftpd.service"
+# alias ftp-stop="sudo systemctl stop vsftpd.service"
+if (( $+commands[wmctrl] )); then
+  alias fullscreen="wmctrl -r ':ACTIVE:' -b add,fullscreen"
+  alias unfullscreen="wmctrl -r ':ACTIVE:' -b remove,fullscreen"
+fi
+[[ -x /opt/sublime_text/sublime_text ]] && alias sublime="/opt/sublime_text/sublime_text"
+if (( $+commands[glances] )); then
+  alias glances="glances -C $HOME/Documents/glances.conf"
+fi
+# alias srhs="cat $HOME/.zsh_history | grep"
+iris() {
+  (( $+commands[xwinwrap] && $+commands[mpv] )) || return 127
+  command xwinwrap -fs -fdt -ni -b -nf -un -o 1.0 -debug -- \
+    mpv -wid WID --loop --no-audio "$HOME/Videos/video.mp4" "$HOME/Videos/iris.mp4" &!
 }
-compdef bat=cat
+if (( $+commands[pkill] )); then
+  alias irisk='pkill -f xwinwrap'
+  alias pk="pkill -9 -e"
+fi
+# alias sshd="/etc/init.d/ssh start"
+if (( $+commands[ssh] )); then
+  alias ssh="ssh -F ~/.ssh/config"
+fi
+wallpaper() {
+    local -a images=(
+        "$HOME/.config/autowallp/wall-dark0"
+        "$HOME/.config/autowallp/wall-dark1"
+        "$HOME/.config/autowallp/wall-dark2"
+        "$HOME/.config/autowallp/wall-dark3"
+        "$HOME/.config/autowallp/wall-dark4"
+    )
+    if (( $+commands[kitty] )); then
+        local img
+        for img in "${images[@]}"; do
+            [[ -f $img ]] && command kitty +kitten icat "$img"
+        done
+    elif (( $+commands[chafa] )); then
+        command chafa --format=symbols --colors=full "${images[@]}"
+    elif (( $+commands[tiv] )); then
+        command tiv "${images[@]}"
+    else
+        print -u2 'wallpaper: install kitty, chafa, or tiv'
+        return 127
+    fi
+}
+# alias pyhttp="$HOME/py_httpserver_Ult/local_server.py"
+if (( $+commands[mpv] )); then
+  alias m="mpv --demuxer-max-bytes=50M"
+fi
+if (( $+commands[sdcv] )); then
+  alias define="sdcv"
+fi
+rex-fetch() {
+  emulate -L zsh
+  print -r -- "${USER:-%n}@${HOSTNAME:-%m}"
+  print -r -- "OS: ${REX_DISTRO_NAME:-${OSTYPE:-unknown}}"
+  print -r -- "Kernel: $(uname -sr 2>/dev/null || print -r -- unknown)"
+  print -r -- "Arch: ${REX_CPU_ARCH:-$(uname -m 2>/dev/null || print -r -- unknown)}"
+}
+if (( $+commands[fastfetch] )); then
+  alias fetch='fastfetch'
+elif (( $+commands[neofetch] )); then
+  alias fetch='neofetch'
+else
+  alias fetch='rex-fetch'
+fi
+# alias amn="sshfs -o password_stdin u0_a310@192.168.2.$1:/storage/emulated/0 ~/AnDroid -p 43434 <<< "yusarintin""alias cleaner="sudo bleachbit"
+if (( $+commands[magick] )); then
+  alias magick="magick -limit memory 2GiB "
+fi
+if (( $+commands[mpv] )); then
+  alias mvi='mpv --config-dir=$HOME/.config/mvi'
+  alias mpvu="mpv --ytdl-raw-options=geo-bypass-country=UK"
+fi
+if (( $+commands[emacsclient] )); then
+  alias emacs='emacsclient -ca emacs'
+fi
+# alias em="emacsclient -ca "emacs""
+if (( $+commands[pip-review] )); then
+  alias pipupgrade="pip-review --local --auto"
+fi
+if (( $+commands[kitty] )); then
+  alias tik='kitty +kitten icat'
+  alias icat='kitty +kitten icat'
+fi
+# alias tmpv="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
+# alias play="mpv $1 -wid $(xwininfo | awk '{if(/Window id:/) print $4}' & xdotool click 1)"
+# alias apt="dnf"
+if (( $+commands[gdown] )); then
+  alias gdown="gdown --fuzzy --continue"
+  alias gdownf="gdown --fuzzy --continue --folder"
+fi
+if (( $+commands[vidir] )); then
+  alias rename="vidir --verbose"
+fi
+# alias yolo=$HOME/yolo-ai-cmdbot/yolo.py
+# alias computer=$HOME/yolo-ai-cmdbot/yolo.py
+# alias roxy="sgpt --role roxy"
+if (( $+commands[musikcube] )); then
+  alias music=musikcube
+fi
+if (( $+commands[svn] )); then
+  alias svn="svn --config-dir $XDG_CONFIG_HOME/subversion"
+fi
+if (( $+commands[wget] )); then
+  alias wget='wget --hsts-file="$XDG_DATA_HOME/wget-hsts"'
+fi
+
+# Do not shadow Zsh's `command` builtin: the entire configuration relies on
+# `command` to bypass functions and aliases safely.
+if (( $+commands[newcommand] )); then
+  alias rex-command='newcommand'
+fi
+
+# One editor identity everywhere. Preference: Neovim > Vim > classic vi.
+# LazyVim is intentionally not supported here: use normal Neovim instead.
+if command -v nvim >/dev/null 2>&1; then
+  REX_EDITOR=nvim
+elif command -v vim >/dev/null 2>&1; then
+  REX_EDITOR=vim
+else
+  REX_EDITOR=vi
+fi
+
+alias vi="$REX_EDITOR"
+alias vim="$REX_EDITOR"
+alias nvim="$REX_EDITOR"
+unalias lvim 2>/dev/null || true
+
+export EDITOR="$REX_EDITOR"
+export VISUAL="$REX_EDITOR"
+export SUDO_EDITOR="$REX_EDITOR"
+
+# Enhanced cat that always retains a `command cat` escape hatch.
+cat() {
+  emulate -L zsh
+
+  # Machine-readable callers always receive the exact output of real cat.
+  if [[ ! -t 1 ]]; then
+    command cat "$@"
+    return $?
+  fi
+
+  (( $# )) || { command cat; return $?; }
+
+  local -a text_files
+  local arg mime
+  local had_output=0
+
+  for arg in "$@"; do
+    [[ -f $arg ]] || { text_files+=( "$arg" ); continue; }
+    mime=$(command file --brief --mime-type -- "$arg" 2>/dev/null) || mime=
+    if [[ $mime == image/* ]]; then
+      if (( $+commands[chafa] )); then
+        command chafa --format=symbols --colors=full -- "$arg"
+      elif (( $+commands[viu] )); then
+        command viu -1 -t -- "$arg"
+      elif (( $+commands[img2txt] )); then
+        command img2txt -f utf8 -W "${COLUMNS:-80}" -- "$arg"
+      else
+        command cat -- "$arg"
+      fi
+      had_output=1
+    else
+      text_files+=( "$arg" )
+    fi
+  done
+
+  if ((${#text_files[@]})); then
+    if (( $+commands[bat] )); then
+      command bat --style=plain --paging=never -- "${text_files[@]}"
+    else
+      command cat -- "${text_files[@]}"
+    fi
+    had_output=1
+  fi
+
+  (( had_output )) || command cat "$@"
+}
+
 if command -v batman &> /dev/null
 then
+     # export MANPAGER="sh -c 'col -bx  | bat -l man -p'"
+     # export MANPAGER="batman"
      alias man="batman"
 fi
+
+# alias batgrep="batgrep -B 5 -A 5"
+
 if command -v batwatch &> /dev/null
 then
      alias watch="batwatch --color -x"
 fi
+
 if command -v batdiff &> /dev/null
 then
      alias diff="batdiff"
 fi
-if command -v rsync &> /dev/null
-then
-     cpr() {
-          rsync -avxAHXhP $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP $@
-     }
-     mvr() {
-          rsync -avxAHXhP --remove-source-files $@ || echo -e "${FG_R_Black}${BG_R_Red}\n-XA skippin'\n${ClearColor}" && rsync -avxHP --remove-source-files $@
-     }
+
+if (( $+commands[rsync] )); then
+  cpr() {
+    command rsync -avxAHXhP "$@" || {
+      print -u2 -- 'cpr: retrying without extended ACL/xattr flags'
+      command rsync -avxHP "$@"
+    }
+  }
+
+  mvr() {
+    command rsync -avxAHXhP --remove-source-files "$@" || {
+      print -u2 -- 'mvr: retrying without extended ACL/xattr flags'
+      command rsync -avxHP --remove-source-files "$@"
+    }
+  }
+
+  (( $+functions[compdef] )) && compdef cpr=rsync
+  (( $+functions[compdef] )) && compdef mvr=rsync
 fi
-compdef cp=rsync
-compdef mv=rsync
+
 CON() {
-     xset -q | grep "Caps Lock:   off" && xdotool key Caps_Lock
+  (( $+commands[xset] && $+commands[xdotool] )) || return 127
+  command xset -q | command grep -q 'Caps Lock:   off' &&
+    command xdotool key Caps_Lock
 }
-con() {
-     xset -q | grep "Caps Lock:   off" && xdotool key Caps_Lock
-}
+con() { CON "$@"; }
 COFF() {
-     xset -q | grep "Caps Lock:   on" && xdotool key Caps_Lock
+  (( $+commands[xset] && $+commands[xdotool] )) || return 127
+  command xset -q | command grep -q 'Caps Lock:   on' &&
+    command xdotool key Caps_Lock
 }
-coff() {
-     xset -q | grep "Caps Lock:   on" && xdotool key Caps_Lock
+coff() { COFF "$@"; }
+
+# Keep ls/l/ll/la/lst reliable on both GNU/Linux and Termux.  The old helpers
+# hard-coded /bin/ls, which is not the canonical Termux path.
+unalias ls l ll la lst 2>/dev/null
+
+_rex_list_tool() {
+  if (( $+commands[eza] )); then
+    print -r -- eza
+  elif (( $+commands[exa] )); then
+    print -r -- exa
+  else
+    print -r -- ls
+  fi
 }
-unalias ls
-unalias l
+
+# Compatibility functions retained for scripts that call them directly.
 eza_ls() {
-    eza -a --icons "$@" || return 1
-    printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-    total_number_of_files=$(eza -a --icons "$@" | wc -l)
-    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    echo -ne "count:  \e[31m$total_number_of_files\e[0m"
-    for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
-    echo -e "total_size:\e[32m $total_size\e[0m"
+  local tool="$(_rex_list_tool)"
+  [[ $tool == ls ]] && { command ls -a "$@"; return $?; }
+  command "$tool" -a --icons --group-directories-first "$@"
 }
+
 eza_l() {
-    if [ $(tput cols) -gt "130" ]; then
-        eza -alihgSUHumo --icons "$@" || return 1
-    else
-        eza --long -o "$@" || return 1
-    fi
-    eza="$(eza -alihgSUHum --icons "$@" | head -1)"
-    total_number_of_files=$(eza -a --icons "$@" | wc -l)
-    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
-    gap1="$(echo "$eza" | awk '{print index($0, "Permissions")-1}')"
-    gap2="$(echo "$eza" | awk '{print index($0, "Size")-1}')"
-    gap2="$(($gap2-$gap1))"
-    echo -en "\r\033[K"
-    printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-    total_number_of_files=$(($(eza -alihgSUum --icons "$@" | wc -l)-1))
-    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    echo -ne "count:"
-    for i in {1..$(($gap1-6))} ; do echo -n -e " " ; done
-    echo -ne "\e[31m$total_number_of_files\e[0m"
-    for i in {1..$(($gap2-15))} ; do echo -n -e " " ; done
-    echo -ne "total_size:"
-    echo -e "\e[32m $total_size\e[0m"
+  local tool="$(_rex_list_tool)"
+  [[ $tool == ls ]] && { command ls -lah "$@"; return $?; }
+  command "$tool" -lah --icons --group-directories-first "$@"
 }
+
 eza_lst() {
-    eza --tree "$@"
+  local tool="$(_rex_list_tool)"
+  [[ $tool == ls ]] && { command ls -la "$@"; return $?; }
+  command "$tool" --tree --icons "$@"
 }
-exa_ls() {
-    exa -a --icons "$@" || return 1
-    printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-    total_number_of_files=$(exa -a --icons "$@" | wc -l)
-    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    echo -ne "count:  \e[31m$total_number_of_files\e[0m"
-    for i in {1..$((6-${#total_number_of_files}))} ; do echo -n -e " " ; done
-    echo -e "total_size:\e[32m $total_size\e[0m"
-}
-exa_l() {
-    exa -alihgSUFHum --icons "$@" || return 1
-    exa="$(exa -alihgSUFHum --icons "$@" | head -1)"
-    gap1="$(echo "$exa" | awk '{print index($0, "Permissions")-1}')"
-    gap2="$(echo "$exa" | awk '{print index($0, "Size")-1}')"
-    gap2="$(($gap2-$gap1))"
-    printf '\e[31m%*s\e[0m\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-    total_number_of_files=$(($(exa -alihgSUFum --icons "$@" | wc -l)-1))
-    total_size="$(/bin/ls -gh "$@" | head -n 1 | awk '{print $2}')"
-    echo -ne "count:"
-    for i in {1..$(($gap1-6))} ; do echo -n -e " " ; done
-    echo -ne "\e[31m$total_number_of_files\e[0m"
-    for i in {1..$(($gap2-15))} ; do echo -n -e " " ; done
-    echo -ne "total_size:"
-    echo -e "\e[32m $total_size\e[0m"
-}
-exa_lst() {
-    exa --tree "$@"
-}
-gnu_ls() {
-    /bin/ls -a "$@" || braek
-    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-    total_number_of_files=$(($(/bin/ls -a "$@" | wc -l)-2))
-    echo "$total_number_of_files"
-}
-gnu_l() {
-    /bin/ls -alihgSUFHu "$@" || braek
-    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
-    total_number_of_files=$(($(/bin/ls -alihgSUFHu "$@" | wc -l)-3))
-    echo "$total_number_of_files"
-}
-gnu_lst() {
-    /bin/ls "$@" || braek
-    /bin/ls "$@" | wc -l
-}
-if command -v eza &> /dev/null
-then
-     alias ls="eza_ls"
-     alias l="eza_l"
-     alias lst="eza_lst"
-elif command -v exa &> /dev/null
-then
-     alias ls="exa_ls"
-     alias l="exa_l"
-     alias lst="exa_lst"
+
+exa_ls()  { eza_ls "$@"; }
+exa_l()   { eza_l "$@"; }
+exa_lst() { eza_lst "$@"; }
+
+gnu_ls()  { command ls -a "$@"; }
+gnu_l()   { command ls -lah "$@"; }
+gnu_lst() { command ls -la "$@"; }
+
+if (( $+commands[eza] )); then
+  alias ls='eza --icons --group-directories-first'
+  alias l='eza -lah --icons --group-directories-first'
+  alias ll='eza -lh --icons --group-directories-first'
+  alias la='eza -a --icons --group-directories-first'
+  alias lst='eza --tree --icons'
+elif (( $+commands[exa] )); then
+  alias ls='exa --icons --group-directories-first'
+  alias l='exa -lah --icons --group-directories-first'
+  alias ll='exa -lh --icons --group-directories-first'
+  alias la='exa -a --icons --group-directories-first'
+  alias lst='exa --tree --icons'
 else
-     alias ls="gnu_ls"
-     alias l="gnu_l"
-     alias lst="gnu_lst"
+  alias ls='command ls'
+  alias l='command ls -lah'
+  alias ll='command ls -lh'
+  alias la='command ls -a'
+  lst() { if (( $+commands[tree] )); then command tree "$@"; else command ls -R "$@"; fi }
 fi
-if command -v bat &> /dev/null
-then
-    lsblk() {
-        "$(which lsblk)" "$@" | bat -p --language=fstab
+
+if (( $+commands[bat] )) && (( $+commands[lsblk] )); then
+  lsblk() {
+    if [[ -t 1 ]]; then
+      command lsblk "$@" | command bat -p --language=fstab
+    else
+      command lsblk "$@"
+    fi
+  }
+
+  bcat() {
+    emulate -L zsh
+    local name=${1-}
+    [[ -n $name ]] || { print -u2 -- 'usage: bcat COMMAND'; return 2; }
+
+    if (( $+functions[$name] )); then
+      functions "$name" | command bat -pl zsh
+      print
+      return 0
+    fi
+
+    if (( $+aliases[$name] )); then
+      alias "$name" | command bat -pl sh
+      print
+      return 0
+    fi
+
+    local path
+    path=$(whence -p -- "$name" 2>/dev/null) || path=
+    [[ -n $path && -f $path ]] && command bat -p -- "$path" || {
+      print -u2 -- "bcat: source not found: $name"
+      return 1
     }
-    bcat() {
-        bcat_var_func="$(functions "$1" | cat -pl sh)"
-        if [ -n "$bcat_var_func" ] ; then
-            echo "$bcat_var_func" | cat -pl sh
-            echo -e "\n"
-        fi
-        bcat_var_alias="$(alias "$1" | cat -pl sh)"
-        if [ -n "$bcat_var_alias" ] ; then
-            echo "$bcat_var_alias" | cat -pl sh
-            echo -e "\n"
-        fi
-        cat -p "$(type "$1" | grep -v 'function' | grep -v 'alias' | awk '{print $3}')"
-    }
-    compdef bcat=which
+  }
+  (( $+functions[compdef] )) && compdef bcat=which
 fi
-qr() {
-    local qrname
-    qrname="$(date +%s)"
-    qrencode -s 9 -l H \'"$*"\' -o /tmp/"$qrname"
-    cat /tmp/"$qrname"
-}
-if command -v bat &> /dev/null
-then
-    head() {
-    /"$(binpath head)" "$@" | cat
-    }
+
+if (( $+commands[qrencode] )); then
+  qr() {
+    emulate -L zsh
+    local data="$*"
+    [[ -n $data ]] || { print -u2 -- 'usage: qr TEXT'; return 2; }
+    command qrencode -t UTF8 -m 1 -- "$data"
+  }
+elif (( $+commands[python3] )) && command python3 -c 'import qrcode' >/dev/null 2>&1; then
+  qr() {
+    emulate -L zsh
+    local data="$*"
+    [[ -n $data ]] || { print -u2 -- 'usage: qr TEXT'; return 2; }
+    command python3 - "$data" <<'PYQR'
+import sys, qrcode
+q = qrcode.QRCode(border=1)
+q.add_data(sys.argv[1])
+q.make(fit=True)
+for row in q.get_matrix():
+    print(''.join('██' if cell else '  ' for cell in row))
+PYQR
+  }
 fi
+
+if (( $+commands[bat] )); then
+  head() {
+    if [[ -t 1 ]]; then
+      command head "$@" | cat
+    else
+      command head "$@"
+    fi
+  }
+fi
+
 alias epoch="date +%s"
-if command -v bat &> /dev/null
-then
-    tail() {
-    /"$(binpath tail)" "$@" | cat
-    }
+
+if (( $+commands[bat] )); then
+  tail() {
+    if [[ -t 1 ]]; then
+      command tail "$@" | cat
+    else
+      command tail "$@"
+    fi
+  }
 fi
-roxy() {
-    sgpt --role roxy "\"$*\""
+
+if (( $+commands[sgpt] )); then
+  roxy() {
+    command sgpt --role roxy "\"$*\""
+  }
+fi
+
+if (( $+commands[tgpt] )); then
+  tgpt() { command tgpt "$@"; }
+fi
+
+if (( $+commands[tgpt] )); then
+  co() { command tgpt --shell "$@"; }
+fi
+
+rex-open() {
+  emulate -L zsh
+  if (( $+commands[mimeopen] )); then
+    command mimeopen -a -- "$@"
+  elif (( $+commands[xdg-open] )); then
+    command xdg-open -- "$@"
+  elif [[ $OSTYPE == darwin* ]] && (( $+commands[open] )); then
+    command open "$@"
+  elif (( $+commands[gio] )); then
+    command gio open -- "$@"
+  else
+    print -u2 -- 'rex-open: no supported file opener is installed'
+    return 127
+  fi
 }
-tgpt() {
-    echo \""$@"\" | xargs tgpt
-}
-co() {
-    echo \""$@"\" | tgpt --shell
-}
-open() {
-    mimeopen -a "$@"
-}
+
+# Preserve the convenient `open` command only when the platform has no native
+# `open` executable; never shadow macOS/BSD `open`.
+(( $+commands[open] )) || alias open='rex-open'
+
 openfzf() {
-    if [ -z "$1" ] ; then openfzf_path="$pwd" ; else openfzf_path=$(realpath "$1") ; fi
-    openfzf_out_path="$openfzf_path"/"$(cd "$openfzf_path" && fzf)"
-    mimeopen -a "$openfzf_out_path"
+  emulate -L zsh
+  local openfzf_path=${1:-$PWD}
+  if (( $+commands[realpath] )); then
+    openfzf_path=$(command realpath -- "$openfzf_path" 2>/dev/null) || return 1
+  else
+    openfzf_path=$(cd -- "$openfzf_path" 2>/dev/null && command pwd -P) || return 1
+  fi
+  [[ -d $openfzf_path ]] || {
+    print -u2 -- "openfzf: not a directory: $openfzf_path"
+    return 1
+  }
+
+  local -a entries
+  entries=( "$openfzf_path"/*(N) )
+  local selection
+
+  if (( $+commands[fzf] )); then
+    selection=$(printf '%s\n' "${entries[@]}" | command fzf --height=40% --reverse) || return
+  else
+    select selection in "${entries[@]}"; do
+      [[ -n $selection ]] || return
+      break
+    done
+  fi
+  [[ -n $selection ]] || return
+
+  if [[ -d $selection ]]; then
+    cd -- "$selection"
+  else
+    ${EDITOR:-vi} "$selection"
+  fi
 }
-alias fzfopen=openfzf
-alias fzfo=openfzf
-alias ofzf=openfzf
+
+# Preserve the old convenience names. The implementation itself falls back
+# to Zsh `select` when fzf is unavailable, so these aliases need no dependency gate.
+alias fzfopen='openfzf'
+alias fzfo='openfzf'
+alias ofzf='openfzf'
+
 alias rm="rm -i"
+
 try() {
-    while ! "$@" ; do sleep 1; done
+  emulate -L zsh
+  local delay=${TRY_DELAY:-1}
+  while ! "$@"; do
+    sleep "$delay" || return
+  done
 }
+
 loop() {
-    while true ; do "$@" && sleep 1 && clear ; done
+  emulate -L zsh
+  local delay=${LOOP_DELAY:-1}
+  while true; do
+    "$@"
+    local rc=$?
+    (( rc != 0 )) && sleep "$delay"
+    command clear 2>/dev/null || true
+    sleep "$delay"
+  done
 }
-lazynvm() {
-  unset -f nvm node npm
-  export NVM_DIR=~/.nvm
-  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  
+
+alias sublime="/opt/sublime_text/sublime_text"
+alias iris="xwinwrap -fs -fdt -ni -b -nf -un -o 1.0 -debug -- mpv -wid WID --loop --no-audio $HOME/Videos/video.mp4 $HOME/Videos/iris.mp4 &; disown"
+alias wallpaper="tiv $HOME/.config/autowallp/wall-dark0 && tiv $HOME/.config/autowallp/wall-dark1 && tiv $HOME/.config/autowallp/wall-dark2 && tiv $HOME/.config/autowallp/wall-dark3 && tiv $HOME/.config/autowallp/wall-dark4"
+
+# Backslash-escape shell metacharacters on stdin.
+addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
+
+# Offer to chmod +x a ./script that is not executable (preexec hook).
+command_permission() {
+  local cmd=${${(z)1}[1]}
+  if [[ $cmd == ./* && -e ${cmd#./} && ! -x ${cmd#./} ]]; then
+    read -rq "REPLY?${cmd#./} is not executable. Make it executable (y/n)? "
+    [[ $REPLY == [Yy] ]] && chmod +x -- "${cmd#./}"
+    print
+  fi
+  return 0
 }
-nvm() {
-  lazynvm
-  nvm "$@"
-}
-node() {
-  lazynvm
-  node "$@"
-}
-npm() {
-  lazynvm
-  npm "$@"
-}
-export PATH="$PATH:$HOME/.rvm/bin"
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
-LESSOPEN="|/usr/bin/batpipe %s";
-export LESSOPEN;
-unset LESSCLOSE;
-LESS="$LESS -R";
-BATPIPE="color";
-export LESS;
-export BATPIPE;
-env=~/.ssh/agent.env
-agent_load_env () { test -f "$env" && . "$env" >| /dev/null ; }
-agent_start () {
-    (umask 077; ssh-agent >| "$env")
-    . "$env" >| /dev/null ; }
-agent_load_env
-agent_run_state=$(ssh-add -l >| /dev/null 2>&1; echo $?)
-if [ ! "$SSH_AUTH_SOCK" ] || [ $agent_run_state = 2 ]; then
-    agent_start
-    ssh-add
-elif [ "$SSH_AUTH_SOCK" ] && [ $agent_run_state = 1 ]; then
-    ssh-add
+autoload -Uz add-zsh-hook
+add-zsh-hook preexec command_permission
+
+# mise owns Ruby/Bundler in the modern setup. Keep RVM loadable only on machines
+# that already have its entrypoint; otherwise leave Ruby to the system/mise fallback.
+if (( ! $+commands[mise] )) && [[ -r "${HOME}/.rvm/scripts/rvm" ]]; then
+  source "${HOME}/.rvm/scripts/rvm"
 fi
-unset env
-#compdef _glow glow
+
+if (( $+commands[batpipe] )); then
+  export LESSOPEN='|batpipe %s'
+  export BATPIPE='color'
+fi
+
+if (( $+commands[bat] )); then
+  export LESS="${LESS:--R}"
+  export MANPAGER="${MANPAGER:-sh -c 'col -bx | bat --language=man --style=plain --paging=always'}"
+  export MANROFFOPT="${MANROFFOPT:--c}"
+fi
+
+# Intentionally empty: Zim's ssh module manages the agent lifecycle.
+
+# zsh completion for glow                                 -*- shell-script -*-
+
 __glow_debug()
 {
     local file="$BASH_COMP_DEBUG_FILE"
@@ -1955,6 +2659,7 @@ __glow_debug()
         echo "$*" >> "${file}"
     fi
 }
+
 _glow()
 {
     local shellCompDirectiveError=1
@@ -1962,75 +2667,116 @@ _glow()
     local shellCompDirectiveNoFileComp=4
     local shellCompDirectiveFilterFileExt=8
     local shellCompDirectiveFilterDirs=16
+
     local lastParam lastChar flagPrefix requestComp out directive comp lastComp noSpace
     local -a completions
+
     __glow_debug "\n========= starting completion logic =========="
     __glow_debug "CURRENT: ${CURRENT}, words[*]: ${words[*]}"
+
+    # The user could have moved the cursor backwards on the command-line.
+    # We need to trigger completion from the $CURRENT location, so we need
+    # to truncate the command-line ($words) up to the $CURRENT location.
+    # (We cannot use $CURSOR as its value does not work when a command is an alias.)
     words=("${=words[1,CURRENT]}")
     __glow_debug "Truncated words[*]: ${words[*]},"
+
     lastParam=${words[-1]}
     lastChar=${lastParam[-1]}
     __glow_debug "lastParam: ${lastParam}, lastChar: ${lastChar}"
+
+    # For zsh, when completing a flag with an = (e.g., glow -n=<TAB>)
+    # completions must be prefixed with the flag
     setopt local_options BASH_REMATCH
     if [[ "${lastParam}" =~ '-.*=' ]]; then
+        # We are dealing with a flag with an =
         flagPrefix="-P ${BASH_REMATCH}"
     fi
+
+    # Prepare the command to obtain completions
     requestComp="${words[1]} __complete ${words[2,-1]}"
     if [ "${lastChar}" = "" ]; then
+        # If the last parameter is complete (there is a space following it)
+        # We add an extra empty parameter so we can indicate this to the go completion code.
         __glow_debug "Adding extra empty parameter"
         requestComp="${requestComp} \"\""
     fi
-    __glow_debug "About to call: eval ${requestComp}"
-    out=$(eval ${requestComp} 2>/dev/null)
+
+    __glow_debug "About to call: glow __complete ..."
+
+    # Invoke the executable through an argv array; never eval generated completion input.
+    local -a glow_cmd
+    glow_cmd=( "${words[1]}" __complete "${words[2,-1]}" )
+    out=$(command "${glow_cmd[@]}" 2>/dev/null)
     __glow_debug "completion output: ${out}"
+
+    # Extract the directive integer following a : from the last line
     local lastLine
     while IFS='\n' read -r line; do
         lastLine=${line}
     done < <(printf "%s\n" "${out[@]}")
     __glow_debug "last line: ${lastLine}"
+
     if [ "${lastLine[1]}" = : ]; then
         directive=${lastLine[2,-1]}
+        # Remove the directive including the : and the newline
         local suffix
         (( suffix=${#lastLine}+2))
         out=${out[1,-$suffix]}
     else
+        # There is no directive specified.  Leave $out as is.
         __glow_debug "No directive found.  Setting do default"
         directive=0
     fi
+
     __glow_debug "directive: ${directive}"
     __glow_debug "completions: ${out}"
     __glow_debug "flagPrefix: ${flagPrefix}"
+
     if [ $((directive & shellCompDirectiveError)) -ne 0 ]; then
         __glow_debug "Completion received error. Ignoring completions."
         return
     fi
+
     while IFS='\n' read -r comp; do
         if [ -n "$comp" ]; then
+            # If requested, completions are returned with a description.
+            # The description is preceded by a TAB character.
+            # For zsh's _describe, we need to use a : instead of a TAB.
+            # We first need to escape any : as part of the completion itself.
             comp=${comp//:/\\:}
+
             local tab=$(printf '\t')
             comp=${comp//$tab/:}
+
             __glow_debug "Adding completion: ${comp}"
             completions+=${comp}
             lastComp=$comp
         fi
     done < <(printf "%s\n" "${out[@]}")
+
     if [ $((directive & shellCompDirectiveNoSpace)) -ne 0 ]; then
         __glow_debug "Activating nospace."
         noSpace="-S ''"
     fi
+
     if [ $((directive & shellCompDirectiveFilterFileExt)) -ne 0 ]; then
+        # File extension filtering
         local filteringCmd
         filteringCmd='_files'
         for filter in ${completions[@]}; do
             if [ ${filter[1]} != '*' ]; then
+                # zsh requires a glob pattern to do file filtering
                 filter="\*.$filter"
             fi
             filteringCmd+=" -g $filter"
         done
         filteringCmd+=" ${flagPrefix}"
+
         __glow_debug "File filtering command: $filteringCmd"
         _arguments '*:filename:'"$filteringCmd"
     elif [ $((directive & shellCompDirectiveFilterDirs)) -ne 0 ]; then
+        # File completion for directories only
         local subdir
         subdir="${completions[1]}"
         if [ -n "$subdir" ]; then
@@ -2039,6 +2785,7 @@ _glow()
         else
             __glow_debug "Listing directories in ."
         fi
+
         local result
         _arguments '*:dirname:_files -/'" ${flagPrefix}"
         result=$?
@@ -2048,40 +2795,142 @@ _glow()
         return $result
     else
         __glow_debug "Calling _describe"
-        if eval _describe "completions" completions $flagPrefix $noSpace; then
+        local -a describe_opts
+        describe_opts=()
+        [[ -n $flagPrefix ]] && describe_opts+=( ${=flagPrefix} )
+        [[ -n $noSpace ]] && describe_opts+=( ${=noSpace} )
+        if _describe "completions" completions "${describe_opts[@]}"; then
             __glow_debug "_describe found some completions"
+
+            # Return the success of having called _describe
             return 0
         else
             __glow_debug "_describe did not find completions."
             __glow_debug "Checking if we should do file completion."
             if [ $((directive & shellCompDirectiveNoFileComp)) -ne 0 ]; then
                 __glow_debug "deactivating file completion"
+
+                # We must return an error code here to let zsh know that there were no
+                # completions found by _describe; this is what will trigger other
+                # matching algorithms to attempt to find completions.
+                # For example zsh can match letters in the middle of words.
                 return 1
             else
+                # Perform file completion
                 __glow_debug "Activating file completion"
+
+                # We must return the result of this command, so it must be the
+                # last command, or else we must store its result to return it.
                 _arguments '*:filename:_files'" ${flagPrefix}"
             fi
         fi
     fi
 }
-if [ "$funcstack[1]" = "_glow" ]; then
-    _glow
-fi
+
+# Register the completion function after its definition.
+(( $+functions[compdef] )) && compdef _glow glow
+
 [ -f "$CARGO_HOME"/env ] && source "$CARGO_HOME/env"
+# addESC() { sed 's/[][ \~`!@#$%^&*()=+{}|;:'"'"'",<>/?-]/\\&/g'; }
 [ -f "${HOME}/.gdrive-downloader/gdl" ] && [ -x "${HOME}/.gdrive-downloader/gdl" ] && PATH="${HOME}/.gdrive-downloader:${PATH}"
+
+# eval $(thefuck --alias)
+# You can use whatever you want as an alias, like for Mondays:
+# eval $(thefuck --alias FUCK)
+# eval $(thefuck --alias F)
+
 export ANDROID_HOME="$XDG_DATA_HOME"/android
-termuxexec
-bindkey '\t' menu-complete
-bindkey "$terminfo[kcbt]" reverse-menu-complete
+
+# Termux integration is intentionally driven by the central platform detector.
+# A chroot/proot guest may inherit Termux variables but must not run Android
+# host integration unless the current root is actually detected as Android.
+if [[ ${REX_TERMUX:-0} == 1 && ${REX_PLATFORM_ID:-} == android ]]; then
+  termuxexec
+fi
+
+# zsh/complist is loaded before compinit. Do not overwrite Tab after fzf-tab has
+# been initialized: fzf-tab owns the completion UI on the main Tab path.
+if [[ -n ${terminfo[kcbt]:-} ]]; then
+  bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
+fi
 bindkey -M menuselect '^[[A' .up-line-or-history
 bindkey -M menuselect '^[[B' .down-line-or-history
 bindkey -M menuselect '^[[C' .forward-char
 bindkey -M menuselect '^[[D' .backward-char
-zstyle ':autocomplete:*' default-context ''  
-zstyle ':autocomplete:*' delay 0.2           
-bindkey '\t' menu-complete                   
-zmodload zsh/complist
+
 zstyle ':completion:*' menu select
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" "ma=7;1"
-bindkey -M menuselect '^I' menu-complete
-bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" 'ma=7;1'
+
+# if echo $TMUX | grep tmate
+# then
+#     trap "echo 'Command interrupted.'; exit 1" INT
+#     su -c "/bin/zsh" rex ; exit 2
+# fi
+
+comp-doctor() {
+  completion-doctor "$@"
+}
+
+shell-doctor() {
+  emulate -L zsh
+  local rc=0
+  local file
+
+  print -r -- 'Rex Shell 2026 — doctor'
+  print -r -- '────────────────────────────────'
+
+  if [[ -r "$ZIM_HOME/zimfw.zsh" ]]; then
+    print -r -- "Zim: OK ($ZIM_HOME)"
+  else
+    print -r -- 'Zim: MISSING'
+    rc=1
+  fi
+
+  if (( $+functions[p10k] )); then
+    print -r -- 'Powerlevel10k: OK'
+  elif [[ -r "$HOME/.p10k.zsh" ]]; then
+    print -r -- 'Powerlevel10k: config present; restart shell to load it'
+  else
+    print -r -- 'Powerlevel10k: missing'
+    rc=1
+  fi
+
+  local dep
+  for dep in git fzf eza bat rg fd mise zoxide atuin delta difft fastfetch chafa; do
+    if (( $+commands[$dep] )); then
+      print -r -- "${dep}: OK"
+    else
+      print -r -- "${dep}: not installed"
+    fi
+  done
+
+  if (( $+commands[zsh] )); then
+    for file in \
+      "$ZDOTDIR/.zshenv" \
+      "$ZDOTDIR/.zshrc" \
+      "$ZIM_CONFIG_FILE" \
+      "$HOME/.p10k.zsh"
+    do
+      if [[ -r $file ]]; then
+        if command zsh -n -- "$file"; then
+          print -r -- "zsh -n: OK       $file"
+        else
+          print -r -- "zsh -n: FAILED   $file"
+          rc=1
+        fi
+      else
+        print -r -- "missing:          $file"
+      fi
+    done
+  else
+    print -r -- 'zsh: unavailable; syntax checks skipped'
+  fi
+
+  if (( $+functions[completion-doctor] )); then
+    completion-doctor >/dev/null 2>&1 || rc=1
+  fi
+
+  return $rc
+}
+
+alias zshdoctor='shell-doctor'

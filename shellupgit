@@ -1,141 +1,52 @@
-#!/bin/env bash
+#!/usr/bin/env bash
+# Sync the live shell setup into this repo and push it.
+#   - regenerates .zshrc/.zshenv/.profile/zimrc/.p10k.zsh from zshrc.org
+#   - refuses to push if any generated file fails `zsh -n`
+#   - re-encrypts history/private config (key stays OUTSIDE the repo)
+#   - stages only what .gitignore allows (never `git add ./.*`)
+set -euo pipefail
 
-generate_toc() {
-  generate_toc_arrays() {
-    IFS=''
-    seg1col=()
-    linecol=()
-    seg1old=()
-    seg2old=()
-    tabcol=()
-    while read -r line; do
-     # if [[ ""$line"" =~ ^\* ]]; then
-     if [[ "$(echo "$line" | grep -o '^**')" ]]; then
-        linecol+=("$line")
-        seg1=$(echo "$line" | sed 's/\ /-/g' | tr -cd '[:alnum:]._-' | sed 's/-//' | sed -e 's/\(.*\)/\L\1/' | sed 's/\.//g')
-        seg2=$(echo "$line" | sed 's/^\**//g' | sed 's/^\ //')
-        seg1old+=($seg1)
-        seg2old+=($seg2)
-        tab=$(echo "$line" | grep -o '^**' | wc -c)
-        ((tab--))
-        tab=$(printf "%${tab}c" ' ')
-        tabcol+=("$tab")
-        # echo "- [[#$seg1]["$line"]]"
-        # seg1col=seg1col$seg1
-      fi
-    done < "$1"
-    # echo ${seg1col[1]}
+REPO=${REX_SHELL_REPO:-$HOME/github/shell}
+ORG_SRC=${REX_ORG_SRC:-$HOME/org/zshrc.org}
+ZD=${ZDOTDIR:-$HOME/.config/zsh}
+RECIPIENT=${REX_GPG_RECIPIENT:-99F754553DF4C8382876F1F48422C956454840EB}
+export GNUPGHOME=${GNUPGHOME:-${XDG_DATA_HOME:-$HOME/.local/share}/gnupg}
 
-    # Create an associative array to keep track of counts
-    declare -A counts
-    
-    # Iterate through the original array
-    for element in "${seg1old[@]}"; do
-      # Increment the count for this element
-      ((counts["$element"]++))
-      
-      # Append the count to the element if it's not unique
-      if ((counts["$element"] == 1)); then
-        new_element="$element"
-      elif ((counts["$element"] > 1)); then
-        ((temcou=${counts["$element"]}-1))
-        new_element="${element}-${temcou}"
-      else
-        new_element="$element"
-      fi
-      
-      # Add the modified element to the new array
-      seg1+=("$new_element")
-    done
+cd "$REPO"
 
-    echo "* TABLE OF CONTENTS :toc:"
-    c=0
-    for line in "${seg1old[@]}"
-    do
-      if [[ ${seg1[(($c+1))]} == "table-of-contents-toc" ]]
-      then
-        ((c++))
-      else
-        echo "${tabcol[$c]}- [[#${seg1[(($c+1))]}][${seg2old[$c]}]]" | sed 's/^\ -/-/'    
-        ((c++))
-      fi
-    done
-  }
-  oldtoc="$(sed -n '/^\*\ TABLE\ OF\ CONTENTS/,/^$/p' "$1")"
-  newtoc="$(generate_toc_arrays "$1")"
-  oldfile=$(cat "$1")
-  newfile=${oldfile//"${oldtoc}"/"${newtoc}"}
-  echo "$newfile" > "$1"
+# 1) Org source of truth (a newer copy in ~/org wins).
+if [[ -f $ORG_SRC && $ORG_SRC -nt zshrc.org ]]; then
+  cp -v -- "$ORG_SRC" zshrc.org
+fi
+
+# 2) Regenerate + verify.
+python3 tools/tangle.py --check zshrc.org . || { echo "tangle/syntax check failed; not pushing" >&2; exit 1; }
+
+# 3) Encrypted history/private (only if the key exists in $GNUPGHOME).
+encrypt() { # encrypt <src> <dest-in-repo>
+  [[ -f $1 ]] || return 0
+  gpg --batch --yes -e -r "$RECIPIENT" -o "$2" "$1"
 }
+if command -v gpg >/dev/null 2>&1 && gpg --list-keys "$RECIPIENT" >/dev/null 2>&1; then
+  encrypt "$ZD/history"        .zsh_history.gpg
+  encrypt "$ZD/.zshrc_private" .zsh_private.gpg
+else
+  echo "gpg key $RECIPIENT not found in $GNUPGHOME; leaving encrypted blobs untouched"
+fi
 
-cd ~/github/shell || exit
+# 4) Helper scripts kept in sync as before (skipped when absent).
+copy_if() { [[ -f $1 ]] && cp -fv -- "$1" "$2" || true; }
+copy_if "$HOME/Documents/BashScript/csp"        bin/c
+copy_if "$HOME/Documents/BashScript/shellupgit" shellupgit
+copy_if "$(command -v psapp 2>/dev/null | head -n 1)" bin/psapp
 
-export GNUPGHOME=$(pwd)/.gnupg/
-
-cp -rfv ~/.config/zsh/.profile ~/github/shell
-cp -rfv ~/.config/zsh/.zshrc ~/github/shell/
-cp -rfv ~/.config/zsh/.zshenv ~/github/shell/
-# cp -rfv ~/.p10k.zsh ~/github/shell/
-gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/history
-mv -fv ~/.config/zsh/history.gpg ~/github/shell/.zsh_history.gpg
-gpg2 -e -r 99F754553DF4C8382876F1F48422C956454840EB ~/.config/zsh/.zshrc_private
-mv -fv ~/.config/zsh/.zshrc_private.gpg ~/github/shell/.zsh_private.gpg
-
-cp -rfv ~/Documents/BashScript/csp ~/github/shell/bin/c
-cp -rfv ~/Documents/BashScript/shellupgit ~/github/shell/shellupgit
-cp -rfv "$(which psapp | head -n 1)" ~/github/shell/bin/psapp
-generate_toc ~/org/zshrc.org
-cp -rfv ~/org/zshrc.org ~/github/shell/
-
-# cp -rfv $(which c | head -n 1) ~/github/shell/bin/c
-# cp -rfv $(which shellupgit) ~/github/shell/shellupgit
-
-# mv ~/.zsh_history.gpg ~/github/shell/
-# mv ~/.zshrc_private.gpg ~/github/shell/
-
-rm -rfv .gnupg/random_seed
-
-git add ./*
-git add ./.*
-git status | bat
-git fetch && git pull && git commit -am update_"$(date +%s)" && git push
-git status | bat
-
-
-
-
-
-cp -rfv ~/.config/doom/* ~/github/rexdoom/
-cp -rfv ~/org/doomemacs.org ~/github/rexdoom/
-cd ~/github/rexdoom || exit
-git fetch && git pull && git add . && git commit -am update_"$(date +%s)" && git push
-
-
-
-
-cp -rfv "$(which autowallp | head -n 1)" ~/github/autowallp/autowallp
-cp -rfv "$(which wallch | head -n 1)" ~/github/autowallp/wallch
-cp -rfv ~/org/bashscripts/autowallp.org ~/github/autowallp/README.org
-cd ~/github/autowallp || exit
-git fetch && git pull && git add . && git commit -am update_"$(date +%s)" && git push
-
-
-
-
-
-
-
-cd ~/github/RexAckermann.github.io/shell/ || exit
-git fetch && git pull && git commit -am update_"$(date +%s)" && git push
-
-cd ~/github/RexAckermann.github.io/rexdoom/ || exit
-git fetch && git pull && git commit -am update_"$(date +%s)" && git push
-
-cd ~/github/RexAckermann.github.io/autowallp/ || exit
-git fetch && git pull && git commit -am update_"$(date +%s)" && git push
-
-cd ~/github/RexAckermann.github.io/ || exit
-git fetch && git pull && git commit -am update_"$(date +%s)" && git push
-
-cd ~/.config/mpv/ || exit
-git fetch && git pull && git commit -am update_"$(date +%s)" && git push
+# 5) Commit + push.
+git add -A
+git status --short
+if git diff --cached --quiet; then
+  echo "nothing to commit"
+else
+  git commit -m "update_$(date +%s)"
+fi
+git pull --rebase --autostash
+git push

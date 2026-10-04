@@ -1,0 +1,16 @@
+# Never commit key material, plaintext history/secrets or editor droppings.
+.gnupg/
+*.key
+*.kbx
+*.kbx~
+trustdb.gpg
+random_seed
+.#*
+\#*#
+*~
+*.scrub.*
+.zsh_incognito.*
+/history
+/.zshrc_private
+/.zsh_history
+*.elc
