@@ -21,6 +21,7 @@ fi
 
 # 2) Regenerate + verify.
 python3 tools/tangle.py --check zshrc.org . || { echo "tangle/syntax check failed; not pushing" >&2; exit 1; }
+command -v pandoc >/dev/null 2>&1 && python3 tools/build-readme.py zshrc.org README.md || echo "pandoc not found; CI will rebuild README.md"
 
 # 3) Encrypted history/private (only if the key exists in $GNUPGHOME).
 encrypt() { # encrypt <src> <dest-in-repo>
