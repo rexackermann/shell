@@ -1,53 +1,195 @@
 #!/usr/bin/env bash
-# Sync the live shell setup into this repo and push it.
-#   - regenerates .zshrc/.zshenv/.profile/zimrc/.p10k.zsh from zshrc.org
-#   - refuses to push if any generated file fails `zsh -n`
-#   - re-encrypts history/private config (key stays OUTSIDE the repo)
-#   - stages only what .gitignore allows (never `git add ./.*`)
-set -euo pipefail
+# shellupgit — back up and push everything in one go.
+#
+#   phase 1 (parallel)  shell repo · rexdoom · autowallp · mpv
+#   phase 2 (in order)  RexAckermann.github.io sub-repos, then the site root
+#                       (phase 2 pulls what phase 1 just pushed, so it must come after)
+#
+# Usage: shellupgit [-n|--dry-run] [--only shell|extras] [-m MSG] [-h]
+#   -n   do everything except commit / pull / push
+#   -m   commit message (default: update_<epoch>)
+#
+# Env: REX_SHELL_REPO (~/github/shell)  REX_ORG_SRC (~/org/zshrc.org)
+#      REX_GPG_RECIPIENT  GNUPGHOME (falls back to $XDG_DATA_HOME/gnupg, then <repo>/.gnupg)
+set -uo pipefail
 
 REPO=${REX_SHELL_REPO:-$HOME/github/shell}
 ORG_SRC=${REX_ORG_SRC:-$HOME/org/zshrc.org}
 ZD=${ZDOTDIR:-$HOME/.config/zsh}
 RECIPIENT=${REX_GPG_RECIPIENT:-99F754553DF4C8382876F1F48422C956454840EB}
-export GNUPGHOME=${GNUPGHOME:-${XDG_DATA_HOME:-$HOME/.local/share}/gnupg}
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/shellupgit
+GH=$HOME/github
+DRY=0 ONLY=all MSG=
+while (($#)); do
+  case $1 in
+    -n|--dry-run) DRY=1 ;;
+    --only) ONLY=${2:-}; shift ;;
+    -m) MSG=${2:-}; shift ;;
+    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+    *) echo "unknown option: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+[[ $ONLY == all || $ONLY == shell || $ONLY == extras ]] || { echo "--only expects shell|extras" >&2; exit 2; }
+mkdir -p "$STATE"
 
-cd "$REPO"
-
-# 1) Org source of truth (a newer copy in ~/org wins).
-if [[ -f $ORG_SRC && $ORG_SRC -nt zshrc.org ]]; then
-  cp -v -- "$ORG_SRC" zshrc.org
+# One run at a time.
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$STATE/lock"
+  flock -n 9 || { echo "shellupgit is already running" >&2; exit 1; }
 fi
 
-# 2) Regenerate + verify.
-python3 tools/tangle.py --check zshrc.org . || { echo "tangle/syntax check failed; not pushing" >&2; exit 1; }
-command -v pandoc >/dev/null 2>&1 && python3 tools/build-readme.py zshrc.org README.md || echo "pandoc not found; CI will rebuild README.md"
+if [[ -t 1 ]]; then G=$'\e[32m' R=$'\e[31m' Y=$'\e[33m' B=$'\e[1m' N=$'\e[0m'; else G= R= Y= B= N=; fi
+ts() { date +%s; }
+msg() { printf '%s' "${MSG:-update_$(ts)}"; }
+net() { if command -v timeout >/dev/null 2>&1; then timeout 120 "$@"; else "$@"; fi; }
+cp_quiet() { [[ -e $1 ]] && cp -rf "$1" "$2" 2>/dev/null; return 0; }   # skip absent sources
+pager_status() { if command -v bat >/dev/null 2>&1; then git status --short | bat -p --paging=never; else git status --short; fi; }
 
-# 3) Encrypted history/private (only if the key exists in $GNUPGHOME).
-encrypt() { # encrypt <src> <dest-in-repo>
-  [[ -f $1 ]] || return 0
-  gpg --batch --yes -e -r "$RECIPIENT" -o "$2" "$1"
+# ---------------------------------------------------------------- generic repo sync
+# sync_git <dir> <all|tracked>
+#   all     = stage everything (legacy: git add .)   tracked = only tracked files (legacy: commit -am)
+sync_git() {
+  local dir=$1 mode=$2
+  cd "$dir" 2>/dev/null || { echo "${Y}skip${N}: $dir not found"; return 0; }
+  git rev-parse --git-dir >/dev/null 2>&1 || { echo "${Y}skip${N}: $dir is not a git repo"; return 0; }
+  net git fetch --quiet || { echo "${R}fetch failed${N}"; return 1; }
+  if [[ $mode == all ]]; then git add -A; else git add -u; fi
+  if ! git diff --cached --quiet; then
+    ((DRY)) && { echo "[dry] would commit:"; git diff --cached --stat | tail -n 5; git reset -q; return 0; }
+    git commit -q -m "$(msg)" && echo "committed: $(git log -1 --format=%h)"
+  fi
+  ((DRY)) && return 0
+  if ! net git pull --rebase --autostash --quiet; then
+    git rebase --abort >/dev/null 2>&1
+    echo "${R}pull --rebase conflicted; left your commit local${N}"; return 1
+  fi
+  local ahead; ahead=$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
+  if (( ahead > 0 )); then net git push --quiet && echo "pushed $ahead commit(s)" || { echo "${R}push failed${N}"; return 1; }
+  else echo "up to date"; fi
 }
-if command -v gpg >/dev/null 2>&1 && gpg --list-keys "$RECIPIENT" >/dev/null 2>&1; then
-  encrypt "$ZD/history"        .zsh_history.gpg
-  encrypt "$ZD/.zshrc_private" .zsh_private.gpg
-else
-  echo "gpg key $RECIPIENT not found in $GNUPGHOME; leaving encrypted blobs untouched"
+
+# ---------------------------------------------------------------- shell repo
+pick_gnupg() {
+  local d gpg=${1}
+  for d in "${GNUPGHOME:-}" "${XDG_DATA_HOME:-$HOME/.local/share}/gnupg" "$REPO/.gnupg"; do
+    [[ -n $d && -d $d ]] || continue
+    GNUPGHOME=$d "$gpg" --list-keys "$RECIPIENT" >/dev/null 2>&1 && { printf '%s' "$d"; return 0; }
+  done
+  return 1
+}
+
+encrypt_if_changed() { # <plaintext> <dest> <name>
+  local src=$1 dest=$2 name=$3 sum
+  [[ -f $src ]] || return 0
+  sum=$(sha256sum "$src" | cut -d' ' -f1)
+  if [[ -f $dest && -f $STATE/$name.sha && $(cat "$STATE/$name.sha") == "$sum" ]]; then
+    echo "unchanged: $name (not re-encrypted)"; return 0
+  fi
+  GNUPGHOME=$GH_HOME "$GPG" --batch --yes -e -r "$RECIPIENT" -o "$dest" "$src" \
+    && printf '%s' "$sum" >"$STATE/$name.sha" && echo "encrypted: $name"
+}
+
+sync_shell() {
+  cd "$REPO" 2>/dev/null || { echo "${R}shell repo not found: $REPO${N}"; return 1; }
+
+  # 1) org source of truth: a newer ~/org copy wins
+  if [[ -f $ORG_SRC ]] && ! cmp -s "$ORG_SRC" zshrc.org && [[ $ORG_SRC -nt zshrc.org ]]; then
+    cp -f "$ORG_SRC" zshrc.org && echo "updated zshrc.org from $ORG_SRC"
+  fi
+
+  # 2) regenerate + verify (README.md is owned by CI)
+  python3 tools/tangle.py --check zshrc.org . >/dev/null \
+    || { echo "${R}tangle / zsh -n failed; nothing pushed${N}"; python3 tools/tangle.py --check zshrc.org . 2>&1 | tail -n 5; return 1; }
+  echo "tangled + syntax OK"
+
+  # 3) live bin/ -> repo bin/ (add/update only), unless the live dir IS the repo
+  if [[ -d $ZD/bin && $(cd "$ZD" && pwd -P) != "$(pwd -P)" ]]; then
+    if command -v rsync >/dev/null 2>&1; then rsync -a "$ZD/bin/" bin/; else cp -a "$ZD/bin/." bin/; fi
+  fi
+  cp_quiet "$HOME/Documents/BashScript/csp"        bin/c
+  cp_quiet "$HOME/Documents/BashScript/shellupgit" shellupgit
+  local ps; ps=$(command -v psapp 2>/dev/null | head -n 1); [[ -n $ps ]] && cp_quiet "$ps" bin/psapp
+
+  # 4) encrypted history / private config (key stays outside the repo)
+  GPG=$(command -v gpg2 || command -v gpg || true)
+  if [[ -n $GPG ]] && GH_HOME=$(pick_gnupg "$GPG"); then
+    encrypt_if_changed "$ZD/history"        .zsh_history.gpg "history"
+    encrypt_if_changed "$ZD/.zshrc_private" .zsh_private.gpg "private"
+  else
+    echo "${Y}no usable gpg key for $RECIPIENT; encrypted files left as-is${N}"
+  fi
+
+  # 5) never let key material or plaintext secrets near a commit
+  git add -A
+  local bad
+  bad=$(git diff --cached --name-only | grep -E '(^|/)(\.gnupg/|private-keys-v1\.d/)|\.key$|(^|/)(history|\.zsh_history|\.zshrc_private)$' || true)
+  if [[ -n $bad ]]; then
+    git reset -q; echo "${R}refusing to commit sensitive paths:${N}"; echo "$bad"; return 1
+  fi
+
+  pager_status
+  sync_git "$REPO" all
+}
+
+# ---------------------------------------------------------------- the other repos (unchanged behaviour)
+sync_rexdoom() {
+  cp -rf "$HOME/.config/doom"/* "$GH/rexdoom/" 2>/dev/null
+  cp_quiet "$HOME/org/doomemacs.org" "$GH/rexdoom/"
+  sync_git "$GH/rexdoom" all
+}
+sync_autowallp() {
+  local a w
+  a=$(command -v autowallp 2>/dev/null | head -n 1); w=$(command -v wallch 2>/dev/null | head -n 1)
+  [[ -n $a ]] && cp_quiet "$a" "$GH/autowallp/autowallp"
+  [[ -n $w ]] && cp_quiet "$w" "$GH/autowallp/wallch"
+  cp_quiet "$HOME/org/bashscripts/autowallp.org" "$GH/autowallp/README.org"
+  sync_git "$GH/autowallp" all
+}
+sync_mpv() { sync_git "$HOME/.config/mpv" tracked; }
+
+# ---------------------------------------------------------------- orchestration
+LOGDIR=$(mktemp -d "${TMPDIR:-/tmp}/shellupgit.XXXXXX"); trap 'rm -rf "$LOGDIR"' EXIT
+declare -a NAMES=() PIDS=() RESULTS=()
+
+launch() { # launch <name> <function>
+  local name=$1 fn=$2
+  ( "$fn" ) >"$LOGDIR/$name.log" 2>&1 &
+  NAMES+=("$name"); PIDS+=($!)
+}
+collect() {
+  local i
+  for i in "${!PIDS[@]}"; do
+    wait "${PIDS[$i]}"; local rc=$?
+    RESULTS+=("$rc")
+    printf '%s== %s ==%s\n' "$B" "${NAMES[$i]}" "$N"
+    cat "$LOGDIR/${NAMES[$i]}.log"
+  done
+  PIDS=()
+}
+
+if [[ $ONLY != extras ]]; then launch shell sync_shell; fi
+if [[ $ONLY != shell ]]; then launch rexdoom sync_rexdoom; launch autowallp sync_autowallp; launch mpv sync_mpv; fi
+collect
+
+if [[ $ONLY != shell ]]; then
+  # phase 2: these clones pull what phase 1 just pushed; sub-repos before the site root.
+  for sub in shell rexdoom autowallp; do
+    NAMES+=("site/$sub"); mkdir -p "$LOGDIR/site"
+    printf '%s== site/%s ==%s\n' "$B" "$sub" "$N"
+    ( sync_git "$GH/RexAckermann.github.io/$sub" tracked ) 2>&1 | tee "$LOGDIR/site/$sub.log"
+    RESULTS+=("${PIPESTATUS[0]}")
+  done
+  NAMES+=("site"); printf '%s== site ==%s\n' "$B" "$N"
+  ( sync_git "$GH/RexAckermann.github.io" tracked ) 2>&1 | tee "$LOGDIR/site.log"
+  RESULTS+=("${PIPESTATUS[0]}")
 fi
 
-# 4) Helper scripts kept in sync as before (skipped when absent).
-copy_if() { [[ -f $1 ]] && cp -fv -- "$1" "$2" || true; }
-copy_if "$HOME/Documents/BashScript/csp"        bin/c
-copy_if "$HOME/Documents/BashScript/shellupgit" shellupgit
-copy_if "$(command -v psapp 2>/dev/null | head -n 1)" bin/psapp
-
-# 5) Commit + push.
-git add -A
-git status --short
-if git diff --cached --quiet; then
-  echo "nothing to commit"
-else
-  git commit -m "update_$(date +%s)"
-fi
-git pull --rebase --autostash
-git push
+echo; printf '%sSummary%s\n' "$B" "$N"
+fail=0
+for i in "${!NAMES[@]}"; do
+  if [[ ${RESULTS[$i]:-1} == 0 ]]; then printf '  %s✓%s %s\n' "$G" "$N" "${NAMES[$i]}"
+  else printf '  %s✗%s %s\n' "$R" "$N" "${NAMES[$i]}"; fail=1; fi
+done
+((DRY)) && echo "(dry run: nothing committed or pushed)"
+exit $fail
