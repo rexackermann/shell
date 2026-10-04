@@ -23,8 +23,7 @@ Neon prompt · distro/CPU-aware segments · incognito history · optional-deps t
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/rexackermann/shell/main/setup.sh)"
 ```
 
-Clones to `~/.config/zsh`, links `~/.zshenv`, `~/.profile` and `~/.p10k.zsh`, and can restore the
-encrypted history/private config (your own GPG key in `$XDG_DATA_HOME/gnupg`; none is stored here).
+Clones to `~/.config/zsh` and links `~/.zshenv`, `~/.profile` and `~/.p10k.zsh`.
 Zim and Powerlevel10k install themselves on first start.
 
 ## 🧭 How it fits together
@@ -34,7 +33,6 @@ flowchart LR
   A["📄 zshrc.org<br/>(edit this)"] -->|"tools/tangle.py · CI"| B[".zshrc · .zshenv · .profile<br/>zimrc · .p10k.zsh"]
   B --> C["~/.config/zsh"]
   C -->|"setup.sh links"| D["~/.zshenv · ~/.profile · ~/.p10k.zsh"]
-  C -.->|"shellupgit"| E[("GitHub")]
 ```
 
 | Path | Purpose |
@@ -44,7 +42,6 @@ flowchart LR
 | [`tools/tangle.py`](tools/tangle.py) | Emacs-free tangler (`--check` runs `zsh -n`) |
 | [`bin/`](bin) | Helper scripts, on `PATH` |
 | [`setup.sh`](setup.sh) | Installer |
-| [`shellupgit`](shellupgit) | Regenerate, verify, encrypt, commit, push |
 | [`archive/`](archive) | Previous org, installer and sync script |
 
 ## 📚 The config
