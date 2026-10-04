@@ -1,10 +1,12 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # -----------------------------------------------------------------------------
 # bat-extras | Copyright (C) 2019 eth-p | MIT License
 #
 # Repository: https://github.com/eth-p/bat-extras
 # Issues:     https://github.com/eth-p/bat-extras/issues
 # -----------------------------------------------------------------------------
+
+
 # shellcheck disable=SC1090
 # --- BEGIN LIBRARY FILE: print.sh ---
 
@@ -463,6 +465,33 @@ hook_color() {
 	fi
 }
 # --- END LIBRARY FILE ---
+# --- BEGIN LIBRARY FILE: opt_hook_help.sh ---
+
+# Option parser hook: --help support.
+# This will accept -h or --help, which prints the usage information and exits.
+hook_help() {
+	SHIFTOPT_HOOKS+=("__shiftopt_hook__help")
+	if [[ "$1" == "--no-short" ]]; then
+		__shiftopt_hook__help() {
+			if [[ "$OPT" = "--help" ]]; then
+				show_help
+				exit 0
+			fi
+	
+			return 1
+		}
+	else
+		__shiftopt_hook__help() {
+			if [[ "$OPT" = "--help" ]] || [[ "$OPT" = "-h" ]]; then
+				show_help
+				exit 0
+			fi
+	
+			return 1
+		}
+	fi
+}
+# --- END LIBRARY FILE ---
 # --- BEGIN LIBRARY FILE: opt_hook_pager.sh ---
 
 # Option parser hook: pager support.
@@ -515,7 +544,7 @@ hook_version() {
 		if [[ "$OPT" = "--version" ]]; then
 			printf "%s %s\n\n%s\n%s\n" \
 				"batgrep" \
-				"2023.03.21" \
+				"2024.08.24" \
 				"Copyright (C) 2019-2021 eth-p | MIT License" \
 				"https://github.com/eth-p/bat-extras"
 			exit 0
@@ -649,12 +678,128 @@ version_compare__recurse() {
 # Init:
 # -----------------------------------------------------------------------------
 hook_color
+hook_help
 hook_pager
 hook_version
 hook_width
 # -----------------------------------------------------------------------------
+# Help:
+# -----------------------------------------------------------------------------
+show_help() {
+    cat <<-'EOF'
+Quickly search through and highlight files using ripgrep.
+
+Search through files or directories looking for matching regular expressions (or fixed strings with -F), and print the output using bat for an easy and syntax-highlighted experience.
+
+Usage: batgrep [OPTIONS] PATTERN [PATH...]
+
+Arguments:
+  [OPTIONS]
+          See Options below
+  PATTERN
+          Pattern passed to ripgrep
+  [PATH...]
+          Path(s) to search
+
+Options:
+  -i, --ignore-case:
+          Use case insensitive searching.
+
+  -s, --case-sensitive:
+          Use case sensitive searching.
+
+  -S, --smart-case:
+          Use smart case searching
+
+  -A, --after-context=[LINES]:
+          Display the next n lines after a matched line.
+
+  -B, --before-context=[LINES]:
+          Display the previous n lines before a matched line.
+
+  -C, --context=[LINES]:
+          A combination of --after-context and --before-context
+
+  -p, --search-pattern:
+          Tell pager to search for PATTERN. Currently supported pagers: less.
+
+      --no-follow:
+          Do not follow symlinks
+
+      --no-snip:
+          Do not show the snip decoration
+
+          This is automatically enabled when --context=0 or when bat --version is less than 0.12.x
+
+      --no-highlight:
+          Do not highlight matching lines.
+
+          This is automatically enabled when --context=0.
+
+      --color:
+          Force color output.
+
+      --no-color:
+          Force disable color output.
+
+      --paging=["never"/"always"]:
+          Enable/disable paging.
+
+      --pager=[PAGER]:
+          Specify the pager to use.
+
+      --terminal-width=[COLS]:
+          Generate output for the specified terminal width.
+
+      --no-separator:
+          Disable printing separator between files.
+
+      --rga:
+          Use ripgrep-all instead of ripgrep.
+
+Options passed directly to ripgrep:
+  -F, --fixed-strings
+
+  -U, --multiline
+
+  -P, --pcre2
+
+  -z, --search-zip
+
+  -w, --word-regexp
+
+      --one-file-system
+
+      --multiline-dotall
+
+      --ignore, --no-ignore
+
+      --crlf, --no-crlf
+
+      --hidden, --no-hidden
+
+  -E --encoding:
+          This is unsupported by bat, and may cause issues when trying to display unsupported encodings.
+
+  -g, --glob
+
+  -t, --type
+
+  -T, --type-not
+
+  -m, --max-count
+
+      --max-depth
+
+      --iglob
+
+      --ignore-file
+EOF
+}
+# -----------------------------------------------------------------------------
 # Options:
 # -----------------------------------------------------------------------------
+RIPGREP="rg"
 RG_ARGS=()
 BAT_ARGS=()
 PATTERN=""
@@ -766,6 +911,14 @@ while shiftopt; do
 	-p | --search-pattern) OPT_SEARCH_PATTERN=true ;;
 	--no-search-pattern)   OPT_SEARCH_PATTERN=false ;;
 	--no-separator)        OPT_NO_SEPARATOR=true ;;
+	--rga) {
+		if ! rga --version | grep 'ripgrep-all' &>/dev/null; then
+			printc "%{RED}%s: option '--rga' requires ripgrep-all to be installed%{CLEAR}\n" "batgrep" 1>&2
+			exit 1
+		fi
+
+		RIPGREP='rga'
+	};;
 
 	# Option forwarding
 	--rg:*) {
@@ -891,10 +1044,10 @@ main() {
 		)
 		
 		if "$READ_FROM_STDIN"; then
-			"rg" "${COMMON_RG_ARGS[@]}" <<< "$STDIN_DATA"
+			"$RIPGREP" "${COMMON_RG_ARGS[@]}" <<< "$STDIN_DATA"
 			return $?
 		else
-			"rg" "${COMMON_RG_ARGS[@]}"
+			"$RIPGREP" "${COMMON_RG_ARGS[@]}"
 			return $?
 		fi
 	}

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # -----------------------------------------------------------------------------
 # bat-extras | Copyright (C) 2020 eth-p | MIT License
 #
@@ -515,7 +515,7 @@ hook_version() {
 		if [[ "$OPT" = "--version" ]]; then
 			printf "%s %s\n\n%s\n%s\n" \
 				"batdiff" \
-				"2023.03.21" \
+				"2024.08.24" \
 				"Copyright (C) 2019-2021 eth-p | MIT License" \
 				"https://github.com/eth-p/bat-extras"
 			exit 0
@@ -663,6 +663,7 @@ SUPPORTS_DELTA=false
 BAT_VERSION="$(bat_version)"
 BAT_ARGS=()
 DELTA_ARGS=()
+DELTA_VERSION='unsupported'
 GIT_ARGS=()
 
 FILES=()
@@ -679,6 +680,15 @@ fi
 # Set options based on delta availability.
 if command -v "delta" &>/dev/null; then
 	SUPPORTS_DELTA=true
+	DELTA_VERSION="$("delta" --version | cut -d' ' -f2)"
+fi
+
+# Set options based on delta version.
+#  - 0.12  -- Renamed `--hunk-style` to `--hunk-header-decoration-style`.
+if version_compare "$DELTA_VERSION" -ge "0.12"; then
+	DELTA_ARGS+=("--hunk-header-decoration-style=plain")
+else
+	DELTA_ARGS+=("--hunk-style=plain")
 fi
 
 # Parse arguments.
@@ -711,8 +721,7 @@ done
 BAT_ARGS+=("--terminal-width=${OPT_TERMINAL_WIDTH}" "--paging=never")
 DELTA_ARGS+=(
 	"--width=${OPT_TERMINAL_WIDTH}" 
-	"--paging=never" 
-	"--hunk-header-decoration-style=plain"
+	"--paging=never"
 )
 
 if "$OPT_COLOR"; then
@@ -731,8 +740,23 @@ fi
 GIT_ARGS+=(-U"$OPT_CONTEXT")
 
 # -----------------------------------------------------------------------------
+# Functions:
+# -----------------------------------------------------------------------------
+
+ensure_git_directory() {
+	if ! "git" rev-parse --show-toplevel &>/dev/null; then
+		print_error "Not a git repository."
+		printc "\n%s\nTo view a diff between two files, use %{CYAN}%s [file] [file]%{CLEAR}." \
+			"To view a diff between staged files and the working directory, enter a git repository." \
+			"batdiff"
+		exit 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
 # Printing:
 # -----------------------------------------------------------------------------
+
 print_bat_diff() {
 	local files=("$@")
 
@@ -743,6 +767,7 @@ print_bat_diff() {
 	fi
 
 	# Diff staged git file.
+	ensure_git_directory
 	if "$OPT_STAGED"; then
 		if false && "$SUPPORTS_DELTA"; then
 			# bat doesn't support diffing staged changes against the HEAD.
@@ -759,7 +784,8 @@ print_bat_diff() {
 
 	# Diff git file.
 	if "$SUPPORTS_BAT_DIFF"; then
-		"bat" --diff --diff-context="$OPT_CONTEXT" "${files[0]}" "${BAT_ARGS[@]}"
+		"git" diff "${GIT_ARGS[@]}" --name-only -z "${files[0]}" \
+			| xargs --null "bat" --diff --diff-context="$OPT_CONTEXT" "${BAT_ARGS[@]}"
 	else
 		"git" diff "${GIT_ARGS[@]}" "${files[0]}" | "bat" --language=diff - "${BAT_ARGS[@]}"
 	fi
@@ -775,6 +801,7 @@ print_delta_diff() {
 	fi
 
 	# Diff git file.
+	ensure_git_directory
 	"git" diff "${GIT_ARGS[@]}" "${files[0]}" | "delta" "${DELTA_ARGS[@]}"
 }
 
@@ -812,6 +839,7 @@ fi
 # -----------------------------------------------------------------------------
 main() {
 	if [[ "${#FILES[@]}" -eq 0 ]] || "$OPT_ALL_CHANGES"; then
+		ensure_git_directory
 		local file
 		while read -r file; do
 			if [[ -f "$file" ]]; then
