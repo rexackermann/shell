@@ -1,0 +1,41 @@
+#/bin/env bash
+
+splitpdf() { 
+  inputfile="$1"
+  firstpage=$2
+  lastpage=$3
+  tmpfile=$(mktemp)
+  metafile=$(mktemp)
+
+  # split the input file
+  pdftk "$inputfile" cat $firstpage-$lastpage output "$tmpfile"
+
+  # Save the new metadata
+  pdftk "$tmpfile" dump_data > "$metafile"
+
+  # Extract/Update the old bookmarks, and append it to the new metadata:
+  pdftk "$inputfile" dump_data | \
+    awk -v firstpage="$firstpage" -v lastpage="$lastpage" '
+      BEGIN             { shift = firstpage - 1 }
+      /^BookmarkBegin/  { buffer = $0 }
+      /^BookmarkTitle:/ { buffer = buffer "\n" $0 }
+      /^BookmarkLevel:/ { buffer = buffer "\n" $0 }
+      /^BookmarkPageNumber:/ {
+        page = $2
+        if (page >= firstpage && page <= lastpage) {
+          page -= shift
+          buffer = buffer "\nBookmarkPageNumber: " page
+          print buffer
+        }
+        buffer = ""
+      }' \
+    >> "$metafile"
+
+  # Update the new PDF with the updated metadata
+  pdftk "$tmpfile" update_info "$metafile" output $firstpage-$lastpage.pdf
+
+  # Cleanup the temp files:
+  rm "$tmpfile" "$metafile"
+}
+
+splitpdf "$@"

@@ -1,0 +1,112 @@
+#!/usr/bin/env zsh
+
+source /home/rex/.config/zsh/.zshrc
+
+if [[ $1 ]]
+then
+  p_run() {
+    cd ~/Music/songs/ || exit
+    
+    song="$(fzf "$@" --preview='
+        if file --mime-type {} | grep -qF 'image/'; then
+          # --transfer-mode=memory is the fastest option but if you want fzf to be able
+          # to redraw the image on terminal resize or on 'change-preview-window',
+          # you need to use --transfer-mode=stream.
+          kitty icat --clear --transfer-mode=memory --stdin=no --place=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}@0x0 {}
+        elif file --mime-type {} | grep -qF 'video/'; then
+          fn={}
+          if ! thumbnail="$(vidthumb {})"; then
+              exit 1
+          fi
+          
+          if [[ ! -f "$thumbnail" ]]; then
+              exit 1
+          fi
+          kitty icat --clear --transfer-mode=memory --stdin=no --place=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}@0x0 "$thumbnail"
+          
+          # kitty_vidthumb {} --place="${FZF_PREVIEW_COLUMNS}"x"${FZF_PREVIEW_LINES}"@0x0 
+        else
+          bat --color=always {}
+        fi
+      ' || exit
+      )"
+    if [[ "$song" ]]
+    then
+      if [[ "$(cat /tmp/tablet)" == "1" ]]; then
+        nohup mpv --idle --no-resume-playback --script-opts=autosave-disabled=yes --no-fullscreen --auto-window-resize=no --geometry=600 --title='##p## ${media-title}' ~/Music/songs/"${song}"* > my.log 2>&1 &
+        sleep 1
+        wmctrl -i -r $(wmctrl -lp | grep "##p##" | tail -n 1 | awk '{print$1}') -b toggle,above,sticky
+        # pid="$( ps -aux | grep -E 'mpv --idle --no-resume-playback --script-opts=autosave-disabled=yes --no-fullscreen --auto-window-resize=no --geometry=600 /home/rex/Music/songs/' | grep -v "grep" | head -n 1 | awk '{print $2}' )"
+        # echo $pid > /tmp/p_pid
+        # wmctrl -i -r $pid -b toggle,above
+      else
+        nohup mpv --idle --no-resume-playback --script-opts=autosave-disabled=yes ~/Music/songs/"${song}"* > my.log 2>&1 &
+      fi
+    fi
+    p
+  }
+  p_run
+  exit
+  # echo hi
+fi
+
+DISPLAY_RESOLUTION=$(xdpyinfo | grep 'dimensions:')
+
+if [[ "$DISPLAY_RESOLUTION" == *"3440"* ]]
+then
+    # wide screen detected
+    tdrop -h 84% -x 20% -w 60% -y 8% -a kitty -o hide_window_decorations=yes -o background_image=none p p_run
+else
+    tdrop -h 53% -x 20% -w 100% -y 25% -a kitty -o hide_window_decorations=yes -o background_image=none p p_run
+    # tdrop -h 84% -x 3% -w 94% -y 8% -a kitty -c "p p_run"
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# #legacycode
+#
+# #!/usr/bin/env bash
+# play_song_kitty_mpv () {
+#     cd ~/Music/songs || exit
+#     song="$(/bin/ls | grep -v json | wofi -dmenu -i)" || exit
+#     cd || exit
+#     nohup mpv --idle --script-opts=autosave-disabled=yes ~/Music/songs/"${song}"* > my.log 2>&1 &
+#     player_pid="$!"
+#     echo "$player_pid"
+#     while true; do
+#         if ! ps -p "$player_pid" >> /dev/null ; then
+#             play_song_kitty_mpv
+#         fi
+#         sleep 1
+#     done
+# }
+# play_song_kitty_mpv
+#
+# play_song_kitty_mpv () {
+#     cd ~/Music/songs || exit
+#     song="$(/bin/ls | grep -v json | wofi -dmenu)" || exit
+#     echo "${song}"
+#     cd || exit
+#     nohup mpv --idle --no-resume-playback --script-opts=autosave-disabled=yes ~/Music/songs/"${song}"* > my.log 2>&1 &
+#     player_pid="$!"
+#     echo "$player_pid"
+#     while true; do
+#         if ! ps -p "$player_pid" >> /dev/null ; then
+#             play_song_kitty_mpv
+#         fi
+#         sleep 1
+#     done
+# }
+# play_song_kitty_mpv

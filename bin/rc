@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# sudo systemctl restart bluetooth.service
+# bl_device=98:47:44:28:EE:14
+bl_device=B0:38:E2:A4:06:15
+bluetoothctl disconnect "$bl_device"
+sleep 1
+bluetoothctl connect "$bl_device"
+
+# bluetoothctl disconnect "$bl_device" ; sleep 1 ; bluetoothctl connect 18:95:52:5F:6D:1E

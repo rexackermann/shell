@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+sudo systemctl restart bluetooth.service
+
+# bl_device=98:47:44:28:EE:14
+bl_device=B0:38:E2:A4:06:15
+
+sleep 2
+
+bluetoothctl connect "$bl_device"
+
+func() {
+  bluetoothctl disconnect "$bl_device"
+  sleep 1
+  bluetoothctl connect "$bl_device"
+}
+
+BLCHECKAAC() {
+  output=$(pw-cli info all)
+
+  if [[ "$output" == *"$bl_device"* && ! "$output" == *"aac"* ]]; then
+    func
+  else
+    echo "LOOKSGOOD"
+  fi
+}
+
+while [[ true ]]; do
+  BLCHECKAAC
+  sleep 1
+done

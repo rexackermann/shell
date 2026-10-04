@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# ==============================================================================
+# SCRIPT: ftpplay-remote (v3.0 - Local File Push + Multi-Episode Fix)
+# DESCRIPTION: Transfers the generated playlist to TV storage via SSH/ADB,
+#              then launches VLC directly against the playlist file.
+# ==============================================================================
+
+TV_IP="192.168.1.223"      # Replace with your Smart TV's IP address
+TV_SSH_PORT="43434"        # Default Termux SSH port
+TV_ADB_PORT="5555"         # Default Wireless ADB port
+TV_USER="u0_a214"          # Replace with your Termux username (run 'whoami' in Termux)
+
+PLAYLIST_DIR="$HOME/.ftpplay"
+REMOTE_PLAYLIST_PATH="/sdcard/Download/remote_playlist.m3u"
+mkdir -p "$PLAYLIST_DIR"
+
+# ------------------------------------------------------------------------------
+# STEP 1: Parse Arguments (--startover / -s)
+# ------------------------------------------------------------------------------
+FTPPLAY_ARGS=()
+STARTOVER=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --startover|-s)
+            STARTOVER=true
+            FTPPLAY_ARGS+=("--choose")
+            ;;
+        *)
+            FTPPLAY_ARGS+=("$arg")
+            ;;
+    esac
+done
+
+# ------------------------------------------------------------------------------
+# STEP 2: Intercept PC Player Windows
+# ------------------------------------------------------------------------------
+SHIM_DIR=$(mktemp -d)
+trap 'rm -rf "$SHIM_DIR"' EXIT
+
+cat << 'EOF' > "$SHIM_DIR/mpv"
+#!/bin/bash
+exit 0
+EOF
+
+cat << 'EOF' > "$SHIM_DIR/vlc"
+#!/bin/bash
+exit 0
+EOF
+
+chmod +x "$SHIM_DIR/mpv" "$SHIM_DIR/vlc"
+
+# ------------------------------------------------------------------------------
+# STEP 3: Execute ftpplay on PC
+# ------------------------------------------------------------------------------
+echo -e "\033[1;34m[ftpplay-remote]\033[0m Starting CircleFTP browser..."
+
+PATH="$SHIM_DIR:$PATH" PLAYER=dummy ftpplay "${FTPPLAY_ARGS[@]}"
+
+# ------------------------------------------------------------------------------
+# STEP 4: Process Generated Playlist
+# ------------------------------------------------------------------------------
+LATEST_M3U=$(find "$PLAYLIST_DIR" -maxdepth 2 -name "*.m3u" -mmin -0.5 2>/dev/null | head -n 1)
+
+if [ -n "$LATEST_M3U" ] && [ -f "$LATEST_M3U" ]; then
+    echo -e "\n\033[1;32m[VLC TV Dispatcher]\033[0m Detected generated series playlist:"
+    echo " -> $LATEST_M3U"
+    
+    TOTAL_EPISODES=$(grep -c '^http' "$LATEST_M3U")
+    if [ "$TOTAL_EPISODES" -eq 0 ]; then
+        echo -e "\033[1;31m[Error]\033[0m Playlist file contains no valid stream URLs."
+        exit 1
+    fi
+
+    echo -e "\033[1;34m[VLC TV Dispatcher]\033[0m Staging $TOTAL_EPISODES episode(s) onto Android TV..."
+
+    # --------------------------------------------------------------------------
+    # STEP 5: Push Playlist to Android TV Storage
+    # --------------------------------------------------------------------------
+    PUSH_SUCCESS=false
+
+    # Try SSH scp first
+    scp -P "$TV_SSH_PORT" -o BatchMode=yes -o ConnectTimeout=3 "$LATEST_M3U" "$TV_USER@$TV_IP:$REMOTE_PLAYLIST_PATH" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        PUSH_SUCCESS=true
+        TRANSPORT="SSH"
+    else
+        # Fallback to ADB push
+        adb connect "$TV_IP:$TV_ADB_PORT" >/dev/null 2>&1
+        if adb devices | grep -q "$TV_IP:$TV_ADB_PORT.*device"; then
+            adb -s "$TV_IP:$TV_ADB_PORT" push "$LATEST_M3U" "$REMOTE_PLAYLIST_PATH" >/dev/null 2>&1
+            if [ $? -eq 0 ]; then
+                PUSH_SUCCESS=true
+                TRANSPORT="ADB"
+            fi
+        fi
+    fi
+
+    if [ "$PUSH_SUCCESS" = false ]; then
+        echo -e "\033[1;31m[Fatal Error]\033[0m Failed to push playlist to TV storage over SSH or ADB."
+        exit 1
+    fi
+
+    # --------------------------------------------------------------------------
+    # STEP 6: Dispatch Intent to Open M3U File in VLC
+    # --------------------------------------------------------------------------
+    INTENT_CMD="am start --user 0 -a android.intent.action.VIEW -d \"file://$REMOTE_PLAYLIST_PATH\" -t \"audio/x-mpegurl\" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity"
+
+    echo -e "\033[1;33m[VLC TV Dispatcher]\033[0m Launching playlist via $TRANSPORT..."
+
+    if [ "$TRANSPORT" = "SSH" ]; then
+        ssh -o BatchMode=yes -p "$TV_SSH_PORT" "$TV_USER@$TV_IP" "$INTENT_CMD" >/dev/null 2>&1
+    else
+        adb -s "$TV_IP:$TV_ADB_PORT" shell "$INTENT_CMD" >/dev/null 2>&1
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo -e "\033[1;32m[Success]\033[0m Loaded $TOTAL_EPISODES episodes into VLC on Android TV!"
+    else
+        echo -e "\033[1;31m[Error]\033[0m Failed to launch VLC on TV."
+    fi
+
+    rm -f "$LATEST_M3U"
+fi

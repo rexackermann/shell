@@ -1,0 +1,497 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================================
+# CPU FREQUENCY CONFIGURATION
+# ============================================================
+
+# 1 = ALL CPUs use ALL_FREQ
+# 0 = use individual CPU*_FREQ values
+USE_ALL_FREQ=0
+
+ALL_FREQ=800
+
+CPU0_FREQ=800
+CPU1_FREQ=800
+CPU2_FREQ=800
+CPU3_FREQ=800
+CPU4_FREQ=OFF
+CPU5_FREQ=OFF
+CPU6_FREQ=OFF
+CPU7_FREQ=OFF
+
+
+# ============================================================
+# RESTORE CONFIGURATION
+# ============================================================
+
+RESTORE_MIN=400
+RESTORE_MAX=1400
+
+
+BASE="/sys/devices/system/cpu"
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+die() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+
+need_root() {
+    if [[ $EUID -ne 0 ]]; then
+        exec sudo "$0" "$@"
+    fi
+}
+
+
+mhz_to_khz() {
+    awk -v mhz="$1" '
+        BEGIN {
+            if (mhz !~ /^[0-9]+([.][0-9]+)?$/)
+                exit 1
+            printf "%.0f\n", mhz * 1000
+        }
+    '
+}
+
+
+khz_to_mhz() {
+    awk -v khz="$1" 'BEGIN {
+        printf "%.0f", khz / 1000
+    }'
+}
+
+
+get_config_freq() {
+    local cpu="$1"
+
+    if (( USE_ALL_FREQ == 1 )); then
+        echo "$ALL_FREQ"
+        return
+    fi
+
+    case "$cpu" in
+        0) echo "$CPU0_FREQ" ;;
+        1) echo "$CPU1_FREQ" ;;
+        2) echo "$CPU2_FREQ" ;;
+        3) echo "$CPU3_FREQ" ;;
+        4) echo "$CPU4_FREQ" ;;
+        5) echo "$CPU5_FREQ" ;;
+        6) echo "$CPU6_FREQ" ;;
+        7) echo "$CPU7_FREQ" ;;
+        *) die "No configuration for CPU$cpu" ;;
+    esac
+}
+
+
+is_online() {
+    local cpu="$1"
+    local online_file="$BASE/cpu$cpu/online"
+
+    # CPU0 normally has no online file and is always online.
+    if [[ ! -e "$online_file" ]]; then
+        return 0
+    fi
+
+    [[ "$(cat "$online_file")" == "1" ]]
+}
+
+
+online_cpu() {
+    local cpu="$1"
+    local online_file="$BASE/cpu$cpu/online"
+
+    if [[ ! -e "$online_file" ]]; then
+        return 0
+    fi
+
+    if [[ "$(cat "$online_file")" == "0" ]]; then
+        echo "CPU$cpu -> ONLINE"
+        echo 1 > "$online_file"
+    fi
+}
+
+
+offline_cpu() {
+    local cpu="$1"
+    local online_file="$BASE/cpu$cpu/online"
+
+    # CPU0 cannot normally be offlined.
+    if [[ ! -e "$online_file" ]]; then
+        echo "WARNING: CPU$cpu cannot be offlined (no online control file)"
+        return 1
+    fi
+
+    if [[ "$(cat "$online_file")" == "0" ]]; then
+        echo "CPU$cpu -> already OFFLINE"
+        return 0
+    fi
+
+    echo "CPU$cpu -> OFFLINE"
+    echo 0 > "$online_file"
+}
+
+
+# ============================================================
+# SET NUMERIC FREQUENCY
+# ============================================================
+
+set_cpu_freq() {
+    local cpu="$1"
+    local target_mhz="$2"
+
+    # Make sure the CPU is online first.
+    online_cpu "$cpu"
+
+    local p="$BASE/cpu$cpu/cpufreq"
+
+    [[ -d "$p" ]] ||
+        die "CPU$cpu: cpufreq interface unavailable"
+
+
+    local target
+    target=$(mhz_to_khz "$target_mhz") ||
+        die "Invalid frequency '$target_mhz' for CPU$cpu"
+
+
+    local hw_min hw_max
+    hw_min=$(cat "$p/cpuinfo_min_freq")
+    hw_max=$(cat "$p/cpuinfo_max_freq")
+
+
+    if (( target < hw_min )); then
+        die "CPU$cpu: ${target_mhz} MHz is below hardware minimum $(khz_to_mhz "$hw_min") MHz"
+    fi
+
+    if (( target > hw_max )); then
+        die "CPU$cpu: ${target_mhz} MHz is above hardware maximum $(khz_to_mhz "$hw_max") MHz"
+    fi
+
+
+    local old_min old_max
+    old_min=$(cat "$p/scaling_min_freq")
+    old_max=$(cat "$p/scaling_max_freq")
+
+
+    echo "CPU$cpu -> ${target_mhz} MHz"
+
+
+    # --------------------------------------------------------
+    # LOWERING the minimum:
+    # lower MIN first, then MAX.
+    # --------------------------------------------------------
+
+    if (( target < old_min )); then
+
+        echo "$target" > "$p/scaling_min_freq"
+        echo "$target" > "$p/scaling_max_freq"
+
+
+    # --------------------------------------------------------
+    # SAME / RAISING:
+    # raise MAX first, then MIN.
+    # --------------------------------------------------------
+
+    else
+
+        echo "$target" > "$p/scaling_max_freq"
+        echo "$target" > "$p/scaling_min_freq"
+
+    fi
+}
+
+
+# ============================================================
+# APPLY ONE CPU
+# ============================================================
+
+apply_cpu() {
+    local cpu="$1"
+    local setting="$2"
+
+    setting="${setting^^}"
+
+    if [[ "$setting" == "OFF" ]]; then
+        offline_cpu "$cpu"
+        return
+    fi
+
+    set_cpu_freq "$cpu" "$setting"
+}
+
+
+# ============================================================
+# APPLY CONFIGURATION
+# ============================================================
+
+apply_config() {
+
+    echo
+    echo "========================================"
+    echo " APPLYING STORED CONFIGURATION"
+    echo "========================================"
+    echo
+
+    for cpu_path in "$BASE"/cpu[0-9]*; do
+
+        [[ -d "$cpu_path" ]] || continue
+
+        local cpu="${cpu_path##*cpu}"
+        local setting
+
+        setting="$(get_config_freq "$cpu")"
+
+        echo "CPU$cpu configuration: $setting"
+
+        apply_cpu "$cpu" "$setting" || true
+
+        echo
+    done
+
+    echo "Configuration applied."
+}
+
+
+# ============================================================
+# STATUS
+# ============================================================
+
+status() {
+
+    echo
+    echo "========================================"
+    echo " CURRENT CPU STATUS"
+    echo "========================================"
+    echo
+
+    for cpu_path in "$BASE"/cpu[0-9]*; do
+
+        [[ -d "$cpu_path" ]] || continue
+
+        local cpu="${cpu_path##*cpu}"
+        local online_file="$BASE/cpu$cpu/online"
+
+
+        # ----------------------------------------------------
+        # OFFLINE CPU
+        # ----------------------------------------------------
+
+        if [[ -e "$online_file" ]] &&
+           [[ "$(cat "$online_file")" == "0" ]]; then
+
+            printf "CPU%-2s  OFFLINE\n" "$cpu"
+            continue
+        fi
+
+
+        # ----------------------------------------------------
+        # ONLINE CPU
+        # ----------------------------------------------------
+
+        local p="$BASE/cpu$cpu/cpufreq"
+
+        if [[ ! -d "$p" ]]; then
+            printf "CPU%-2s  ONLINE  cpufreq unavailable\n" "$cpu"
+            continue
+        fi
+
+
+        local min max cur gov
+
+        min=$(cat "$p/scaling_min_freq")
+        max=$(cat "$p/scaling_max_freq")
+        gov=$(cat "$p/scaling_governor")
+
+
+        if [[ -r "$p/scaling_cur_freq" ]]; then
+            cur=$(cat "$p/scaling_cur_freq")
+        else
+            cur=0
+        fi
+
+
+        printf \
+            "CPU%-2s  ONLINE  current=%4s MHz  min=%4s MHz  max=%4s MHz  governor=%s\n" \
+            "$cpu" \
+            "$(khz_to_mhz "$cur")" \
+            "$(khz_to_mhz "$min")" \
+            "$(khz_to_mhz "$max")" \
+            "$gov"
+
+    done
+
+    echo
+}
+
+
+# ============================================================
+# STORED CONFIG
+# ============================================================
+
+config() {
+
+    echo
+    echo "========================================"
+    echo " STORED CONFIGURATION"
+    echo "========================================"
+    echo
+
+    if (( USE_ALL_FREQ == 1 )); then
+
+        echo "Mode: ALL"
+        echo "ALL CPUs: $ALL_FREQ MHz"
+
+    else
+
+        echo "Mode: INDIVIDUAL"
+        echo
+        echo "CPU0: $CPU0_FREQ"
+        echo "CPU1: $CPU1_FREQ"
+        echo "CPU2: $CPU2_FREQ"
+        echo "CPU3: $CPU3_FREQ"
+        echo "CPU4: $CPU4_FREQ"
+        echo "CPU5: $CPU5_FREQ"
+        echo "CPU6: $CPU6_FREQ"
+        echo "CPU7: $CPU7_FREQ"
+
+    fi
+
+    echo
+}
+
+
+# ============================================================
+# RESTORE
+# ============================================================
+
+restore() {
+
+    echo
+    echo "========================================"
+    echo " RESTORING CPUs"
+    echo "========================================"
+    echo
+
+    for cpu_path in "$BASE"/cpu[0-9]*; do
+
+        [[ -d "$cpu_path" ]] || continue
+
+        local cpu="${cpu_path##*cpu}"
+
+        # Bring CPU back online.
+        online_cpu "$cpu"
+
+        local p="$BASE/cpu$cpu/cpufreq"
+
+        [[ -d "$p" ]] || continue
+
+        local hw_min
+        hw_min=$(cat "$p/cpuinfo_min_freq")
+
+
+        # Safest order:
+        # 1. minimum -> hardware minimum
+        # 2. maximum -> restore max
+        # 3. minimum -> restore min
+
+        echo "$hw_min" > "$p/scaling_min_freq"
+        echo "$(mhz_to_khz "$RESTORE_MAX")" > "$p/scaling_max_freq"
+        echo "$(mhz_to_khz "$RESTORE_MIN")" > "$p/scaling_min_freq"
+
+        echo "CPU$cpu -> ${RESTORE_MIN}-${RESTORE_MAX} MHz"
+
+    done
+
+    echo
+    echo "Restored."
+}
+
+
+# ============================================================
+# USAGE
+# ============================================================
+
+usage() {
+
+    cat <<EOF
+
+CPU Frequency / Offline Controller
+
+Usage:
+
+    sudo $0 apply
+        Apply the frequencies stored at the top of this script.
+
+    sudo $0 status
+        Show current CPU status.
+
+    sudo $0 config
+        Show stored configuration.
+
+    sudo $0 restore
+        Bring CPUs online and restore ${RESTORE_MIN}-${RESTORE_MAX} MHz.
+
+    sudo $0
+        Same as 'apply'.
+
+Configuration examples:
+
+    CPU0_FREQ=800
+    CPU1_FREQ=800
+    CPU2_FREQ=800
+    CPU3_FREQ=800
+
+    CPU4_FREQ=OFF
+    CPU5_FREQ=OFF
+    CPU6_FREQ=OFF
+    CPU7_FREQ=OFF
+
+EOF
+}
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+main() {
+
+    need_root "$@"
+
+    case "${1:-apply}" in
+
+        apply)
+            apply_config
+            ;;
+
+        status)
+            status
+            ;;
+
+        config)
+            config
+            ;;
+
+        restore)
+            restore
+            ;;
+
+        -h|--help)
+            usage
+            ;;
+
+        *)
+            usage
+            exit 1
+            ;;
+
+    esac
+}
+
+
+main "$@"

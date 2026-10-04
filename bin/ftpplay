@@ -1,0 +1,818 @@
+#!/bin/bash
+
+# ==============================================================================
+# PROJECT: ftpplay (CircleFTP CLI Media Browser)
+# VERSION: 1.6.6 (STABLE)
+# AUTHOR:  Rex Ackermann (https://www.github.com/rexackermann)
+# ==============================================================================
+#
+# DESCRIPTION:
+#   A high-performance Terminal User Interface (TUI) for searching, browsing,
+#   and playing media from the CircleFTP API. Designed for movie enthusiasts
+#   who prefer the speed and aesthetics of a terminal over a web browser.
+#
+#   NEW in 1.6.6:
+#   - Smart Defaults: Automatically defaults to 'vlc' on Termux/Android for
+#     maximum stability out-of-the-box.
+#   - MPV-Android Support: Updated package targeting for mpvEx.
+#   - v1.6.6 Stable Release.
+#
+# SYSTEM REQUIREMENTS:
+#   - Linux (Ubuntu, Arch, Fedora, etc.)
+#   - Android (Termux)
+#   - Bash 4.4+
+#
+# DEPENDENCIES (Core):
+#   - curl: For interacting with the CircleFTP API.
+#   - jq:   For parsing complex JSON data from the API.
+#   - fzf:  The fuzzy finding engine used for all menus and selection lists.
+#   - mpv/vlc:  The media player used for high-quality video playback.
+#
+# DEPENDENCIES (Optional / Recommended):
+#   - chafa:    Required for high-resolution image previews in the terminal.
+#   - Kitty/Ghostty: Recommended terminals for hardware-accelerated image support.
+#
+# INSTALLATION:
+#   1. Copy this script to a folder in your PATH (e.g., /usr/local/bin/ftpplay).
+#   2. Give it execution permissions: chmod +x ftpplay
+#   3. Run it: ftpplay
+#
+# ==============================================================================
+
+# --- Environment Setup ---
+
+# Determine the absolute path of this script.
+# This logic is CRITICAL because 'fzf' will strictly call this script back
+# recursively to handle preview generation. It needs a reliable absolute path.
+SELF_PATH=$(realpath "$0")
+export SELF_PATH  # Exporting ensures subshells (like fzf previewer) inherit it.
+
+# --- Helper: fetch_category_data ---
+#
+# This internal function fetches all posts for a specific category ID.
+# It handles pagination automatically (up to 1000 pages or until empty).
+#
+# Arguments:
+#   $1: Category ID (integer)
+#
+# Output:
+#   Streams Tab-Separated Values (TSV) to stdout, formatted for 'fzf' consumption.
+#   Format: "Title [TAB] Link [TAB] ImageURL [TAB] ID [TAB] Description"
+fetch_category_data() {
+    local cat_id="$1"          # The ID of the category to browse
+    local current_page=1       # Start at page 1
+    local limit=50             # Fetch 50 posts per API call for speed
+    
+    # Loop indefinitely until we run out of pages
+    while true; do
+        # Construct the API endpoint URL with query parameters.
+        # We sort by 'createdAt' descending to show the newest additions first.
+        local url="http://new.circleftp.net:5000/api/posts?category=${cat_id}&page=${current_page}&limit=${limit}&sortBy=createdAt&order=desc"
+        
+        # Perform the HTTP GET request using curl.
+        # -s: Silent mode (no progress bar).
+        # --max-time 10: Fail if server takes longer than 10s (avoids hanging).
+        local json=$(curl -s --max-time 10 "$url")
+        
+        # Parse the JSON response using 'jq'.
+        # We perform a robust transformation to handle newlines/tabs in content
+        # which would otherwise break the TSV structure fzf relies on.
+        #
+        # Field Mapping:
+        # - title: The media title.
+        # - link: A reference link used for resolution later.
+        # - imageSm: The thumbnail URL.
+        # - metaData/summary: The plot description fields (API varies).
+        local batch_posts=$(echo "$json" | jq -r --argjson offset $(( (current_page - 1) * limit )) '.posts[] | 
+            "\(.title | gsub("[\t\n\r]"; " "))\t/content/\(.id)\thttp://new.circleftp.net:5000/uploads/\(.imageSm)\t\(.id)\t\(.metaData // .metadata // .description // .contentDescription // .summary // "No description." | tostring | gsub("[\t\n\r]"; " "))"' 2>/dev/null)
+        
+        # If the batch variable is empty, the API returned nothing or errored.
+        if [ -z "$batch_posts" ]; then break; fi
+        
+        # Output the processed batch to stdout
+        echo "$batch_posts"
+        
+        # Calculate how many items we actually got.
+        local count=$(echo "$batch_posts" | wc -l)
+        
+        # Optimization: If we received fewer items than the limit (50),
+        # we know we have reached the very last page. No need to query again.
+        if [ "$count" -lt "$limit" ]; then break; fi
+        
+        # Increment page counter for next iteration
+        current_page=$((current_page + 1))
+        
+        # Hard safety limit to prevent infinite loops on malformed APIs
+        if [ "$current_page" -gt 1000 ]; then break; fi
+    done
+}
+
+# --- Internal Command Dispatcher ---
+# To minimize latency and simplify deployment, this script is "poly-functional".
+# When called with certain flags, it behaves as a sub-process for fzf.
+
+if [[ "$1" == "--preview-handler" || "$1" == "--fetch-category-data" ]]; then
+
+    # Internal Hook: Data Fetching
+    # Called by browse_posts to background-fetch data into a file cache.
+    if [[ "$1" == "--fetch-category-data" ]]; then
+        fetch_category_data "$2"
+        exit 0
+    fi
+
+    # helper: fetch_external_metadata (NEW in 1.4.0)
+    #
+    # This advanced function attempts to find a synopsis for the media item.
+    # It uses a "Tiered Intelligence" approach:
+    # 1. Jikan API: Priority if title contains "Anime".
+    # 2. Wikipedia: General purpose, uses a "Plot Summary" search pivot.
+    # 3. DuckDuckGo: Final fallback for obscure matches.
+    #
+    # It also implements aggressive caching and "Junk Filtering" to avoid definitions.
+    fetch_external_metadata() {
+        local raw_title="$1"                                  # e.g., "Loki (TV Series 2021-)"
+        local cache_dir="$HOME/.cache/ftpplay/metadata"       # Permanent metadata cache
+        mkdir -p "$cache_dir"
+        
+        # 1. Clean Title and Extract Context
+        # We need to strip "dirty" metadata (quality tags, brackets) to get a clean search term.
+        
+        # Extract Year: Handles (2022) and raw "2020" year formats.
+        local year=$(echo "$raw_title" | grep -oE "\([0-9]{4}-?\)" | tr -d "()" | head -n 1)
+        [ -z "$year" ] && year=$(echo "$raw_title" | grep -oE "[0-9]{4}" | head -n 1)
+        
+        # Extract Type: "TV Series", "Movie", etc.
+        local type_tag=$(echo "$raw_title" | grep -oE "\((TV Series|Movie|Web Series).*\)" | tr -d "()" | head -n 1)
+        
+        # Generate 'clean_title' by stripping:
+        # - Content in brackets/parentheses
+        # - The year and everything after it
+        # - Quality tags (1080p, BluRay, etc.)
+        local clean_title=$(echo "$raw_title" | sed -E 's/(\(|\[).*//; s/[0-9]{4}.*//; s/(1080p|720p|WEB-DL|BluRay).*//i; s/ {2,}/ /; s/^ //; s/ $//')
+        
+        # Fallback: If stripping resulted in empty string (rare edge case), do a minimal strip.
+        [ -z "$clean_title" ] && clean_title=$(echo "$raw_title" | sed -E 's/\[.*\]//g; s/\(.*\)//g; s/ {2,}/ /g; s/^ //; s/ $//')
+        
+        # Define cache file path based on title + year
+        local cache_key=$(echo "$clean_title" | tr ' ' '_')
+        local cache_file="$cache_dir/$cache_key$( [ -n "$year" ] && echo "_$year").txt"
+        
+        # Check Cache logic
+        if [ -s "$cache_file" ]; then 
+            local cached_content=$(cat "$cache_file")
+            # Junk Filter: Check if the cached entry looks like a dictionary definition.
+            # If so, it's a "bad cache" (previous failed fetch), so we delete it and retry.
+            if [[ "$cached_content" == *" refers to"* || "$cached_content" == *" most often refers to"* || "$cached_content" == *" may refer to"* ]]; then
+                 rm "$cache_file"
+            else
+                 cat "$cache_file"; return
+            fi
+        fi
+        
+        local summary=""
+        
+        # 2. Tier 1: Jikan (Anime focus)
+        # If the title suggests anime, Jikan is the most accurate source.
+        if [[ "$raw_title" == *"Anime"* || "$raw_title" == *"Series"* ]]; then
+             summary=$(curl -s --max-time 3 "https://api.jikan.moe/v4/anime?q=${clean_title// /+}&limit=1" | jq -r '.data[0].synopsis' 2>/dev/null)
+             # Discard if it looks like a junk match (less than 50 chars)
+             [ ${#summary} -lt 50 ] && summary=""
+        fi
+        
+        # 3. Tier 2: Wikipedia (General) with Plot-Focused Search
+        if [ -z "$summary" ] || [ "$summary" == "null" ]; then
+             # Pivot Strategy: Instead of searching the title directly (which hits disambiguation pages),
+             # we search for "Title Year Type plot summary". This forces the search engine to find the media page.
+             local sr_query="${clean_title// /+} ${year} ${type_tag// /+} plot summary"
+             sr_query=$(echo "$sr_query" | sed 's/+$//; s/ /+/g')
+             
+             # Step A: Search Wikipedia to get the Page Title
+             local wiki_search=$(curl -s --max-time 2 "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${sr_query}&format=json" | jq -r '.query.search[0].title' 2>/dev/null)
+             
+             # Step B: Fetch the summary of that specific Page Title
+             if [ -n "$wiki_search" ] && [ "$wiki_search" != "null" ]; then
+                  summary=$(curl -s --max-time 2 "https://en.wikipedia.org/api/rest_v1/page/summary/${wiki_search// /_}" | jq -r '.extract' 2>/dev/null)
+             fi
+        fi
+        
+        # 4. Tier 3: DuckDuckGo (Final Fallback)
+        # If Wikipedia failed, try DDG instant answer API.
+        if [ -z "$summary" ] || [ "$summary" == "null" ] || [ ${#summary} -lt 50 ]; then
+             summary=$(curl -s --max-time 2 "https://api.duckduckgo.com/?q=${clean_title// /+}+${type_tag// /+}+plot+summary&format=json" | jq -r '.AbstractText' 2>/dev/null)
+        fi
+        
+        # 5. Validation Logic: Aggressive filter for dictionary/disambiguation junk
+        # If the result starts with "X refers to...", it's not a plot. Discard it.
+        if [[ "$summary" == *" refers to"* || "$summary" == *" most often refers to"* || "$summary" == *" may refer to"* || "$summary" == *" refers to:"* ]]; then
+             summary=""
+        fi
+
+        # 6. Save and Return
+        if [ -n "$summary" ] && [ "$summary" != "null" ] && [ ${#summary} -gt 35 ]; then
+             # Prefix with usage indicator and tee to cache file
+             echo "(Ext. Source) $summary" | tee "$cache_file"
+        fi
+    }
+
+    # Internal Hook: Image Preview Rendering
+    # FZF calls this for every item you highlight in the list.
+    if [[ "$1" == "--preview-handler" ]]; then
+        shift
+        # Arguments mapping from fzf's '{1} {2}...' syntax
+        # We explicitly map positional arguments to meaningful variable names.
+        SOURCE="$1"; TITLE="$2"; LINK="$3"; IMG_URL=$(echo "$4" | tr -d "'\""); PID="$5"; METADATA="$6"; WIDTH="$7"; HEIGHT="$8"
+        
+        # 1. Terminal Hardware Cleanup
+        # If using Kitty or Ghostty, we send an escape code to delete existing images.
+        # This prevents "ghosting" where old images persist under the new text.
+        if [[ "$TERM" == *"kitty"* || "$TERM" == *"ghostty"* ]]; then
+             printf '\e_Ga=d,d=a;\e\\' > /dev/tty
+        fi
+
+        # 2. Main Metadata Display (Top Portion)
+        # Display Title in Blue (Bold), Link in Blue (Normal)
+        echo -e "\033[1;34m$TITLE\033[0m"
+        echo -e "\033[34m$LINK\033[0m"
+        
+        # 3. Description Display (Above Image)
+        # We render this here so it fills the space above the image area.
+        echo -e "\n\033[1;30mDescription:\033[0m"
+        
+        DISP_DESC="$METADATA"
+        # Auto-Fill Logic (NEW in 1.4.0)
+        # If description is missing/null, try to fetch it externally using 'jq'.
+        if { [ -z "$METADATA" ] || [ "$METADATA" == "null" ] || [ "$METADATA" == "No description." ]; } && command -v jq &>/dev/null; then
+             DISP_DESC=$(fetch_external_metadata "$TITLE")
+        fi
+
+        # Render Description
+        if [ -n "$DISP_DESC" ] && [ "$DISP_DESC" != "null" ]; then
+            # Fold wraps the description to fit exactly within the preview pane's width
+            echo -e "\033[36m$DISP_DESC\033[0m" | fold -s -w "$((WIDTH - 2))" | head -n 5
+            DESC_LINES=6
+        else
+            echo -e "\033[36mNo description available.\033[0m"
+            DESC_LINES=2
+        fi
+        echo -e "" # Gap before image
+
+        # 4. Image Rendering Core
+        if [ -n "$IMG_URL" ] && [ "$IMG_URL" != "null" ]; then
+            PREVIEW_FILE="$SESSION_TMP/preview.jpg"
+            
+            # Normalize partial URLs: Add domain prefix if missing.
+            if [[ "$IMG_URL" != "http"* ]]; then
+                [[ "$IMG_URL" == "/uploads/"* || "$IMG_URL" == "uploads/"* ]] && IMG_URL="http://new.circleftp.net:5000/${IMG_URL#/}"
+            fi
+
+            # Download the image quietly using curl.
+            if curl -s -L --max-time 5 "$IMG_URL" -o "$PREVIEW_FILE"; then
+                # Only attempt rendering if 'chafa' is installed.
+                if [ -s "$PREVIEW_FILE" ] && command -v chafa &>/dev/null; then
+                    # Geometry Logic:
+                    # Calculate available height for the image by subtracting text space.
+                    # OFFSET = Title(1) + Link(1) + Gap(1) + DescHeader(1) + DescLines + Gap(1)
+                    OFFSET=$((4 + DESC_LINES))
+                    IMG_HEIGHT=$((HEIGHT - OFFSET))
+                    [ "$IMG_HEIGHT" -lt 5 ] && IMG_HEIGHT=5
+                    
+                    # Detect Terminal capabilities for best pixel format.
+                    FMT="symbols"; [[ "$TERM" == *"kitty"* || "$TERM" == *"ghostty"* ]] && FMT="kitty"
+                    
+                    # Draw the image (it will appear exactly below the description)
+                    chafa --format="$FMT" --size="${WIDTH}x${IMG_HEIGHT}" "$PREVIEW_FILE"
+                fi
+            fi
+        fi
+        exit 0
+    fi
+fi
+
+# --- State Management (JSON Persistence) ---
+
+# We store the latest played item and history in a hidden JSON file in the config dir.
+# This allows for session persistence across reboots.
+STATE_FILE="${HOME}/.config/ftpplay/state.json"
+mkdir -p "$(dirname "$STATE_FILE")"
+
+# Initialize state if file is missing (create empty JSON structure)
+init_state() {
+    [ ! -f "$STATE_FILE" ] && echo '{"last_played": null, "history": []}' > "$STATE_FILE"
+}
+
+# Update state with the most recent playback
+# Arguments: Title, Link, Image, ID, CatID, CatName
+save_state() {
+    local title="$1" link="$2" img="$3" pid="$4" cid="$5" cname="$6"
+    init_state
+    local tmp=$(mktemp)
+    
+    # Save as 'last_played' field using jq
+    jq --arg t "$title" --arg l "$link" --arg i "$img" --arg p "$pid" --arg cid "$cid" --arg cn "$cname" \
+       '.last_played = {"title": $t, "link": $l, "image": $i, "id": $p, "cat_id": $cid, "cat_name": $cn}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+    
+    # Update History Array:
+    # 1. Prepend the new item to the top of the history list.
+    # 2. Filter out any existing duplicates of this ID (to avoid repeats).
+    # 3. Slice the array to keep only the last 50 items (limit growth).
+    jq --arg t "$title" --arg l "$link" --arg i "$img" --arg p "$pid" --arg cid "${cid:-}" --arg cn "${cname:-}" \
+       '.history = ([{"title": $t, "link": $l, "image": $i, "id": $p, "cat_id": $cid, "cat_name": $cn}] + (.history | map(select((.id|tostring) != ($p|tostring))))) | .history = .history[0:50]' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+}
+
+# --- Service Resolution ---
+
+# Resolves a post-id or partial link into a direct video stream URL.
+# Queries the /api/posts/{id} endpoint and returns the 'content' field.
+# 'content' can be a direct URL string OR a JSON array (for series).
+resolve_circleftp() {
+    local path="$1"
+    local id=$(echo "$path" | grep -oP '\d+')
+    local api_url="http://new.circleftp.net:5000/api/posts/$id"
+    curl -s "$api_url" | jq -r '.content'
+}
+
+# --- Global Search Engine ---
+
+# Interfaces with the API search endpoint and extracts data for fzf directly.
+search_circleftp() {
+    local query=$(echo "$1" | jq -sRr @uri) # Handle spaces/special chars in HTTP query
+    local url="http://new.circleftp.net:5000/api/posts?searchTerm=$query&order=desc"
+    local json=$(curl -s "$url")
+    
+    # Parse and output TSV format for fzf
+    echo "$json" | jq -r --arg query "$query" '.posts[] | 
+        "\(.title | gsub("[\t\n\r]"; " "))\t/content/\(.id)\thttp://new.circleftp.net:5000/uploads/\(.imageSm)\t\(.id)\t\(.metaData // .metadata // .description // .contentDescription // .summary // "No description." | tostring | gsub("[\t\n\r]"; " "))"'
+}
+
+# The main Search UI loop
+perform_global_search() {
+    echo -e "\n"
+    read -p "  🔍 Enter Search Term: " query
+    if [ -z "$query" ]; then return; fi
+    
+    echo "Searching for '$query'..."
+    local results=$(search_circleftp "$query")
+    
+    if [ -z "$results" ]; then
+        echo "No results found."
+        sleep 1
+        return
+    fi
+    
+    # Loop to allow playing multiple items from the same search result list
+    while true; do
+        # Recalculate self path in case of weird environment shifts
+        local S_PATH=$(realpath "$0")
+        
+        # Display search results in fzf with preview handler
+        local selected=$(echo "$results" | fzf --delimiter $'\t' --with-nth 1 --header "Search Results: $query" \
+            --preview "$S_PATH --preview-handler 'CircleFTP' {1} {2} {3} {4} {5} \$FZF_PREVIEW_COLUMNS \$FZF_PREVIEW_LINES" \
+            --preview-window=right:60%:wrap --layout=reverse --cycle)
+            
+        if [ -z "$selected" ]; then break; fi
+        
+        # Parse fzf selection (Tab separated)
+        local sel_title=$(echo "$selected" | cut -f1)
+        local sel_link=$(echo "$selected" | cut -f2)
+        local sel_img=$(echo "$selected" | cut -f3)
+        local sel_pid=$(echo "$selected" | cut -f4)
+        
+        # Play the selection
+        play_selection "CircleFTP" "$sel_title" "$sel_link" "$sel_img" "$sel_pid" "0" "Search"
+    done
+}
+
+# --- Library Browsing System ---
+
+# The entry point for exploring the CircleFTP archive hierarchically.
+browse_categories() {
+    local initial_query="$1"
+    echo "Fetching Categories..."
+    local url="http://new.circleftp.net:5000/api/categories"
+    local json=$(curl -s --max-time 5 "$url")
+    
+    # Extract categories and sort them alphabetically
+    local main_cats_core=$(echo "$json" | jq -r '.[] | "\(.name)\t\(.id)\t\(.subCategory | length)"' | sort -f)
+
+    # Inject the "Continue Watching" quick-link if history exists
+    local continue_item=""
+    if [ -f "$STATE_FILE" ]; then
+        local lp_title=$(jq -r '.last_played.title // empty' "$STATE_FILE")
+        if [ -n "$lp_title" ]; then
+             continue_item="[ ▶ Continue: $lp_title ]\tCONTINUE_PLAY\t0"
+        fi
+    fi
+    
+    # Define TUI tools (Global Search, History)
+    local tools="[ 🔍 Global Search ]\tSEARCH_MENU\t0\n[ 🕒 Recently Played ]\tHISTORY\t0"
+    
+    # Construct the final display list for the main menu
+    local main_cats="${main_cats_core}\n${tools}"
+    if [ -n "$continue_item" ]; then
+        main_cats="${continue_item}\n${main_cats}"
+    fi
+    
+    # Render Main Category Menu via fzf
+    local selected_main=$(echo -e "$main_cats" | fzf --delimiter $'\t' --with-nth 1 --header "Select Category" --prompt "Category > " --no-sort --cycle --layout=reverse)
+    if [ -z "$selected_main" ]; then return 1; fi
+    
+    local main_name=$(echo "$selected_main" | cut -f1)
+    local main_id=$(echo "$selected_main" | cut -f2)
+    local sub_count=$(echo "$selected_main" | cut -f3)
+
+    # Handler for Virtual Menu Items (Tools)
+    if [ "$main_id" = "CONTINUE_PLAY" ]; then
+        local lp_id=$(jq -r '.last_played.id // empty' "$STATE_FILE")
+        local lp_cid=$(jq -r '.last_played.cat_id // empty' "$STATE_FILE")
+        local lp_cname=$(jq -r '.last_played.cat_name // empty' "$STATE_FILE")
+        [ -n "$lp_id" ] && browse_posts "$lp_cid" "$lp_cname" ""
+        return
+    elif [ "$main_id" = "HISTORY" ]; then
+        show_history; return
+    elif [ "$main_id" = "SEARCH_MENU" ]; then
+        perform_global_search; return
+    fi
+    
+    # Sub-Category drill down if the category has children (subCategory count > 0)
+    local final_id="$main_id"
+    local title_prefix="$main_name"
+    if [ "$sub_count" -gt 0 ]; then
+        local sub_cats=$(echo "$json" | jq -r --arg id "$main_id" '.[] | select(.id == ($id|tonumber)) | .subCategory[] | "\(.name)\t\(.id)"')
+        local selected_sub=$(echo -e "All $main_name\t$main_id\n$sub_cats" | fzf --delimiter $'\t' --with-nth 1 --header "Select Sub-Category" --prompt "$main_name > ")
+        if [ -n "$selected_sub" ]; then
+            final_id=$(echo "$selected_sub" | cut -f2)
+            title_prefix="$main_name > $(echo "$selected_sub" | cut -f1)"
+        else
+             return 0 
+        fi
+    fi
+    
+    # Final destination: Browse the actual media items for the selected category
+    browse_posts "$final_id" "$title_prefix" "$initial_query"
+}
+
+# The actual post browsing UI. Supports background loading to keep UI fast.
+browse_posts() {
+    local cat_id="$1"
+    local cat_name="$2"
+    
+    # Local category cache to allow near-instant re-entry into the same category
+    local CACHE_DIR="$HOME/.cache/ftpplay/categories"
+    mkdir -p "$CACHE_DIR"
+    local cache_file="$CACHE_DIR/${cat_id}.tsv"
+    local lock_file="$SESSION_TMP/fetch_${cat_id}.lock"
+    
+    # 1. Background Lazy Fetch:
+    # We spawn a background process to refresh the cache without blocking the user.
+    # We use a directory lock to prevent multiple simultaneous fetches for the same ID.
+    (
+        if mkdir "$lock_file" 2>/dev/null; then
+            trap "rmdir '$lock_file'" EXIT
+            tmp_cache="${cache_file}.tmp"
+            fetch_category_data "$cat_id" > "$tmp_cache" # Fetch fresh data
+            mv "$tmp_cache" "$cache_file"                # Atomic update
+        fi
+    ) & disown
+    
+    local S_PATH=$(realpath "$0")
+    local header_info="$cat_name | Ctrl-R: Refresh List"
+    local FETCH_CMD="$S_PATH --fetch-category-data '$cat_id'"
+
+    # 2. Dynamic Selection (Internal Stream)
+    # If the cache file doesn't exist yet (first visit), we must stream data
+    # directly from the fetch command into fzf so the user sees results arriving.
+    if [ ! -f "$cache_file" ]; then
+        local selected=$(eval "$FETCH_CMD" | tee "$cache_file" | fzf --delimiter $'\t' --with-nth 1 \
+            --header "$header_info" --prompt "Search (Loading...) > " \
+            --bind "ctrl-r:reload($FETCH_CMD | tee '$cache_file')" \
+            --preview "$S_PATH --preview-handler 'CircleFTP' {1} {2} {3} {4} {5} \$FZF_PREVIEW_COLUMNS \$FZF_PREVIEW_LINES" \
+            --preview-window=right:60%:wrap --layout=reverse --cycle)
+            
+         if [ -z "$selected" ]; then return 0; fi
+             
+         IFS=$'\t' read -r sel_title sel_link sel_img sel_pid sel_rest <<< "$selected"
+         play_selection "CircleFTP" "$sel_title" "$sel_link" "$sel_img" "$sel_pid" "$cat_id" "$cat_name"
+    fi
+    
+    # 3. Standard Selection (Cached)
+    # If cache exists, we read from it instantly. This is the main browsing loop.
+    while true; do
+        local selected=$(cat "$cache_file" | fzf --delimiter $'\t' --with-nth 1 \
+            --header "$header_info" --prompt "Search > " \
+            --bind "ctrl-r:reload($FETCH_CMD | tee '$cache_file')" \
+            --preview "$S_PATH --preview-handler 'CircleFTP' {1} {2} {3} {4} {5} \$FZF_PREVIEW_COLUMNS \$FZF_PREVIEW_LINES" \
+            --preview-window=right:60%:wrap --layout=reverse --cycle)
+            
+        if [ -z "$selected" ]; then return 0; fi
+        
+        # Destructure and Play
+        local sel_title=$(echo "$selected" | cut -f1)
+        local sel_link=$(echo "$selected" | cut -f2)
+        local sel_img=$(echo "$selected" | cut -f3)
+        local sel_pid=$(echo "$selected" | cut -f4)
+        play_selection "CircleFTP" "$sel_title" "$sel_link" "$sel_img" "$sel_pid" "$cat_id" "$cat_name"
+    done
+}
+
+# --- Playback Engine ---
+
+# Handles the transition from TUI selection to media player (mpv/vlc).
+# This function is responsible for API resolution, Playlist generation, and Android Intent handling.
+play_selection() {
+    local source="$1"; local title="$2"; local link="$3"; local img="$4"; local pid="$5"; local cid="$6"; local cname="$7"
+    
+    # Persist the choice immediately to history
+    [ -n "$pid" ] && save_state "$title" "$link" "$img" "$pid" "$cid" "$cname"
+    
+    echo "Resolving: $title..."
+    local video_url=""
+    
+    # API Resolution Logic
+    if [ "$source" == "CircleFTP" ]; then
+        video_url=$(resolve_circleftp "$link")
+        
+        # Series Logic: If the API returns a JSON list (starts with '['), it's a TV series.
+        if [[ "$video_url" == "["* ]]; then
+            # We create a temporary M3U playlist file.
+            # This allows mpv to treat the season as a playlist, enabling Next/Prev episode keybinds.
+            SAN_TITLE=$(echo "$title" | sed 's/[^a-zA-Z0-9]/_/g')
+            PLAYLIST_FILE="$HOME/.ftpplay/${SAN_TITLE}.m3u"
+            mkdir -p "$(dirname "$PLAYLIST_FILE")"
+            
+            # Generate M3U content from the JSON array
+            echo "#EXTM3U" > "$PLAYLIST_FILE"
+            echo "$video_url" | jq -r '.[].episodes[] | "#EXTINF:-1,\(.title)\n\(.link)"' >> "$PLAYLIST_FILE"
+            
+            # Debug Output (User Requested)
+            echo -e "\n\033[1;35m[Playlist Debug]\033[0m"
+            echo "File: $PLAYLIST_FILE"
+            echo "---------------------------------------------------"
+            cat "$PLAYLIST_FILE"
+            echo "---------------------------------------------------"
+
+            # Allow user to pick a specific episode if --choose was used.
+            if [ "$CHOOSE_EPISODE" = true ]; then
+                EP_DATA=$(echo "$video_url" | jq -r '.[].episodes[] | "\(.title)\t\(.link)"')
+                SEL_EP=$(echo "$EP_DATA" | fzf --delimiter $'\t' --with-nth 1 --header "Select Episode")
+                [ -n "$SEL_EP" ] && video_url=$(echo "$SEL_EP" | cut -f2) || return
+            else
+                # Default: Play the whole playlist starting from Ep 1
+                video_url="$PLAYLIST_FILE"
+            fi
+        fi
+    fi
+    
+    # Final check: Bail if we couldn't find a stream URL.
+    if [ -z "$video_url" ] || [ "$video_url" == "null" ]; then
+        echo "Error: Could not resolve video link."; read -p "Press Enter..."; return
+    fi
+    
+    # Hand off to Media Player (Android/Termux specific logic)
+    if [ "$IS_TERMUX" = true ] && [ "$PLAYER" != "mpv" ]; then
+        # Termux Storage Handoff Strategy
+        # External players (VLC, MPV-Android) run in their own sandbox.
+        # They CANNOT read files in Termux's private home directory.
+        # We must copy generated playlists (.m3u) to a public directory (like /Download).
+        
+        if [[ "$video_url" == *".m3u" || "$video_url" == *".m3u8" ]]; then
+             # Identify a writable public download directory
+             local public_dir=""
+             for d in "/storage/emulated/0/Download" "/sdcard/Download" "$HOME/storage/downloads"; do
+                 if [ -d "$d" ] && [ -w "$d" ]; then public_dir="$d/ftpplay_playlists"; break; fi
+             done
+             
+             # Perform the Copy
+             if [ -n "$public_dir" ]; then
+                  mkdir -p "$public_dir"
+                  local filename=$(basename "$video_url")
+                  cp "$video_url" "$public_dir/$filename"
+                  video_url="$public_dir/$filename"
+                  echo "Playlist copied to public storage: $video_url"
+             else
+                  # Fatal Error if no storage access
+                  echo -e "\n\033[1;31mError: Cannot write to public storage.\033[0m"
+                  echo "Please run 'termux-setup-storage' to grant permissions."
+                  echo "External players cannot read playlists from private storage."
+                  read -p "Press Enter to continue..."
+                  return
+             fi
+        fi
+
+        # Android Intent Dispatcher
+        # We use 'am start' to launch the external Android Activity.
+        echo "Launching external player ($PLAYER)..."
+        local intent_args=""
+        case "$PLAYER" in
+            mpvex) 
+                # Use Package Mode (-p) for mpvEx (Marlboro Advance Fork) target
+                intent_args="-p app.marlboroadvance.mpvex" 
+                ;;
+            vlc)   
+                # Use Component Mode (-n) for VLC as it's the most reliable method for VLC
+                intent_args="-n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity" 
+                ;;
+            *)     echo "Unknown player for Android: $PLAYER"; read -p "Press Enter..."; return ;;
+        esac
+        
+        # Ensure local paths have file:// scheme for Intents.
+        # Modern Android builds often require valid URIs, not just paths.
+        if [[ "$video_url" == "/"* ]]; then
+            video_url="file://$video_url"
+        fi
+        
+        # Determine MIME Types for robust resolution.
+        # Without this, Android might fail to match the file extension to the player.
+        local mime_type=""
+        if [[ "$video_url" == *".m3u" || "$video_url" == *".m3u8" ]]; then
+            mime_type="audio/x-mpegurl" # Standard M3U mime, works for video players too
+        elif [[ "$video_url" == *".mp4" ]]; then
+            mime_type="video/mp4"
+        elif [[ "$video_url" == *".mkv" ]]; then
+            mime_type="video/x-matroska"
+        else
+            mime_type="video/*" # Generic fallback
+        fi
+        
+        # Debug the exact command for troubleshooting
+        echo "DEBUG: am start --user 0 -a android.intent.action.VIEW -d \"$video_url\" -t \"$mime_type\" $intent_args"
+        
+        # Execute the Intent
+        am start --user 0 -a android.intent.action.VIEW -d "$video_url" -t "$mime_type" $intent_args >/dev/null
+    else
+        # Standard Desktop Execution / Native Termux mpv
+        # Simply calls the binary with the URL.
+        if [ "$PLAYER" == "vlc" ]; then
+             vlc "$video_url"
+        else
+             mpv "$video_url"
+        fi
+    fi
+}
+
+# --- History View ---
+
+# Simple UI for browsing locally saved history JSON.
+show_history() {
+    init_state
+    local history_json=$(jq -r '.history' "$STATE_FILE")
+    
+    # Check if empty
+    [ $(echo "$history_json" | jq '. | length') -eq 0 ] && { echo "History is empty."; read -p "Press Enter..."; return; }
+    
+    # Format for fzf
+    local posts=$(echo "$history_json" | jq -r '.[] | "\(.title | gsub("[\t\n\r]"; " "))\t\(.link)\t\(.image)\t\(.id)\tHistorical Playback"')
+    
+    # Display Selection Menu
+    local S_PATH=$(realpath "$0")
+    local selected=$(echo "$posts" | fzf --delimiter $'\t' --with-nth 1 \
+        --header "Recent / History" --prompt "History > " \
+        --preview "$S_PATH --preview-handler 'History' {1} {2} {3} {4} {5} \$FZF_PREVIEW_COLUMNS \$FZF_PREVIEW_LINES" \
+        --preview-window=right:60%:wrap --layout=reverse)
+    
+    if [ -n "$selected" ]; then
+        IFS=$'\t' read -r sel_title sel_link sel_img sel_pid sel_rest <<< "$selected"
+        play_selection "History" "$sel_title" "$sel_link" "$sel_img" "$sel_pid"
+    fi
+}
+
+# --- Entry Point & CLI Logic ---
+
+show_help() {
+    echo -e "Usage: ftpplay [QUERY] [OPTIONS]\n\nOptions:\n  --browse     Open in Library Mode\n  --choose     Select episode in series\n  -c, --continue Resume last played\n  --help       Show this documentation"
+}
+
+# Default Flags Initialization
+SEARCH_QUERY=""; CHOOSE_EPISODE=false; BROWSE_MODE=false; RESUME_LAST=false
+
+# Default Player Selection Strategy
+PLAYER="mpv" # Default player for Desktop Linux (TUI native)
+
+# Detect Termux Environment
+if [[ "$(uname -o 2>/dev/null)" == "Android" ]]; then
+    IS_TERMUX=true
+    PLAYER="vlc" # Smart Default: Use VLC on Android (More reliable/compatible)
+else
+    IS_TERMUX=false
+fi
+
+# Argument Parsing Loop
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --browse) BROWSE_MODE=true; shift ;;
+        --choose) CHOOSE_EPISODE=true; shift ;;
+        --player) PLAYER="$2"; shift 2 ;; # Allow overrides (e.g., --player mpvex)
+        -c|--continue) RESUME_LAST=true; shift ;;
+        --help) show_help; exit 0 ;;
+        *) SEARCH_QUERY="$1"; shift ;;    # Treat positional args as search query
+    esac
+done
+
+# Start-up Initialization:
+# 1. Cleanup old temp files (Session Cleanup)
+# 2. Check for missing dependencies (curl, jq, fzf)
+
+# We use TMPDIR for Termux compatibility, defaulting to /tmp for standard Linux.
+BASE_TMP="${TMPDIR:-/tmp}"
+SESSION_TMP="$BASE_TMP/ftpplay_session"
+
+# Nuclear cleanup of previous session data (User Requested)
+rm -rf "$SESSION_TMP"
+mkdir -p "$SESSION_TMP"
+# We still set a trap to clean up on exit, but the startup clean ensures we're fresh.
+trap "rm -rf '$SESSION_TMP'" EXIT
+
+# Dependency Check
+DEPENDENCIES=("curl" "jq" "fzf" "mpv"); for dep in "${DEPENDENCIES[@]}"; do
+    ! command -v "$dep" &> /dev/null && { echo "Error: $dep is not installed."; exit 1; }
+done
+
+# Main Execution Switch
+# This is the entry point for the script's primary workflows based on input.
+
+if [[ "$SEARCH_QUERY" == "http://"* || "$SEARCH_QUERY" == "https://"* ]]; then
+    # --- Direct URL Playback Workflow ---
+    # We detect if the user passed a direct HTTP link (e.g., from a browser or another script).
+    # If so, we play it immediately and bypass all interactive menus.
+    
+    echo -e "\n\033[1;36m[ Direct URL Detected ]\033[0m"
+    echo -e "Target: $SEARCH_QUERY\n"
+    
+    # Check if this is a CircleFTP API "content" link
+    if [[ "$SEARCH_QUERY" == *"/content/"* ]]; then
+        # If it's an API link, we use our play_selection engine to resolve and play.
+        # This handles series playlists automatically.
+        play_selection "CircleFTP" "Direct API Play" "$SEARCH_QUERY"
+    else
+        # --- Heuristic Series Detection (NEW in 1.3.0) ---
+        # If the user passed a direct file link (e.g. from an FTP browser),
+        # we check if this file belongs to a known series in the API.
+        
+        # 1. URL Decode and Extract Search Term
+        # We decode the URL and look at parent folders to identify the show.
+        DECODED_URL=$(printf '%b' "${SEARCH_QUERY//%/\\x}")
+        FOLDER_NAME=$(basename "$(dirname "$DECODED_URL")")
+        
+        # If the parent is "Season X", we go one level higher for the show name.
+        if [[ "$FOLDER_NAME" == "Season"* || "$FOLDER_NAME" == "Vol"* || "$FOLDER_NAME" == "Ep"* ]]; then
+             SEARCH_TERM=$(basename "$(dirname "$(dirname "$DECODED_URL")")")
+        else
+             SEARCH_TERM="$FOLDER_NAME"
+        fi
+        
+        # 2. Clean up search term (Remove years, audio tags, etc. for better API results)
+        SEARCH_TERM=$(echo "$SEARCH_TERM" | sed -E 's/\[.*\]//g; s/\(.*\)//g; s/ {2,}/ /g; s/^ //; s/ $//')
+        
+        echo -e "\033[1;30mHeuristic: Searching for series match: '$SEARCH_TERM'...\033[0m"
+        MATCHES=$(search_circleftp "$SEARCH_TERM")
+        
+        if [ -n "$MATCHES" ]; then
+             echo -e "\033[1;32mAuto-Detected Series Match in Library!\033[0m"
+             # Automate selection: We take the first match as the definitive series.
+             FINAL_MATCH=$(echo "$MATCHES" | head -n 1)
+             
+             if [ -n "$FINAL_MATCH" ]; then
+                 S_TITLE=$(echo "$FINAL_MATCH" | cut -f1)
+                 S_LINK=$(echo "$FINAL_MATCH" | cut -f2)
+                 S_IMAGE=$(echo "$FINAL_MATCH" | cut -f3)
+                 S_PID=$(echo "$FINAL_MATCH" | cut -f4)
+                 echo -e "Loading Playlist for: $S_TITLE..."
+                 play_selection "CircleFTP" "$S_TITLE" "$S_LINK" "$S_IMAGE" "$S_PID"
+                 exit 0
+             fi
+        fi
+
+        # --- Fallback to Direct Playback ---
+        # If no match found or user declined, play the single file.
+        save_state "Direct URL Play" "$SEARCH_QUERY" "" "0" "0" "Direct"
+        echo "Launching media player..."
+        if [ "$DRY_RUN" = "true" ]; then
+            echo "[DRY-RUN] mpv \"$SEARCH_QUERY\""
+            read -p "Press Enter to continue..."
+        else
+            mpv "$SEARCH_QUERY"
+        fi
+    fi
+    exit 0
+elif [ "$BROWSE_MODE" = "true" ] || [ -z "$SEARCH_QUERY" ]; then
+    # Infinite Library Browser Loop
+    # This is the default mode if no arguments are passed.
+    while true; do
+        browse_categories "$SEARCH_QUERY" || { echo "Exiting."; exit 0; }
+        SEARCH_QUERY=""
+    done
+else
+    # Quick Search Mode
+    # Use passed argument as a query, show results, play one, then exit.
+    search_circleftp "$SEARCH_QUERY" > "$SESSION_TMP/results.tsv"
+    if [ ! -s "$SESSION_TMP/results.tsv" ]; then echo "No results found."; exit 0; fi
+    
+    S_PATH=$(realpath "$0")
+    SELECTED=$(cat "$SESSION_TMP/results.tsv" | fzf --delimiter $'\t' --with-nth 1 \
+        --preview "$S_PATH --preview-handler 'CircleFTP' {1} {2} {3} {4} {5} \$FZF_PREVIEW_COLUMNS \$FZF_PREVIEW_LINES" \
+        --preview-window=right:60%:wrap --layout=reverse)
+
+    if [ -n "$SELECTED" ]; then
+        IFS=$'\t' read -r sel_title sel_link sel_img sel_pid sel_rest <<< "$SELECTED"
+        play_selection "CircleFTP" "$sel_title" "$sel_link" "$sel_img" "$sel_pid"
+    fi
+fi
