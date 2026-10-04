@@ -1,24 +1,23 @@
 #!/system/bin/sh
-# rena-iso.sh — export rena.img RAW over USB (imgdrive "Stage 2", via isodrive)
+# rena-iso.sh — export rena.img RAW over USB
 #
-# The PC sees the still-encrypted LUKS image as a USB drive. While exported,
-# the phone must NOT use it, so 'on' tears down the local stack first and
-# pauses the rena-mount.sh daemon; 'off' stops the export and brings it back.
+# The PC sees the raw LUKS2 container as a USB drive. While exported,
+# the phone must NOT use it locally.
 #
-#   rena-iso.sh on  [--ro] [-f]   release local mount, export over USB (RW unless --ro)
+#   rena-iso.sh on  [--ro] [-f]   release local mount, export over USB
 #   rena-iso.sh off [-n]          stop export, remount locally (-n: leave unmounted)
-#   rena-iso.sh fix [on|off]      hard-reset everything, then re-apply on/off
-#                                 (no arg = whatever was last requested)
+#   rena-iso.sh fix [on|off]      hard-reset everything, re-apply on/off
 #   rena-iso.sh status
 #
-#   -f  skip the "USB cable connected" check
+#   --ro  export read-only
+#   -f    skip USB cable check
+#   -n    (off only) don't remount locally after stopping export
 #
-# Needs: rena-mount.sh (service.d), isodrive binary, Termux nsenter/cryptsetup.
 # Log: /data/adb/rena/iso.log
 
-# ============================ CONFIG (match rena-mount.sh) ==================
+# ============================ CONFIG =======================================
 SD_DEV="/dev/block/mmcblk1p1"
-SD_UUID=""                       # empty = use /data/adb/rena/sd.uuid (rena-mount.sh pin)
+SD_UUID=""                       # empty = use /data/adb/rena/sd.uuid
 SD_MNT="/mnt/sd"
 IMG_REL="rena.img"
 NAME="rena"
@@ -28,11 +27,14 @@ MOUNTER="/data/adb/service.d/rena-mount.sh"
 STATE_DIR="/data/adb/rena"
 
 T="/data/data/com.termux/files/usr/bin"
+LOSETUP="$T/losetup"
 CRYPTSETUP="$T/cryptsetup"
 NSENTER="$T/nsenter"
 BLKID="/system/bin/blkid"
-# first executable one wins
-ISODRIVE_CANDIDATES="/system/bin/isodrive /data/adb/imgdrive/bin/isodrive $T/isodrive"
+
+LUN="/config/usb_gadget/g1/functions/mass_storage.0/lun.0"
+UDC_PATH="/config/usb_gadget/g1/UDC"
+UDC="musb-hdrc"
 # ============================================================================
 
 mkdir -p "$STATE_DIR"
@@ -43,9 +45,6 @@ IMG_NAME="$(basename "$IMG_REL")"
 SD_NAME="$(basename "$SD_DEV")"
 LOGFILE="$STATE_DIR/iso.log"
 STATEFILE="$STATE_DIR/iso.state"
-
-ISO_BIN=""
-for c in $ISODRIVE_CANDIDATES; do [ -x "$c" ] && { ISO_BIN="$c"; break; }; done
 
 log() { printf '%s %s\n' "$(date '+%m-%d %H:%M:%S')" "$*" >> "$LOGFILE" 2>/dev/null; printf '%s\n' "$*"; return 0; }
 die() { log "ERROR: $*"; exit 1; }
@@ -61,7 +60,29 @@ umount_path() {
 }
 
 # ---------------------------------------------------------------------------
-# USB / gadget helpers (configfs, same checks imgdrive uses)
+# Loop helpers
+# ---------------------------------------------------------------------------
+image_loops() {
+    for f in /sys/block/loop*/loop/backing_file; do
+        [ -r "$f" ] || continue
+        case "$(cat "$f" 2>/dev/null)" in
+            *"/$IMG_NAME"|*"/$IMG_NAME (deleted)")
+                echo "/dev/block/$(basename "$(dirname "$(dirname "$f")")")" ;;
+        esac
+    done
+}
+
+detach_image_loops() {
+    for l in $(image_loops); do
+        log "  detach loop $l"
+        "$LOSETUP" -d "$l" >/dev/null 2>&1
+    done
+}
+
+lun_loop() { cat "$LUN/file" 2>/dev/null; }
+
+# ---------------------------------------------------------------------------
+# USB gadget helpers
 # ---------------------------------------------------------------------------
 usb_connected() {
     for f in /sys/class/udc/*/state; do
@@ -70,136 +91,123 @@ usb_connected() {
             attached|powered|default|addressed|configured|suspended) return 0 ;;
         esac
     done
-    if [ -r /sys/class/android_usb/android0/state ]; then
-        case "$(cat /sys/class/android_usb/android0/state 2>/dev/null)" in
-            CONFIGURED|CONNECTED|configured|connected) return 0 ;;
-        esac
-    fi
+    [ -r /sys/class/android_usb/android0/state ] || return 1
+    case "$(cat /sys/class/android_usb/android0/state 2>/dev/null)" in
+        CONFIGURED|CONNECTED|configured|connected) return 0 ;;
+    esac
     return 1
 }
 
-# file currently set as the mass-storage LUN (any gadget) — empty if none
-iso_file() {
-    for f in /config/usb_gadget/*/functions/mass_storage.*/lun.0/file; do
-        [ -r "$f" ] || continue
-        v="$(cat "$f" 2>/dev/null)"
-        [ -n "$v" ] && { printf '%s\n' "$v"; return 0; }
-    done
-    return 1
-}
-iso_udc() {
-    for u in /config/usb_gadget/*/UDC; do
-        [ -r "$u" ] || continue
-        v="$(cat "$u" 2>/dev/null)"
-        [ -n "$v" ] && { printf '%s\n' "$v"; return 0; }
-    done
-    return 1
-}
-iso_active() { [ -n "$(iso_file)" ] && [ -n "$(iso_udc)" ]; }
-
-force_eject() {
-    for d in /config/usb_gadget/*/functions/mass_storage.*/lun.0; do
-        [ -d "$d" ] || continue
-        [ -w "$d/forced_eject" ] && echo 1 > "$d/forced_eject" 2>/dev/null
-        [ -w "$d/file" ] && : > "$d/file" 2>/dev/null
-    done
+udc_active() {
+    v="$(cat "$UDC_PATH" 2>/dev/null)"
+    [ -n "$v" ]
 }
 
-# re-enumerate the gadget (briefly drops the USB link, incl. USB adb)
 rebind_udc() {
-    for u in /config/usb_gadget/*/UDC; do
-        [ -w "$u" ] || continue
-        cur="$(cat "$u" 2>/dev/null)"
-        [ -n "$cur" ] || cur="$(ls /sys/class/udc 2>/dev/null | head -n1)"
-        [ -n "$cur" ] || continue
-        log "rebinding UDC $cur"
-        : > "$u" 2>/dev/null; sleep 1
-        printf '%s' "$cur" > "$u" 2>/dev/null
-        return 0
-    done
-    return 1
+    log "rebinding UDC $UDC"
+    : > "$UDC_PATH" 2>/dev/null
+    sleep 1
+    printf '%s' "$UDC" > "$UDC_PATH" 2>/dev/null
 }
 
-stop_iso() {
-    [ -n "$(iso_file)" ] || return 0
-    log "stopping isodrive (was exporting: $(iso_file))"
+clear_lun() {
+    [ -w "$LUN/forced_eject" ] && echo 1 > "$LUN/forced_eject" 2>/dev/null
+    : > "$LUN/file" 2>/dev/null
     sync
-    [ -n "$ISO_BIN" ] && g_run "$ISO_BIN" >/dev/null 2>&1
-    i=0; while [ -n "$(iso_file)" ] && [ "$i" -lt 5 ]; do sleep 1; i=$((i+1)); done
-    if [ -n "$(iso_file)" ]; then
-        log "isodrive did not release the LUN — forcing eject"
-        force_eject; sleep 2
-    fi
-    [ -z "$(iso_file)" ]
+}
+
+stop_export() {
+    local cur
+    cur="$(lun_loop)"
+    [ -n "$cur" ] || return 0
+    log "clearing LUN (was: $cur)"
+    sync
+    clear_lun
+    sleep 1
+    cur="$(lun_loop)"
+    [ -n "$cur" ] && { log "LUN still set to $cur after clear"; return 1; }
+    return 0
 }
 
 # ---------------------------------------------------------------------------
-# Local-stack detection (so we never export an image the phone still uses)
+# Local stack helpers
 # ---------------------------------------------------------------------------
 mapper_active() { "$CRYPTSETUP" status "$NAME" >/dev/null 2>&1; }
-image_loops() {
-    for f in /sys/block/loop*/loop/backing_file; do
-        [ -r "$f" ] || continue
-        case "$(cat "$f" 2>/dev/null)" in
-            *"/$IMG_NAME"|*"/$IMG_NAME (deleted)") basename "$(dirname "$(dirname "$f")")" ;;
-        esac
-    done
-}
 local_up() { mapper_active || [ -n "$(image_loops)" ] || g_mounted "$RM"; }
 
 sd_check() {
     [ -b "$SD_DEV" ] || { log "no SD card at $SD_DEV"; return 1; }
     uuid="$("$BLKID" -o value -s UUID "$SD_DEV" 2>/dev/null)"
     [ -n "$uuid" ] || { log "cannot read UUID of $SD_DEV"; return 1; }
-    [ -n "$SD_UUID" ] || { log "no card UUID pinned — run: sh $MOUNTER pin"; return 1; }
+    [ -n "$SD_UUID" ] || { log "no UUID pinned — run: sh $MOUNTER pin"; return 1; }
     [ "$uuid" = "$SD_UUID" ] || { log "WRONG CARD ($uuid, expected $SD_UUID)"; return 1; }
 }
 
 need_tools() {
     [ -x "$NSENTER" ]    || die "nsenter not found: $NSENTER"
     [ -x "$CRYPTSETUP" ] || die "cryptsetup not found: $CRYPTSETUP"
+    [ -x "$LOSETUP" ]    || die "losetup not found: $LOSETUP"
+    [ -d "$LUN" ]        || die "configfs LUN not found: $LUN"
 }
 
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 cmd_on() {
-    mode="-rw"; force=0
+    ro=0; force=0
     for a in "$@"; do
-        case "$a" in --ro|-ro) mode="" ;; -f|--force) force=1 ;; esac
+        case "$a" in --ro|-ro) ro=1 ;; -f|--force) force=1 ;; esac
     done
-    log "===== ISO ON ($([ -n "$mode" ] && echo RW || echo RO)) ====="
+    log "===== ISO ON ($([ "$ro" -eq 1 ] && echo RO || echo RW)) ====="
     need_tools
-    [ -n "$ISO_BIN" ] || die "isodrive binary not found (tried: $ISODRIVE_CANDIDATES)"
-    [ -x "$MOUNTER" ] || die "rena-mount.sh not found at $MOUNTER (needed to release the local stack)"
     sd_check || exit 1
-    if [ "$force" -eq 0 ] && ! usb_connected; then die "USB cable not connected (use -f to force)"; fi
+    [ "$force" -eq 0 ] && ! usb_connected && die "USB cable not connected (use -f to skip)"
 
-    stop_iso || die "could not stop the previous export"
+    # stop any existing export
+    stop_export || die "could not clear LUN"
 
-    log "releasing local stack (rena-mount.sh umount)"
-    sh "$MOUNTER" umount >/dev/null 2>&1 || log "warning: cleanup reported problems"
-    local_up && die "local stack still up (mapper/loop/mount) — refusing to export a live image; try: $0 fix off"
+    # release local stack
+    log "releasing local stack"
+    [ -x "$MOUNTER" ] && sh "$MOUNTER" umount >/dev/null 2>&1
+    local_up && die "local stack still up — refusing to export live image; try: $0 fix on"
 
-    # clean slate for the SD mount, then mount it in the global namespace
+    # mount SD in global namespace so we can reach the image file
     umount_path "$SD_MNT"
     mkdir -p "$SD_MNT"
     g_run mount "$SD_DEV" "$SD_MNT" >/dev/null 2>&1 || die "could not mount $SD_DEV on $SD_MNT"
     [ -f "$IMG" ] || { umount_path "$SD_MNT"; die "image not found: $IMG"; }
 
-    sync
-    log "starting isodrive: $IMG $mode"
-    out="$(g_run "$ISO_BIN" "$IMG" $mode 2>&1)"; rc=$?
-    [ -n "$out" ] && printf '%s\n' "$out" | while IFS= read -r l; do log "  isodrive> $l"; done
-    [ "$rc" -eq 0 ] || die "isodrive failed (exit $rc)"
+    # attach loop with direct-io (required for USB gadget to stream cleanly)
+    log "attaching loop (sector-size 4096, direct-io)"
+    LOOP="$("$LOSETUP" -f --show --sector-size 4096 --direct-io=on "$IMG" 2>/dev/null)"
+    [ -n "$LOOP" ] || { umount_path "$SD_MNT"; die "losetup failed"; }
+    log "loop = $LOOP"
 
-    i=0; while [ "$(iso_file)" != "$IMG" ] && [ "$i" -lt 8 ]; do sleep 1; i=$((i+1)); done
-    [ "$(iso_file)" = "$IMG" ] || die "isodrive did not export the expected image (LUN: '$(iso_file)')"
-    iso_udc >/dev/null || { log "UDC unbound after start — rebinding"; rebind_udc; sleep 1; }
-    iso_active || die "export set but gadget not active (try: $0 fix on)"
+    # verify LUKS header is readable
+    "$CRYPTSETUP" isLuks "$LOOP" >/dev/null 2>&1 || {
+        "$LOSETUP" -d "$LOOP" >/dev/null 2>&1
+        umount_path "$SD_MNT"
+        die "not a valid LUKS image on $LOOP"
+    }
+    log "LUKS header ok"
+
+    # set read-only flag before writing LUN
+    echo "$ro" > "$LUN/ro" 2>/dev/null
+
+    # point LUN at the loop device
+    sync
+    printf '%s' "$LOOP" > "$LUN/file" 2>/dev/null
+    sleep 1
+    got="$(lun_loop)"
+    [ "$got" = "$LOOP" ] || die "LUN file mismatch (got: '$got', expected: '$LOOP')"
+
+    # ensure UDC is bound
+    udc_active || { log "UDC unbound — rebinding"; rebind_udc; sleep 1; }
+    udc_active || die "UDC still unbound after rebind"
 
     echo on > "$STATEFILE"
-    log "===== ISO ACTIVE: $IMG exported over USB ====="
+    log "===== ISO ACTIVE: $LOOP ($IMG) exported over USB ====="
+    log "  On PC: sudo cryptsetup open --key-file <key> /dev/sdX rena"
 }
 
 cmd_off() {
@@ -207,16 +215,18 @@ cmd_off() {
     for a in "$@"; do case "$a" in -n|--no-local) keep=1 ;; esac; done
     log "===== ISO OFF ====="
     need_tools
-    stop_iso || die "could not stop the export (try: $0 fix off)"
+    stop_export || log "warning: could not clear LUN cleanly"
+    detach_image_loops
     echo off > "$STATEFILE"
-    umount_path "$SD_MNT"
     if [ "$keep" -eq 1 ]; then
-        log "export stopped; local stack left unmounted (rena-mount.sh stays paused)"
+        log "export stopped; local stack left as-is (-n)"
         return 0
     fi
-    [ -x "$MOUNTER" ] || { log "rena-mount.sh not found — local stack NOT remounted"; return 0; }
-    log "remounting local stack (rena-mount.sh mount)"
-    sh "$MOUNTER" mount >/dev/null 2>&1 && log "===== LOCAL MOUNT READY =====" \
+    umount_path "$SD_MNT"
+    [ -x "$MOUNTER" ] || { log "mounter not found — not remounting"; return 0; }
+    log "remounting local stack"
+    sh "$MOUNTER" mount >/dev/null 2>&1 \
+        && log "===== LOCAL MOUNT READY =====" \
         || die "local remount failed — see /data/adb/rena/mount.log"
 }
 
@@ -226,37 +236,38 @@ cmd_fix() {
     [ "$target" = "on" ] || target="off"
     log "===== FIX (target: $target) ====="
     need_tools
-
     log "state before:"; show_status | while IFS= read -r l; do log "  $l"; done
 
-    # 1. the export
-    stop_iso || log "warning: export still present after forced eject"
-    # 2. every local layer, twice if the first pass was dirty
-    if [ -x "$MOUNTER" ]; then
-        sh "$MOUNTER" umount >/dev/null 2>&1 || { log "first cleanup pass dirty — retrying"; sleep 2; sh "$MOUNTER" umount >/dev/null 2>&1; }
-    fi
-    for l in $(image_loops); do
-        log "detaching stray loop $l"
-        "$T/losetup" -d "/dev/block/$l" >/dev/null 2>&1
-    done
+    stop_export || log "warning: LUN not cleared cleanly"
+    [ -x "$MOUNTER" ] && sh "$MOUNTER" umount >/dev/null 2>&1 || true
+    sleep 1
+    detach_image_loops
     umount_path "$SD_MNT"
-    local_up && log "warning: local stack still not clean"
+    local_up && log "warning: local stack still not clean after fix"
 
     case "$target" in
-        on)  cmd_on -f; rebind_udc; sleep 1; iso_active && log "gadget active after rebind" ;;
+        on)
+            cmd_on -f
+            rebind_udc; sleep 1
+            udc_active && log "gadget active after rebind" || log "warning: UDC still unbound"
+            ;;
         off) cmd_off ;;
     esac
 }
 
 show_status() {
     echo "intended : $(cat "$STATEFILE" 2>/dev/null || echo unknown)"
-    echo "export   : $(iso_file || echo none)   UDC: $(iso_udc || echo unbound)"
-    echo "usb link : $(usb_connected && echo connected || echo not connected)"
-    echo "isodrive : ${ISO_BIN:-NOT FOUND}"
-    echo "mapper   : $(mapper_active && echo active || echo -)   loops: $(image_loops | tr '\n' ' ')"
+    echo "LUN file : $(lun_loop || echo none)"
+    echo "LUN ro   : $(cat "$LUN/ro" 2>/dev/null || echo ?)"
+    echo "UDC      : $(cat "$UDC_PATH" 2>/dev/null || echo unbound)"
+    echo "USB link : $(usb_connected && echo connected || echo not connected)"
+    echo "loops    : $(image_loops | tr '\n' ' ' || echo none)"
+    echo "mapper   : $(mapper_active && echo active || echo -)"
     echo "local mnt: $(g_mounted "$RM" && echo "$RM" || echo -)   sd: $(g_mounted "$SD_MNT" && echo "$SD_MNT" || echo -)"
     [ -f "$STATE_DIR/paused" ] && echo "daemon   : paused (rena-mount.sh)"
-    if iso_active && local_up; then echo "PROBLEM  : exported AND still used locally — run: $0 fix"; fi
+    if [ -n "$(lun_loop)" ] && local_up; then
+        echo "PROBLEM  : exported AND local stack still up — run: $0 fix"
+    fi
 }
 
 case "$1" in
@@ -264,5 +275,5 @@ case "$1" in
     off)    shift; cmd_off "$@" ;;
     fix)    shift; cmd_fix "$1" ;;
     status) show_status ;;
-    *)      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    *)      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
