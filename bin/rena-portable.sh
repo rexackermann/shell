@@ -219,41 +219,16 @@ lun_state() {
 # Export regular file $1, read-only flag $2 (0|1), in PID 1's mount namespace.
 # isodrive CREATES the mass_storage.0 function if the USB HAL dropped it.
 export_file() {
-    ro="$2"
-    # The path handed to the gadget matters on this device: the raw f2fs path
-    # (/mnt/media_rw/rena/...) is accepted by the LUN but the PC does not get the drive;
-    # the /sdcard path (bindfs+FUSE view) works. So try the working path first.
-    #   direct = run like the manual command, ns = inside PID 1's mount namespace
-    for cand in "direct|$EXPORT_PATH" "ns|$UV/$PNAME.img" "ns|$PIMG"; do
-        mode="${cand%%|*}"; p="${cand#*|}"
-        [ "$mode" = direct ] && [ ! -e "$p" ] && { log "  skip $p (not visible here)"; continue; }
-        if [ -n "$ISODRIVE" ]; then
-            log "isodrive $p $([ "$ro" = 1 ] && echo '(ro)' || echo -rw)  [$mode]"
-            if [ "$mode" = ns ]; then
-                if [ "$ro" = 1 ]; then g_run "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else g_run "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
-            else
-                if [ "$ro" = 1 ]; then "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
-            fi
-        else
-            [ "$mode" = ns ] || continue
-            log "isodrive not found — built-in configfs sequence ($p)"
-            u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
-            g_run sh -c '
-                G="${1%/UDC}"; F="$G/functions/mass_storage.0"; L="$F/lun.0"
-                : > "$1"
-                [ -d "$F" ] || mkdir "$F"
-                C="$(ls -d "$G"/configs/*/ 2>/dev/null | head -n 1)"; C="${C%/}"
-                [ -n "$C" ] && [ ! -e "$C/mass_storage.0" ] && ln -s "$F" "$C/mass_storage.0"
-                : > "$L/file"; echo 0 > "$L/cdrom" 2>/dev/null
-                echo "$2" > "$L/ro"; printf "%s" "$3" > "$L/file"
-                sleep 1; printf "%s" "$4" > "$1"
-            ' sh "$UDC_PATH" "$ro" "$p" "$u" >>"$LOGFILE" 2>&1
-        fi
-        sleep 1
-        [ "$(lun_file)" = "$p" ] && { log "  LUN now: $p"; return 0; }
-        log "  LUN is '$(lun_file)', wanted '$p' — trying next path"
-    done
-    return 1
+    local img="$1" ro="$2"
+    if [ "$ro" = 1 ]; then
+        log "isodrive $img (ro)"
+        "$ISODRIVE" "$img" >>"$LOGFILE" 2>&1
+    else
+        log "isodrive $img -rw"
+        "$ISODRIVE" "$img" -rw >>"$LOGFILE" 2>&1
+    fi
+    sleep 1
+    [ -n "$(lun_file)" ]
 }
 
 # f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file
@@ -373,7 +348,7 @@ do_usb() {
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after rebind"; return 1; }
     sync
-    export_file "$PIMG" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
+    export_file "$EXPORT_PATH" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after export"; return 1; }
     usb_connected || log "note: no USB cable connected right now (drive appears when plugged in)"
