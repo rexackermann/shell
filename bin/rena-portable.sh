@@ -49,8 +49,8 @@ LOSETUP="$T/losetup"
 CRYPTSETUP="$T/cryptsetup"
 BINDFS="$T/bindfs"
 NSENTER="$T/nsenter"
-MKFS_F2FS="$T/mkfs.f2fs"
-FSCK_F2FS="$T/fsck.f2fs"
+MKFS_F2FS=""                                # empty = auto-detect (Termux, then Android's own binaries)
+FSCK_F2FS=""                                # empty = auto-detect
 BLKID="/system/bin/blkid"
 
 LUN="/config/usb_gadget/g1/functions/mass_storage.0/lun.0"
@@ -59,6 +59,19 @@ UDC="musb-hdrc"
 
 STATE_DIR="/data/adb/rena"
 # ============================================================================
+
+# first executable candidate wins (PATH lookup + fixed paths: Android ships make_f2fs/fsck.f2fs itself)
+find_tool() {
+    for n in "$@"; do
+        case "$n" in
+            /*) [ -x "$n" ] && { echo "$n"; return 0; } ;;
+            *)  p="$(command -v "$n" 2>/dev/null)"; [ -n "$p" ] && [ -x "$p" ] && { echo "$p"; return 0; } ;;
+        esac
+    done
+    return 1
+}
+[ -n "$MKFS_F2FS" ] || MKFS_F2FS="$(find_tool "$T/mkfs.f2fs" /system/bin/mkfs.f2fs /system/bin/make_f2fs /vendor/bin/make_f2fs /system/xbin/make_f2fs mkfs.f2fs make_f2fs)"
+[ -n "$FSCK_F2FS" ] || FSCK_F2FS="$(find_tool "$T/fsck.f2fs" /system/bin/fsck.f2fs /vendor/bin/fsck.f2fs fsck.f2fs)"
 
 mkdir -p "$STATE_DIR"
 LOGFILE="$STATE_DIR/portable.log"
@@ -325,11 +338,11 @@ do_system() {
 
     if ! try g_run mount -t f2fs -o rw,noatime "$P_LOOP" "$PRAW"; then
         log "  mount failed — running fsck once"
-        if [ -x "$FSCK_F2FS" ]; then
+        if [ -n "$FSCK_F2FS" ] && [ -x "$FSCK_F2FS" ]; then
             try "$FSCK_F2FS" $FSCK_OPTS "$P_LOOP"
             try g_run mount -t f2fs -o rw,noatime "$P_LOOP" "$PRAW" || { pfail "f2fs mount failed after fsck"; return 1; }
         else
-            pfail "f2fs mount failed and fsck.f2fs not installed"; return 1
+            pfail "f2fs mount failed and no fsck.f2fs found"; return 1
         fi
     fi
     g_mounted "$PRAW" || { pfail "f2fs not visible after mount"; return 1; }
@@ -411,7 +424,7 @@ do_create() {
         log "refusing: $PIMG already exists — nothing was changed"
         return 1
     fi
-    [ -x "$MKFS_F2FS" ] || { log "mkfs.f2fs missing — in Termux: pkg install f2fs-tools"; return 1; }
+    [ -n "$MKFS_F2FS" ] && [ -x "$MKFS_F2FS" ] || { log "no mkfs.f2fs/make_f2fs found (Termux or /system/bin) — set MKFS_F2FS= in the config, see: ls /system/bin | grep f2fs"; return 1; }
     [ -x "$LOSETUP" ]   || { log "losetup missing: $LOSETUP"; return 1; }
     rena_healthy || { log "rena not healthy"; return 1; }
     case "$size" in
