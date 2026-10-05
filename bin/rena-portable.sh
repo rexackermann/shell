@@ -457,13 +457,19 @@ do_create() {
         try truncate -s "$size" "$PART" || { part_cleanup; trap - INT TERM HUP; return 1; }
     fi
 
-    p_attach "$PART" || { part_cleanup; trap - INT TERM HUP; log "losetup failed"; return 1; }
+    # build loop: sector-size 4096 (must match later attaches) but NO direct-io, so mkfs's
+    # many small zero-fills go through the page cache; usb/system modes re-attach with direct-io.
+    P_LOOP="$("$LOSETUP" -f --show --sector-size 4096 "$PART" 2>>"$LOGFILE")"
+    [ -n "$P_LOOP" ] || { part_cleanup; trap - INT TERM HUP; log "losetup failed"; return 1; }
+    log "build loop = $P_LOOP (no direct-io)"
     bf="$(cat "/sys/block/${P_LOOP##*/}/loop/backing_file" 2>/dev/null)"
     case "$bf" in
         *"/$PNAME.img.part") ;;
         *) part_cleanup; trap - INT TERM HUP; log "safety stop: $P_LOOP is backed by '$bf', not the new image — NOT formatting"; return 1 ;;
     esac
-    if ! try "$MKFS_F2FS" -f -l "$PLABEL" "$P_LOOP"; then
+    # -t 0 = no discard/trim on the build loop (discard on a loop over an f2fs-hosted file is a suspect)
+    if ! try "$MKFS_F2FS" -f -t 0 -l "$PLABEL" "$P_LOOP"; then
+        dmesg 2>/dev/null | tail -n 30 | grep -iE 'loop|f2fs|dm-|mmc|I/O error|ENOSPC|no space' | tail -n 8 | while IFS= read -r _l; do log "    dmesg: $_l"; done
         part_cleanup; trap - INT TERM HUP; log "mkfs.f2fs failed — partial image removed, nothing else touched"; return 1
     fi
     t="$("$BLKID" -o value -s TYPE "$P_LOOP" 2>/dev/null)"
