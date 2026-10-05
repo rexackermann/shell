@@ -17,6 +17,8 @@
 #   rena-mount.sh mount      clean + mount now (also un-pauses the daemon)
 #   rena-mount.sh umount     clean everything now (pauses daemon until next 'mount')
 #   rena-mount.sh status
+#   rena-mount.sh release-card   evict vold/other mounters from the card (used by rena-iso.sh)
+#   rena-mount.sh selftest       make Android mount the card on purpose, then evict it, verbosely
 #
 # Log: /data/adb/rena/mount.log
 
@@ -36,7 +38,7 @@ BIND_UID=1023
 BIND_GID=1023
 BIND_PERMS=0770
 
-SETTLE=5                        # seconds to let vold finish after card insertion
+SETTLE=5                        # seconds to wait after Android finished mounting the card, before evicting it
 WATCHDOG=20                     # seconds between health checks
 HEAL_COOLDOWN=120               # min seconds between automatic re-mount attempts
 
@@ -179,22 +181,75 @@ detach_loops() {
     [ -z "$(image_loops)" ]
 }
 
+# run a command; on failure put its output (stdout+stderr) in the log
+try() {
+    _out="$("$@" 2>&1)"; _rc=$?
+    if [ "$_rc" -ne 0 ]; then
+        log "    '$1' failed (rc=$_rc)"
+        [ -n "$_out" ] && printf '%s\n' "$_out" | while IFS= read -r _l; do log "      $_l"; done
+    fi
+    return "$_rc"
+}
+
+# Ask vold/StorageManager to eject the card properly (tears down /storage/<UUID>,
+# the fuse/sdcardfs layers and the framework state), instead of raw umounts.
+vold_unmount() {
+    [ -n "$SD_UUID" ] || return 0
+    ids=""; via=sm
+    if command -v sm >/dev/null 2>&1; then
+        ids="$(sm list-volumes 2>/dev/null | awk -v u="$SD_UUID" 'toupper($0) ~ toupper(u) && $2!="unmounted" {print $1}')"
+    fi
+    if [ -z "$ids" ] && command -v vdc >/dev/null 2>&1; then
+        # sm knows nothing (empty list) — take the volume id from the mount source
+        # (/dev/block/vold/public:179,1) of whatever currently mounts our device
+        via=vdc
+        mm="$(cat "/sys/class/block/$SD_NAME/dev" 2>/dev/null)"
+        ids="$(mi | awk -v mm="$mm" '$3==mm { for(i=7;i<=NF;i++) if($i=="-"){ src=$(i+2); n=split(src,a,"/"); if (src ~ /^\/dev\/block\/vold\//) print a[n]; break } }' | sort -u)"
+    fi
+    for id in $ids; do
+        log "  vold has the card ($id) — $via unmount"
+        if [ "$via" = vdc ]; then cmd="vdc volume unmount $id"; else cmd="sm unmount $id"; fi
+        if command -v timeout >/dev/null 2>&1; then timeout 20 $cmd >/dev/null 2>&1; else $cmd >/dev/null 2>&1; fi
+    done
+    [ -n "$ids" ] && sleep 2
+    return 0
+}
+
 # Mounts of the (UUID-verified) card made by vold or any other mounter.
 # Matches by backing device major:minor, and by mount-point name == UUID
 # (/storage/<UUID>, /mnt/media_rw/<UUID>, /mnt/user/0/<UUID>, ...). SD_MNT is ours — skipped.
-unmount_foreign() {
+foreign_mounts() {
     [ -n "$SD_UUID" ] || return 0
     mm="$(cat "/sys/class/block/$SD_NAME/dev" 2>/dev/null)"
-    list="$(mi | awk -v mm="$mm" -v u="$SD_UUID" -v own="$SD_MNT" '
+    mi | awk -v mm="$mm" -v u="$SD_UUID" -v own="$SD_MNT" '
         $5==own { next }
         { n=split($5,a,"/"); b=a[n]
-          if ((mm!="" && $3==mm) || toupper(b)==toupper(u)) print $5 }' | sort -r)"
+          if ((mm!="" && $3==mm) || toupper(b)==toupper(u)) print $5 }' | sort -r
+}
+
+# How the eviction works, in order:
+#   1. vold_unmount : ask vold itself (sm/vdc) to eject the volume -> it tears down
+#                     /storage/<UUID>, the fuse layer and /mnt/media_rw/<UUID> cleanly
+#   2. raw umount   : every mount still backed by the card (same major:minor) or named
+#                     after its UUID, bindfs layers first; plain umount, then umount -l
+#   3. verify       : re-read mountinfo, log anything that is STILL there
+unmount_foreign() {
+    [ -n "$SD_UUID" ] || return 0
+    vold_unmount
+    list="$(foreign_mounts)"
     [ -n "$list" ] || return 0
     for mp in $list; do
         log "  card is mounted elsewhere: $mp — unmounting"
         for b in $(bindfs_on "$mp" | sort -r); do umount_path "$b"; done
         umount_path "$mp"
     done
+    left="$(foreign_mounts)"
+    if [ -n "$left" ]; then
+        for mp in $left; do log "  STILL HELD BY ANDROID: $mp"; done
+        return 1
+    fi
+    log "  card released (no foreign mounts left)"
+    return 0
 }
 
 cleanup_all() {
@@ -274,10 +329,18 @@ do_mount() {
     mkdir -p "$SD_MNT" "$RM" "$UV"
 
     log "mounting $SD_DEV -> $SD_MNT"
-    g_mount "$SD_DEV" "$SD_MNT" >/dev/null 2>&1 || { fail "SD mount failed"; return 1; }
+    k=1
+    while ! try g_mount "$SD_DEV" "$SD_MNT"; do
+        # most likely vold grabbed the card again (shared superblock, different options -> EBUSY)
+        log "  SD mount try $k failed — evicting vold/other mounters and retrying"
+        dmesg 2>/dev/null | tail -n 40 | grep -iE 'exfat|fat|sdfat|mmc|mmcblk1|f2fs' | tail -n 4 | while IFS= read -r _l; do log "    dmesg: $_l"; done
+        unmount_foreign
+        k=$((k+1)); [ "$k" -gt 3 ] && { fail "SD mount failed"; return 1; }
+        sleep 2
+    done
     [ -f "$IMG" ] || { fail "image not found: $IMG"; return 1; }
 
-    LOOP="$("$LOSETUP" -f --show --sector-size 4096 --direct-io=on "$IMG" 2>/dev/null)"
+    LOOP="$("$LOSETUP" -f --show --sector-size 4096 --direct-io=on "$IMG" 2>>"$LOGFILE")"
     [ -n "$LOOP" ] || { fail "losetup failed"; return 1; }
     log "loop = $LOOP"
 
@@ -287,21 +350,21 @@ do_mount() {
         [ "$got" = "$LUKS_UUID" ] || { fail "LUKS UUID mismatch ($got)"; return 1; }
     fi
 
-    "$CRYPTSETUP" luksOpen "$LOOP" "$NAME" --key-file "$KEY" >/dev/null 2>&1   # chown warning is harmless
+    try "$CRYPTSETUP" luksOpen "$LOOP" "$NAME" --key-file "$KEY"   # chown warning is harmless
     mapper_active || { fail "luksOpen failed"; return 1; }
     log "LUKS mapper active"
 
     fstype="$("$BLKID" -o value -s TYPE "/dev/mapper/$NAME" 2>/dev/null)"
     [ -n "$fstype" ] || { fail "cannot detect inner filesystem"; return 1; }
     log "inner fs = $fstype"
-    g_mount -t "$fstype" -o rw "/dev/mapper/$NAME" "$RM" >/dev/null 2>&1 || { fail "$fstype mount failed"; return 1; }
+    try g_mount -t "$fstype" -o rw "/dev/mapper/$NAME" "$RM" || { fail "$fstype mount failed"; return 1; }
     g_mounted "$RM" || { fail "$fstype not visible after mount"; return 1; }
     : > "$RM/.rena_rw_test" 2>/dev/null && rm -f "$RM/.rena_rw_test" || { fail "write test failed"; return 1; }
 
     log "bindfs $RM -> $UV"
-    g_run env PATH="$PATH" LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+    try g_run env PATH="$PATH" LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
         "$BINDFS" -u "$BIND_UID" -g "$BIND_GID" --perms="$BIND_PERMS" \
-        --create-with-perms=g+s "$RM" "$UV" >/dev/null 2>&1
+        --create-with-perms=g+s "$RM" "$UV"
     g_mounted "$UV" || { fail "bindfs failed"; return 1; }
 
     i=0
@@ -317,12 +380,35 @@ do_mount() {
     return 0
 }
 
+# Does anything other than our own SD_MNT currently mount the card? (vold = yes)
+vold_holds() {
+    mm="$(cat "/sys/class/block/$SD_NAME/dev" 2>/dev/null)"
+    [ -n "$mm" ] || return 1
+    mi | awk -v mm="$mm" -v own="$SD_MNT" '$5!=own && $3==mm {f=1} END{exit !f}'
+}
+
+# Android mounts the card on its own (at boot / insertion) and usually wins the race.
+# Let it finish first, so our eviction runs AFTER it and is not undone by it.
+wait_vold() {
+    i=0
+    while [ "$i" -lt 30 ]; do
+        if vold_holds; then
+            log "Android mounted the card — letting it finish (${SETTLE}s), then evicting it"
+            sleep "$SETTLE"
+            return 0
+        fi
+        sleep 1; i=$((i+1))
+    done
+    log "Android did not mount the card within 30s — continuing"
+}
+
 mount_with_retries() {
     wait_sd_ready; rc=$?
     if [ "$rc" -ne 0 ]; then
         log "card not usable (rc=$rc) — not mounting"
         return 1
     fi
+    [ "$1" = settle ] && wait_vold
     n=1
     while [ "$n" -le 5 ]; do
         locked do_mount && return 0
@@ -369,9 +455,28 @@ show_status() {
 # Daemon
 # ---------------------------------------------------------------------------
 watchdog_loop() {
-    last_heal=0
+    last_heal=0; tick=0
+    every=$((WATCHDOG / 5)); [ "$every" -ge 1 ] || every=1
+    ss_prev="$(pidof system_server 2>/dev/null)"
     while true; do
-        sleep "$WATCHDOG"
+        sleep 5
+        tick=$((tick+1))
+        # stop;start / framework crash => new system_server => vold resets and
+        # re-mounts the card as a normal sdcard. React immediately, not at the next tick.
+        ss="$(pidof system_server 2>/dev/null)"
+        if [ -n "$ss" ] && [ -n "$ss_prev" ] && [ "$ss" != "$ss_prev" ]; then
+            ss_prev="$ss"
+            if [ ! -f "$PAUSEFILE" ] && [ -b "$SD_DEV" ]; then
+                log "watchdog: system_server restarted (stop;start / framework restart) — re-checking"
+                sleep 3
+                wait_vold
+                locked heal
+            fi
+            continue
+        fi
+        [ -n "$ss" ] && ss_prev="$ss"
+
+        [ $((tick % every)) -eq 0 ] || continue
         now="$(date +%s)"
         # cheap pre-check outside the lock; heal() re-checks inside it
         [ -f "$PAUSEFILE" ] && continue
@@ -385,6 +490,32 @@ watchdog_loop() {
     done
 }
 unmount_foreign_if_card() { sd_check && unmount_foreign; }
+release_card() { sd_check && unmount_foreign; }
+
+# Reproduce "Android grabbed the card" on demand and show how the eviction copes.
+selftest() {
+    echo "== BEFORE =="; show_status
+    sd_check || { echo "card check failed — pin the UUID first"; return 1; }
+    if vold_holds; then
+        echo "Android already holds the card."
+    else
+        id="public:$(cat "/sys/class/block/$SD_NAME/dev" 2>/dev/null | tr ':' ',')"
+        echo "asking vold to mount the card: vdc volume mount $id 0 0"
+        vdc volume mount "$id" 0 0 2>&1 | sed 's/^/  vdc> /'
+        i=0; while [ "$i" -lt 20 ] && ! vold_holds; do sleep 1; i=$((i+1)); done
+        vold_holds || { echo "vold did not mount it within 20s (try: sm list-volumes, logcat | grep vold)"; return 1; }
+        sleep "$SETTLE"
+    fi
+    echo "== FOREIGN MOUNTS OF THE CARD =="; foreign_mounts | sed 's/^/  /'
+    echo "== EVICTING (what the daemon does) =="
+    locked release_card; rc=$?
+    echo "== AFTER (eviction rc=$rc) =="
+    echo "foreign mounts left:"; foreign_mounts | sed 's/^/  /'
+    show_status
+    if healthy; then echo "RESULT: our stack is healthy"
+    else echo "RESULT: our stack is DOWN — daemon/watchdog (or 'mount') would rebuild it"; fi
+}
+
 
 daemon() {
     if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then exit 0; fi
@@ -399,7 +530,7 @@ daemon() {
     while [ ! -r "$KEY" ] && [ "$i" -lt 120 ]; do sleep 5; i=$((i+1)); done
     [ -r "$KEY" ] || log "WARNING: keyfile still unreadable after boot wait"
 
-    mount_with_retries
+    mount_with_retries settle
 
     watchdog_loop &
 
@@ -420,9 +551,8 @@ daemon() {
                         if [ $((now - last_done)) -lt 10 ]; then
                             log "watcher: duplicate event ignored"; continue
                         fi
-                        log "watcher: $SD_NAME appeared (settling ${SETTLE}s)"
-                        sleep "$SETTLE"
-                        mount_with_retries
+                        log "watcher: $SD_NAME appeared"
+                        mount_with_retries settle
                         last_done="$(date +%s)" ;;
                 esac
             done
@@ -436,7 +566,7 @@ daemon() {
                 if [ "$cur" != "$prev" ]; then
                     if [ "$cur" = present ]; then
                         log "poll: $SD_NAME appeared"
-                        [ -f "$PAUSEFILE" ] || { sleep "$SETTLE"; mount_with_retries; }
+                        [ -f "$PAUSEFILE" ] || mount_with_retries settle
                     else
                         log "poll: $SD_NAME removed — cleaning up"; locked cleanup_all
                     fi
@@ -463,5 +593,7 @@ case "$1" in
     mount)    rm -f "$PAUSEFILE"; mount_with_retries ;;
     umount)   touch "$PAUSEFILE"; locked cleanup_all ;;
     status)   show_status ;;
-    *)        echo "usage: $0 [pin|mount|umount|status]"; exit 1 ;;
+    release-card) locked release_card ;;
+    selftest) selftest ;;
+    *)        echo "usage: $0 [pin|mount|umount|status|release-card|selftest]"; exit 1 ;;
 esac
