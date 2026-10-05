@@ -163,7 +163,16 @@ need_tools() {
     [ -x "$NSENTER" ]    || die "nsenter not found: $NSENTER"
     [ -x "$CRYPTSETUP" ] || die "cryptsetup not found: $CRYPTSETUP"
     [ -x "$LOSETUP" ]    || die "losetup not found: $LOSETUP"
-    [ -d "$LUN" ]        || die "configfs LUN not found: $LUN"
+}
+
+# mass_storage.0 vanishes when the Android USB HAL rebuilds the gadget; bare 'isodrive' recreates it.
+ensure_lun() {
+    [ -d "$LUN" ] && return 0
+    ISOD="$(command -v isodrive 2>/dev/null)"; [ -n "$ISOD" ] || ISOD=/system/bin/isodrive
+    [ -x "$ISOD" ] || return 1
+    log "LUN missing — recreating mass_storage.0 via $ISOD"
+    g_run "$ISOD" >/dev/null 2>&1; sleep 1
+    [ -d "$LUN" ]
 }
 
 # ---------------------------------------------------------------------------
@@ -176,6 +185,7 @@ cmd_on() {
     done
     log "===== ISO ON ($([ "$ro" -eq 1 ] && echo RO || echo RW)) ====="
     need_tools
+    ensure_lun || die "configfs LUN not found: $LUN (and isodrive could not recreate it)"
     sd_check || exit 1
     [ "$force" -eq 0 ] && ! usb_connected && die "USB cable not connected (use -f to skip)"
 

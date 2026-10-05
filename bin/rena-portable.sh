@@ -50,6 +50,7 @@ CRYPTSETUP="$T/cryptsetup"
 BINDFS="$T/bindfs"
 NSENTER="$T/nsenter"
 ISODRIVE=""                                 # empty = auto-detect (nitanmarcel/isodrive-magisk); fallback = same configfs writes
+ISODRIVE=""                                 # empty = auto-detect (nitanmarcel/isodrive-magisk); fallback = same configfs writes
 MKFS_F2FS=""                                # empty = auto-detect (Termux, then Android's own binaries)
 FSCK_F2FS=""                                # empty = auto-detect
 BLKID="/system/bin/blkid"
@@ -71,6 +72,7 @@ find_tool() {
     done
     return 1
 }
+[ -n "$ISODRIVE" ] || ISODRIVE="$(find_tool /system/bin/isodrive /system/xbin/isodrive /data/adb/modules/isodrive/system/bin/isodrive isodrive)"
 [ -n "$ISODRIVE" ] || ISODRIVE="$(find_tool /system/bin/isodrive /system/xbin/isodrive /data/adb/modules/isodrive/system/bin/isodrive isodrive)"
 [ -n "$MKFS_F2FS" ] || MKFS_F2FS="$(find_tool "$T/mkfs.f2fs" /system/bin/mkfs.f2fs /system/bin/make_f2fs /vendor/bin/make_f2fs /system/xbin/make_f2fs mkfs.f2fs make_f2fs)"
 [ -n "$FSCK_F2FS" ] || FSCK_F2FS="$(find_tool "$T/fsck.f2fs" /system/bin/fsck.f2fs /vendor/bin/fsck.f2fs fsck.f2fs)"
@@ -215,9 +217,8 @@ lun_state() {
     esac
 }
 
-# Export regular file $1 on the LUN, read-only flag $2 (0|1), in PID 1's mount namespace
-# (the kernel opens the path in the caller's namespace). isodrive: UDC off, clear file,
-# ro, file, UDC on. Without the binary the same writes are done by hand.
+# Export regular file $1, read-only flag $2 (0|1), in PID 1's mount namespace.
+# isodrive CREATES the mass_storage.0 function if the USB HAL dropped it.
 export_file() {
     if [ -n "$ISODRIVE" ]; then
         log "isodrive $1 $([ "$2" = 1 ] && echo '(ro)' || echo -rw)"
@@ -227,15 +228,21 @@ export_file() {
         log "isodrive not found — built-in configfs sequence"
         u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
         g_run sh -c '
-            : > "$1"; : > "$2/file"; echo 0 > "$2/cdrom" 2>/dev/null
-            echo "$3" > "$2/ro"; printf "%s" "$4" > "$2/file"; sleep 1; printf "%s" "$5" > "$1"
-        ' sh "$UDC_PATH" "$LUN" "$2" "$1" "$u" >>"$LOGFILE" 2>&1
+            G="${1%/UDC}"; F="$G/functions/mass_storage.0"; L="$F/lun.0"
+            : > "$1"
+            [ -d "$F" ] || mkdir "$F"
+            C="$(ls -d "$G"/configs/*/ 2>/dev/null | head -n 1)"; C="${C%/}"
+            [ -n "$C" ] && [ ! -e "$C/mass_storage.0" ] && ln -s "$F" "$C/mass_storage.0"
+            : > "$L/file"; echo 0 > "$L/cdrom" 2>/dev/null
+            echo "$2" > "$L/ro"; printf "%s" "$3" > "$L/file"
+            sleep 1; printf "%s" "$4" > "$1"
+        ' sh "$UDC_PATH" "$2" "$1" "$u" >>"$LOGFILE" 2>&1
     fi
     sleep 1
     [ "$(lun_file)" = "$1" ]
 }
 
-# f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file (no loop needed)
+# f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file
 file_is_f2fs() {
     m="$(dd if="$1" bs=1 skip=1024 count=4 2>/dev/null | od -An -tx1 | tr -d ' \n')"
     [ "$m" = "1020f5f2" ]
@@ -342,13 +349,13 @@ do_usb() {
     ro="$1"
     rena_healthy || { log "rena not healthy — cannot export"; return 1; }
     [ -x "$NSENTER" ] || { log "nsenter missing"; return 1; }
-    [ -d "$LUN" ] || { log "gadget LUN missing ($LUN) — Android USB HAL may have rebuilt the gadget"; return 1; }
+    [ -e "$UDC_PATH" ] || { log "no USB gadget at ${UDC_PATH%/UDC} — Android USB HAL not up yet?"; return 1; }
     check_image || return 1
     [ "$(lun_state)" = foreign ] && { log "LUN is used by another image (rena.img exported raw?) — refusing"; return 1; }
     file_is_f2fs "$PIMG" || { log "no f2fs magic in $PIMG (not formatted? run: $0 create)"; return 1; }
     log "===== PORTABLE -> USB ($([ "$ro" = 1 ] && echo RO || echo RW)) via ${ISODRIVE:-built-in configfs} ====="
+    [ -d "$LUN" ] || log "mass_storage.0 function missing — it will be (re)created by the export"
     p_down || { log "could not reach a clean slate"; return 1; }
-    # isodrive only works on an active gadget (bound UDC)
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after rebind"; return 1; }
     sync
@@ -579,7 +586,7 @@ cmd_restore() {
     [ -f "$PIMG" ] || { log "restore: no image yet (run: $0 create)"; return 0; }
     rena_healthy || { log "restore: rena not healthy — skipping"; return 0; }
     if [ "$mode" = usb ]; then
-        i=0; while [ ! -d "$LUN" ] && [ "$i" -lt 60 ]; do sleep 1; i=$((i+1)); done
+        i=0; while [ ! -e "$UDC_PATH" ] && [ "$i" -lt 60 ]; do sleep 1; i=$((i+1)); done
     fi
     log "restore: applying '$mode'"
     locked do_apply "$mode" 0
