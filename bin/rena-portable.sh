@@ -219,16 +219,41 @@ lun_state() {
 # Export regular file $1, read-only flag $2 (0|1), in PID 1's mount namespace.
 # isodrive CREATES the mass_storage.0 function if the USB HAL dropped it.
 export_file() {
-    local img="$1" ro="$2"
-    if [ "$ro" = 1 ]; then
-        log "isodrive $img (ro)"
-        "$ISODRIVE" "$img" >>$LOGFILE 2>&1
-    else
-        log "isodrive $img -rw"
-        "$ISODRIVE" "$img" -rw >>$LOGFILE 2>&1
-    fi
-    sleep 1
-    [ -n "$(lun_file)" ]
+    ro="$2"
+    # The path handed to the gadget matters on this device: the raw f2fs path
+    # (/mnt/media_rw/rena/...) is accepted by the LUN but the PC does not get the drive;
+    # the /sdcard path (bindfs+FUSE view) works. So try the working path first.
+    #   direct = run like the manual command, ns = inside PID 1's mount namespace
+    for cand in "direct|$EXPORT_PATH" "ns|$UV/$PNAME.img" "ns|$PIMG"; do
+        mode="${cand%%|*}"; p="${cand#*|}"
+        [ "$mode" = direct ] && [ ! -e "$p" ] && { log "  skip $p (not visible here)"; continue; }
+        if [ -n "$ISODRIVE" ]; then
+            log "isodrive $p $([ "$ro" = 1 ] && echo '(ro)' || echo -rw)  [$mode]"
+            if [ "$mode" = ns ]; then
+                if [ "$ro" = 1 ]; then g_run "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else g_run "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
+            else
+                if [ "$ro" = 1 ]; then "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
+            fi
+        else
+            [ "$mode" = ns ] || continue
+            log "isodrive not found — built-in configfs sequence ($p)"
+            u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
+            g_run sh -c '
+                G="${1%/UDC}"; F="$G/functions/mass_storage.0"; L="$F/lun.0"
+                : > "$1"
+                [ -d "$F" ] || mkdir "$F"
+                C="$(ls -d "$G"/configs/*/ 2>/dev/null | head -n 1)"; C="${C%/}"
+                [ -n "$C" ] && [ ! -e "$C/mass_storage.0" ] && ln -s "$F" "$C/mass_storage.0"
+                : > "$L/file"; echo 0 > "$L/cdrom" 2>/dev/null
+                echo "$2" > "$L/ro"; printf "%s" "$3" > "$L/file"
+                sleep 1; printf "%s" "$4" > "$1"
+            ' sh "$UDC_PATH" "$ro" "$p" "$u" >>"$LOGFILE" 2>&1
+        fi
+        sleep 1
+        [ "$(lun_file)" = "$p" ] && { log "  LUN now: $p"; return 0; }
+        log "  LUN is '$(lun_file)', wanted '$p' — trying next path"
+    done
+    return 1
 }
 
 # f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file
@@ -348,7 +373,7 @@ do_usb() {
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after rebind"; return 1; }
     sync
-    export_file "$EXPORT_PATH" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
+    export_file "$PIMG" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after export"; return 1; }
     usb_connected || log "note: no USB cable connected right now (drive appears when plugged in)"
@@ -572,13 +597,56 @@ set_mode_and_apply() {   # $1 mode
 cmd_restore() {
     mode="$(get_mode)"
     [ "$mode" = off ] && return 0
-    [ -f "$PIMG" ] || { log "restore: no image yet (run: $0 create)"; return 0; }
-    rena_healthy || { log "restore: rena not healthy — skipping"; return 0; }
-    if [ "$mode" = usb ]; then
-        i=0; while [ ! -e "$UDC_PATH" ] && [ "$i" -lt 60 ]; do sleep 1; i=$((i+1)); done
+
+    log "restore: desired mode '$mode' — waiting for everything to be ready"
+
+    # 1. Wait up to 15 minutes for rena (LUKS + f2fs + bindfs) to be healthy.
+    #    rena-mount.sh calls us right after READY, but we re-check in case it
+    #    races or the watchdog triggers a restore after a partial failure.
+    i=0
+    while ! rena_healthy && [ "$i" -lt 180 ]; do
+        [ "$i" -eq 0 ] && log "restore: rena not healthy yet — waiting (up to 15 min)"
+        sleep 5; i=$((i+1))
+    done
+    if ! rena_healthy; then
+        log "restore: rena still not healthy after 15 min — giving up"
+        return 1
     fi
-    log "restore: applying '$mode'"
-    locked do_apply "$mode" 0
+    log "restore: rena healthy"
+
+    # 2. Wait for the image file to appear under the bindfs/FUSE view
+    #    (/sdcard/rena/portableusb8.img). isodrive needs this exact path.
+    i=0
+    while [ ! -f "$EXPORT_PATH" ] && [ "$i" -lt 180 ]; do
+        [ "$i" -eq 0 ] && log "restore: waiting for $EXPORT_PATH to appear"
+        sleep 5; i=$((i+1))
+    done
+    if [ ! -f "$EXPORT_PATH" ]; then
+        log "restore: $EXPORT_PATH still not visible after 15 min — giving up"
+        return 1
+    fi
+    log "restore: $EXPORT_PATH visible"
+
+    # 3. For USB mode, wait for the USB gadget to be up.
+    if [ "$mode" = usb ]; then
+        i=0
+        while [ ! -e "$UDC_PATH" ] && [ "$i" -lt 60 ]; do
+            [ "$i" -eq 0 ] && log "restore: waiting for USB gadget (UDC)"
+            sleep 1; i=$((i+1))
+        done
+        [ -e "$UDC_PATH" ] || log "restore: UDC not up after 60s — trying anyway"
+    fi
+
+    # 4. Retry the apply for up to 15 minutes in case of transient failures
+    #    (e.g. isodrive races with the USB HAL rebuilding the gadget at boot).
+    i=0
+    while [ "$i" -lt 180 ]; do
+        locked do_apply "$mode" 0 && { log "restore: '$mode' applied successfully"; return 0; }
+        log "restore: apply failed (attempt $((i+1))) — retrying in 5s"
+        sleep 5; i=$((i+1))
+    done
+    log "restore: could not apply '$mode' after 15 min — giving up"
+    return 1
 }
 
 # parse flags from the remaining args
