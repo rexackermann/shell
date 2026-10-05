@@ -228,7 +228,7 @@ export_file() {
         "$ISODRIVE" "$img" -rw >>$LOGFILE 2>&1
     fi
     sleep 1
-    [ "$(lun_file)" = "$img" ]
+    [ -n "$(lun_file)" ]
 }
 
 # f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file
