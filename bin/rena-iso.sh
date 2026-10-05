@@ -13,6 +13,8 @@
 #   -f    skip USB cable check
 #   -n    (off only) don't remount locally after stopping export
 #
+# portableusb8 (rena-portable.sh) shares the same USB LUN: 'on' replaces it, 'off' leaves it alone.
+#
 # Log: /data/adb/rena/iso.log
 
 # ============================ CONFIG =======================================
@@ -80,6 +82,17 @@ detach_image_loops() {
 }
 
 lun_loop() { cat "$LUN/file" 2>/dev/null; }
+
+# True when the LUN currently exports portableusb8.img (rena-portable.sh), not rena.img.
+# Stateless: decided from the loop device's backing file.
+lun_is_portable() {
+    f="$(lun_loop)"; [ -n "$f" ] || return 1
+    lb="${f##*/}"
+    case "$(cat "/sys/block/$lb/loop/backing_file" 2>/dev/null)" in
+        *"/portableusb8.img"|*"/portableusb8.img (deleted)") return 0 ;;
+    esac
+    return 1
+}
 
 # ---------------------------------------------------------------------------
 # USB gadget helpers
@@ -163,10 +176,11 @@ cmd_on() {
     sd_check || exit 1
     [ "$force" -eq 0 ] && ! usb_connected && die "USB cable not connected (use -f to skip)"
 
-    # stop any existing export
+    # stop any existing export (this also drops portableusb8 if it was exported)
+    lun_is_portable && log "portableusb8 is currently exported — replacing it (it is restored after 'off')"
     stop_export || die "could not clear LUN"
 
-    # release local stack
+    # release local stack (runs rena-mount.sh cleanup_all, which closes portableusb8 first)
     log "releasing local stack"
     [ -x "$MOUNTER" ] && sh "$MOUNTER" umount >/dev/null 2>&1
     local_up && die "local stack still up — refusing to export live image; try: $0 fix on"
@@ -215,6 +229,14 @@ cmd_off() {
     for a in "$@"; do case "$a" in -n|--no-local) keep=1 ;; esac; done
     log "===== ISO OFF ====="
     need_tools
+    # The LUN may belong to portableusb8 (rena is local, rena.img is NOT exported).
+    # Stopping that export / re-mounting rena from here would be wrong and could pull
+    # /mnt/sd out from under the live local stack.
+    if lun_is_portable; then
+        log "rena.img is not exported (the USB LUN belongs to portableusb8) — nothing to do"
+        echo off > "$STATEFILE"
+        return 0
+    fi
     stop_export || log "warning: could not clear LUN cleanly"
     detach_image_loops
     echo off > "$STATEFILE"
@@ -224,7 +246,7 @@ cmd_off() {
     fi
     umount_path "$SD_MNT"
     [ -x "$MOUNTER" ] || { log "mounter not found — not remounting"; return 0; }
-    log "remounting local stack"
+    log "remounting local stack (portableusb8 is re-applied automatically afterwards)"
     sh "$MOUNTER" mount >/dev/null 2>&1 \
         && log "===== LOCAL MOUNT READY =====" \
         || die "local remount failed — see /data/adb/rena/mount.log"
@@ -257,7 +279,7 @@ cmd_fix() {
 
 show_status() {
     echo "intended : $(cat "$STATEFILE" 2>/dev/null || echo unknown)"
-    echo "LUN file : $(lun_loop || echo none)"
+    echo "LUN file : $(lun_loop || echo none)$(lun_is_portable && echo '  (portableusb8)')"
     echo "LUN ro   : $(cat "$LUN/ro" 2>/dev/null || echo ?)"
     echo "UDC      : $(cat "$UDC_PATH" 2>/dev/null || echo unbound)"
     echo "USB link : $(usb_connected && echo connected || echo not connected)"
@@ -265,7 +287,7 @@ show_status() {
     echo "mapper   : $(mapper_active && echo active || echo -)"
     echo "local mnt: $(g_mounted "$RM" && echo "$RM" || echo -)   sd: $(g_mounted "$SD_MNT" && echo "$SD_MNT" || echo -)"
     [ -f "$STATE_DIR/paused" ] && echo "daemon   : paused (rena-mount.sh)"
-    if [ -n "$(lun_loop)" ] && local_up; then
+    if [ -n "$(lun_loop)" ] && ! lun_is_portable && local_up; then
         echo "PROBLEM  : exported AND local stack still up — run: $0 fix"
     fi
 }
@@ -275,5 +297,5 @@ case "$1" in
     off)    shift; cmd_off "$@" ;;
     fix)    shift; cmd_fix "$1" ;;
     status) show_status ;;
-    *)      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    *)      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

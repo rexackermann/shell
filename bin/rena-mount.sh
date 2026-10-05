@@ -10,6 +10,7 @@
 #   * wipes every leftover before mounting, verifies it is clean
 #   * boot-time mount + inotify watcher: remount on reinsertion, clean on removal
 #   * watchdog (every 20s): removes foreign mounts of the card, self-heals
+#   * portableusb8 (rena-portable.sh): torn down before every cleanup, re-applied after READY
 #
 # Usage (as root):
 #   rena-mount.sh            start the background daemon (what service.d does)
@@ -37,6 +38,8 @@ PUB="/storage/emulated/0/$NAME"
 BIND_UID=1023
 BIND_GID=1023
 BIND_PERMS=0770
+
+PORTABLE="/data/adb/rena/rena-portable.sh"   # nested portableusb8.img manager (optional)
 
 SETTLE=5                        # seconds to wait after Android finished mounting the card, before evicting it
 WATCHDOG=20                     # seconds between health checks
@@ -254,6 +257,10 @@ unmount_foreign() {
 
 cleanup_all() {
     log "--- cleanup ---"
+    # portableusb8 lives inside rena: it must be fully closed (USB LUN cleared, bindfs +
+    # f2fs unmounted, loop detached) BEFORE rena's own mounts/mapper/loop are torn down.
+    # Uses its own lock, never ours, so no deadlock; always returns 0.
+    [ -x "$PORTABLE" ] && sh "$PORTABLE" down-hook </dev/null >/dev/null 2>&1
     for mp in \
         "$PUB" \
         "/mnt/androidwritable/0/emulated/0/$NAME" \
@@ -377,6 +384,9 @@ do_mount() {
     [ "$i" -ge 15 ] && log "WARNING: $PUB not visible yet (mount itself is fine)"
 
     log "===== READY: $UV ====="
+    # re-apply portableusb8's desired mode (usb/system/off). Detached + backgrounded so
+    # our lock is released immediately; rena-portable.sh re-checks health under its own lock.
+    [ -x "$PORTABLE" ] && sh "$PORTABLE" restore </dev/null >/dev/null 2>&1 &
     return 0
 }
 
@@ -449,6 +459,7 @@ show_status() {
     else
         echo "daemon  : not running"
     fi
+    [ -x "$PORTABLE" ] && { echo "portable:"; sh "$PORTABLE" status 2>/dev/null | sed 's/^/  /'; }
 }
 
 # ---------------------------------------------------------------------------
