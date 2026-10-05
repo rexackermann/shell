@@ -87,8 +87,11 @@ lun_loop() { cat "$LUN/file" 2>/dev/null; }
 # Stateless: decided from the loop device's backing file.
 lun_is_portable() {
     f="$(lun_loop)"; [ -n "$f" ] || return 1
+    case "$f" in
+        *"/portableusb8.img"|*"/portableusb8.img (deleted)") return 0 ;;   # exported as a file (isodrive style)
+    esac
     lb="${f##*/}"
-    case "$(cat "/sys/block/$lb/loop/backing_file" 2>/dev/null)" in
+    case "$(cat "/sys/block/$lb/loop/backing_file" 2>/dev/null)" in     # legacy: exported via loop
         *"/portableusb8.img"|*"/portableusb8.img (deleted)") return 0 ;;
     esac
     return 1

@@ -2,7 +2,7 @@
 # rena-portable.sh — portableusb8.img: a plain-F2FS image stored INSIDE the unlocked rena volume
 #
 #   rena.img (LUKS2+F2FS, on SD) -> $RM/portableusb8.img (F2FS) -> one of three modes:
-#     usb     loop -> USB mass-storage LUN (PC sees a plain F2FS drive); phone does NOT mount it
+#     usb     image file -> USB mass-storage LUN via isodrive -rw (no loop) (PC sees a plain F2FS drive); phone does NOT mount it
 #     system  loop -> f2fs -> bindfs at /sdcard/rena/portableusb8
 #     off     fully detached
 #
@@ -49,6 +49,7 @@ LOSETUP="$T/losetup"
 CRYPTSETUP="$T/cryptsetup"
 BINDFS="$T/bindfs"
 NSENTER="$T/nsenter"
+ISODRIVE=""                                 # empty = auto-detect (nitanmarcel/isodrive-magisk); fallback = same configfs writes
 MKFS_F2FS=""                                # empty = auto-detect (Termux, then Android's own binaries)
 FSCK_F2FS=""                                # empty = auto-detect
 BLKID="/system/bin/blkid"
@@ -70,6 +71,7 @@ find_tool() {
     done
     return 1
 }
+[ -n "$ISODRIVE" ] || ISODRIVE="$(find_tool /system/bin/isodrive /system/xbin/isodrive /data/adb/modules/isodrive/system/bin/isodrive isodrive)"
 [ -n "$MKFS_F2FS" ] || MKFS_F2FS="$(find_tool "$T/mkfs.f2fs" /system/bin/mkfs.f2fs /system/bin/make_f2fs /vendor/bin/make_f2fs /system/xbin/make_f2fs mkfs.f2fs make_f2fs)"
 [ -n "$FSCK_F2FS" ] || FSCK_F2FS="$(find_tool "$T/fsck.f2fs" /system/bin/fsck.f2fs /vendor/bin/fsck.f2fs fsck.f2fs)"
 
@@ -192,19 +194,51 @@ p_attach() {
 # ---------------------------------------------------------------------------
 lun_file() { cat "$LUN/file" 2>/dev/null; }
 
-# none | nolun | ours | stale | foreign   (stateless: decided from the loop's backing file)
+# none | nolun | ours | stale | foreign
+# usb mode exports the image FILE itself (isodrive style), so the LUN file is a path.
+# A loop device is still recognised (older versions / rena-iso's rena.img export).
 lun_state() {
     [ -d "$LUN" ] || { echo nolun; return; }
     f="$(lun_file)"
     [ -n "$f" ] || { echo none; return; }
+    case "$f" in
+        *"/$PNAME.img"|*"/$PNAME.img (deleted)") echo ours; return ;;
+        /dev/*loop*) ;;
+        *) echo foreign; return ;;
+    esac
     lb="${f##*/}"
-    case "$lb" in loop*) ;; *) echo foreign; return ;; esac
     bf="$(cat "/sys/block/$lb/loop/backing_file" 2>/dev/null)"
     [ -n "$bf" ] || { echo stale; return; }
     case "$bf" in
         *"/$PNAME.img"|*"/$PNAME.img (deleted)") echo ours ;;
         *) echo foreign ;;
     esac
+}
+
+# Export regular file $1 on the LUN, read-only flag $2 (0|1), in PID 1's mount namespace
+# (the kernel opens the path in the caller's namespace). isodrive: UDC off, clear file,
+# ro, file, UDC on. Without the binary the same writes are done by hand.
+export_file() {
+    if [ -n "$ISODRIVE" ]; then
+        log "isodrive $1 $([ "$2" = 1 ] && echo '(ro)' || echo -rw)"
+        if [ "$2" = 1 ]; then g_run "$ISODRIVE" "$1" >>"$LOGFILE" 2>&1
+        else g_run "$ISODRIVE" "$1" -rw >>"$LOGFILE" 2>&1; fi
+    else
+        log "isodrive not found — built-in configfs sequence"
+        u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
+        g_run sh -c '
+            : > "$1"; : > "$2/file"; echo 0 > "$2/cdrom" 2>/dev/null
+            echo "$3" > "$2/ro"; printf "%s" "$4" > "$2/file"; sleep 1; printf "%s" "$5" > "$1"
+        ' sh "$UDC_PATH" "$LUN" "$2" "$1" "$u" >>"$LOGFILE" 2>&1
+    fi
+    sleep 1
+    [ "$(lun_file)" = "$1" ]
+}
+
+# f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file (no loop needed)
+file_is_f2fs() {
+    m="$(dd if="$1" bs=1 skip=1024 count=4 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    [ "$m" = "1020f5f2" ]
 }
 
 clear_lun() {
@@ -307,23 +341,22 @@ check_fstype() {
 do_usb() {
     ro="$1"
     rena_healthy || { log "rena not healthy — cannot export"; return 1; }
-    [ -x "$LOSETUP" ] && [ -x "$NSENTER" ] || { log "losetup/nsenter missing"; return 1; }
+    [ -x "$NSENTER" ] || { log "nsenter missing"; return 1; }
     [ -d "$LUN" ] || { log "gadget LUN missing ($LUN) — Android USB HAL may have rebuilt the gadget"; return 1; }
     check_image || return 1
     [ "$(lun_state)" = foreign ] && { log "LUN is used by another image (rena.img exported raw?) — refusing"; return 1; }
-    log "===== PORTABLE -> USB ($([ "$ro" = 1 ] && echo RO || echo RW)) ====="
+    file_is_f2fs "$PIMG" || { log "no f2fs magic in $PIMG (not formatted? run: $0 create)"; return 1; }
+    log "===== PORTABLE -> USB ($([ "$ro" = 1 ] && echo RO || echo RW)) via ${ISODRIVE:-built-in configfs} ====="
     p_down || { log "could not reach a clean slate"; return 1; }
-    p_attach || { pfail "losetup failed"; return 1; }
-    check_fstype || { pfail "bad image"; return 1; }
-    echo "$ro" > "$LUN/ro" 2>/dev/null
-    sync
-    printf '%s' "$P_LOOP" > "$LUN/file" 2>/dev/null
-    sleep 1
-    [ "$(lun_file)" = "$P_LOOP" ] || { pfail "LUN file mismatch (got '$(lun_file)')"; return 1; }
+    # isodrive only works on an active gadget (bound UDC)
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after rebind"; return 1; }
+    sync
+    export_file "$PIMG" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
+    udc_active || { rebind_udc; sleep 1; }
+    udc_active || { pfail "UDC unbound after export"; return 1; }
     usb_connected || log "note: no USB cable connected right now (drive appears when plugged in)"
-    log "===== PORTABLE ACTIVE over USB: $P_LOOP ====="
+    log "===== PORTABLE ACTIVE over USB: $PIMG ====="
 }
 
 do_system() {
