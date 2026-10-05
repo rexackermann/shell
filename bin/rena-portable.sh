@@ -49,7 +49,7 @@ LOSETUP="$T/losetup"
 CRYPTSETUP="$T/cryptsetup"
 BINDFS="$T/bindfs"
 NSENTER="$T/nsenter"
-ISODRIVE=""                                 # empty = auto-detect (nitanmarcel/isodrive-magisk); fallback = same configfs writes
+EXPORT_PATH="/sdcard/rena/portableusb8.img"   # path given to isodrive (the one that works on this device)
 ISODRIVE=""                                 # empty = auto-detect (nitanmarcel/isodrive-magisk); fallback = same configfs writes
 MKFS_F2FS=""                                # empty = auto-detect (Termux, then Android's own binaries)
 FSCK_F2FS=""                                # empty = auto-detect
@@ -72,7 +72,6 @@ find_tool() {
     done
     return 1
 }
-[ -n "$ISODRIVE" ] || ISODRIVE="$(find_tool /system/bin/isodrive /system/xbin/isodrive /data/adb/modules/isodrive/system/bin/isodrive isodrive)"
 [ -n "$ISODRIVE" ] || ISODRIVE="$(find_tool /system/bin/isodrive /system/xbin/isodrive /data/adb/modules/isodrive/system/bin/isodrive isodrive)"
 [ -n "$MKFS_F2FS" ] || MKFS_F2FS="$(find_tool "$T/mkfs.f2fs" /system/bin/mkfs.f2fs /system/bin/make_f2fs /vendor/bin/make_f2fs /system/xbin/make_f2fs mkfs.f2fs make_f2fs)"
 [ -n "$FSCK_F2FS" ] || FSCK_F2FS="$(find_tool "$T/fsck.f2fs" /system/bin/fsck.f2fs /vendor/bin/fsck.f2fs fsck.f2fs)"
@@ -220,26 +219,41 @@ lun_state() {
 # Export regular file $1, read-only flag $2 (0|1), in PID 1's mount namespace.
 # isodrive CREATES the mass_storage.0 function if the USB HAL dropped it.
 export_file() {
-    if [ -n "$ISODRIVE" ]; then
-        log "isodrive $1 $([ "$2" = 1 ] && echo '(ro)' || echo -rw)"
-        if [ "$2" = 1 ]; then g_run "$ISODRIVE" "$1" >>"$LOGFILE" 2>&1
-        else g_run "$ISODRIVE" "$1" -rw >>"$LOGFILE" 2>&1; fi
-    else
-        log "isodrive not found — built-in configfs sequence"
-        u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
-        g_run sh -c '
-            G="${1%/UDC}"; F="$G/functions/mass_storage.0"; L="$F/lun.0"
-            : > "$1"
-            [ -d "$F" ] || mkdir "$F"
-            C="$(ls -d "$G"/configs/*/ 2>/dev/null | head -n 1)"; C="${C%/}"
-            [ -n "$C" ] && [ ! -e "$C/mass_storage.0" ] && ln -s "$F" "$C/mass_storage.0"
-            : > "$L/file"; echo 0 > "$L/cdrom" 2>/dev/null
-            echo "$2" > "$L/ro"; printf "%s" "$3" > "$L/file"
-            sleep 1; printf "%s" "$4" > "$1"
-        ' sh "$UDC_PATH" "$2" "$1" "$u" >>"$LOGFILE" 2>&1
-    fi
-    sleep 1
-    [ "$(lun_file)" = "$1" ]
+    ro="$2"
+    # The path handed to the gadget matters on this device: the raw f2fs path
+    # (/mnt/media_rw/rena/...) is accepted by the LUN but the PC does not get the drive;
+    # the /sdcard path (bindfs+FUSE view) works. So try the working path first.
+    #   direct = run like the manual command, ns = inside PID 1's mount namespace
+    for cand in "direct|$EXPORT_PATH" "ns|$UV/$PNAME.img" "ns|$PIMG"; do
+        mode="${cand%%|*}"; p="${cand#*|}"
+        [ "$mode" = direct ] && [ ! -e "$p" ] && { log "  skip $p (not visible here)"; continue; }
+        if [ -n "$ISODRIVE" ]; then
+            log "isodrive $p $([ "$ro" = 1 ] && echo '(ro)' || echo -rw)  [$mode]"
+            if [ "$mode" = ns ]; then
+                if [ "$ro" = 1 ]; then g_run "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else g_run "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
+            else
+                if [ "$ro" = 1 ]; then "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
+            fi
+        else
+            [ "$mode" = ns ] || continue
+            log "isodrive not found — built-in configfs sequence ($p)"
+            u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
+            g_run sh -c '
+                G="${1%/UDC}"; F="$G/functions/mass_storage.0"; L="$F/lun.0"
+                : > "$1"
+                [ -d "$F" ] || mkdir "$F"
+                C="$(ls -d "$G"/configs/*/ 2>/dev/null | head -n 1)"; C="${C%/}"
+                [ -n "$C" ] && [ ! -e "$C/mass_storage.0" ] && ln -s "$F" "$C/mass_storage.0"
+                : > "$L/file"; echo 0 > "$L/cdrom" 2>/dev/null
+                echo "$2" > "$L/ro"; printf "%s" "$3" > "$L/file"
+                sleep 1; printf "%s" "$4" > "$1"
+            ' sh "$UDC_PATH" "$ro" "$p" "$u" >>"$LOGFILE" 2>&1
+        fi
+        sleep 1
+        [ "$(lun_file)" = "$p" ] && { log "  LUN now: $p"; return 0; }
+        log "  LUN is '$(lun_file)', wanted '$p' — trying next path"
+    done
+    return 1
 }
 
 # f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file
