@@ -213,6 +213,7 @@ vold_unmount() {
         log "  vold has the card ($id) — $via unmount"
         if [ "$via" = vdc ]; then cmd="vdc volume unmount $id"; else cmd="sm unmount $id"; fi
         if command -v timeout >/dev/null 2>&1; then timeout 20 $cmd >/dev/null 2>&1; else $cmd >/dev/null 2>&1; fi
+        vdc volume forget "$id" >/dev/null 2>&1 || true
     done
     [ -n "$ids" ] && sleep 2
     return 0
