@@ -38,7 +38,7 @@ PLABEL="PORTABLE"
 DEFAULT_MODE="usb"
 BIND_UID=1023
 BIND_GID=1023
-BIND_PERMS=0770
+BIND_PERMS=0777
 FSCK_OPTS="-f -a"                           # check 'fsck.f2fs --help' of your Termux build
 
 MOUNTER="/data/adb/service.d/rena-mount.sh"
