@@ -39,7 +39,7 @@ BIND_UID=1023
 BIND_GID=1023
 BIND_PERMS=0770
 
-PORTABLE="/data/adb/rena/rena-portable.sh"   # nested portableusb8.img manager (optional)
+PORTABLE="/data/data/com.termux/files/home/.config/zsh/bin/rena-portable.sh"
 
 SETTLE=5                        # seconds to wait after Android finished mounting the card, before evicting it
 WATCHDOG=20                     # seconds between health checks
