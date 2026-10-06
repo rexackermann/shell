@@ -3,7 +3,7 @@
 #
 #   rena.img (LUKS2+F2FS, on SD) -> $RM/portableusb8.img (F2FS) -> one of three modes:
 #     usb     image file -> USB mass-storage LUN via isodrive -rw (no loop) (PC sees a plain F2FS drive); phone does NOT mount it
-#     system  loop -> f2fs -> bindfs at /sdcard/rena/portableusb8
+#     system  loop -> exfat -> bindfs at /sdcard/rena/portableusb8
 #     off     fully detached
 #
 #   rena-portable.sh create [SIZE]        make + format the image (default 8G); NEVER overwrites,
@@ -38,8 +38,8 @@ PLABEL="PORTABLE"
 DEFAULT_MODE="usb"
 BIND_UID=1023
 BIND_GID=1023
-BIND_PERMS=0777
-FSCK_OPTS="-f -a"                           # check 'fsck.f2fs --help' of your Termux build
+BIND_PERMS=0770
+FSCK_OPTS="-r"                              # fsck.exfat repair flag
 
 MOUNTER="/data/adb/service.d/rena-mount.sh"
 ISO="$(command -v rena-iso.sh 2>/dev/null)" # only used by --takeover
@@ -51,8 +51,8 @@ BINDFS="$T/bindfs"
 NSENTER="$T/nsenter"
 EXPORT_PATH="/sdcard/rena/portableusb8.img"   # path given to isodrive (the one that works on this device)
 ISODRIVE=""                                 # empty = auto-detect (nitanmarcel/isodrive-magisk); fallback = same configfs writes
-MKFS_F2FS=""                                # empty = auto-detect (Termux, then Android's own binaries)
-FSCK_F2FS=""                                # empty = auto-detect
+MKFS_EXFAT=""                               # empty = auto-detect
+FSCK_EXFAT=""                               # empty = auto-detect
 BLKID="/system/bin/blkid"
 
 LUN="/config/usb_gadget/g1/functions/mass_storage.0/lun.0"
@@ -73,8 +73,8 @@ find_tool() {
     return 1
 }
 [ -n "$ISODRIVE" ] || ISODRIVE="$(find_tool /system/bin/isodrive /system/xbin/isodrive /data/adb/modules/isodrive/system/bin/isodrive isodrive)"
-[ -n "$MKFS_F2FS" ] || MKFS_F2FS="$(find_tool "$T/mkfs.f2fs" /system/bin/mkfs.f2fs /system/bin/make_f2fs /vendor/bin/make_f2fs /system/xbin/make_f2fs mkfs.f2fs make_f2fs)"
-[ -n "$FSCK_F2FS" ] || FSCK_F2FS="$(find_tool "$T/fsck.f2fs" /system/bin/fsck.f2fs /vendor/bin/fsck.f2fs fsck.f2fs)"
+[ -n "$MKFS_EXFAT" ] || MKFS_EXFAT="$(find_tool "$T/mkfs.exfat" /system/bin/mkfs.exfat /vendor/bin/mkfs.exfat mkfs.exfat)"
+[ -n "$FSCK_EXFAT" ] || FSCK_EXFAT="$(find_tool "$T/fsck.exfat" /system/bin/fsck.exfat /vendor/bin/fsck.exfat fsck.exfat)"
 
 mkdir -p "$STATE_DIR"
 LOGFILE="$STATE_DIR/portable.log"
@@ -184,9 +184,9 @@ p_detach() {
     [ -z "$(p_loops)" ]
 }
 
-# sector-size 4096 + direct-io: same attach as rena-iso.sh (stable USB streaming, nested loop safe)
+# direct-io: stable USB streaming, nested loop safe
 p_attach() {
-    P_LOOP="$("$LOSETUP" -f --show --sector-size 4096 --direct-io=on "${1:-$PIMG}" 2>>"$LOGFILE")"
+    P_LOOP="$("$LOSETUP" -f --show --direct-io=on "${1:-$PIMG}" 2>>"$LOGFILE")"
     [ -n "$P_LOOP" ] && log "loop = $P_LOOP"
 }
 
@@ -219,22 +219,47 @@ lun_state() {
 # Export regular file $1, read-only flag $2 (0|1), in PID 1's mount namespace.
 # isodrive CREATES the mass_storage.0 function if the USB HAL dropped it.
 export_file() {
-    local img="$1" ro="$2"
-    if [ "$ro" = 1 ]; then
-        log "isodrive $img (ro)"
-        "$ISODRIVE" "$img" >>"$LOGFILE" 2>&1
-    else
-        log "isodrive $img -rw"
-        "$ISODRIVE" "$img" -rw >>"$LOGFILE" 2>&1
-    fi
-    sleep 1
-    [ -n "$(lun_file)" ]
+    ro="$2"
+    # The path handed to the gadget matters on this device: the raw exfat path
+    # (/mnt/media_rw/rena/...) is accepted by the LUN but the PC does not get the drive;
+    # the /sdcard path (bindfs+FUSE view) works. So try the working path first.
+    #   direct = run like the manual command, ns = inside PID 1's mount namespace
+    for cand in "direct|$EXPORT_PATH" "ns|$UV/$PNAME.img" "ns|$PIMG"; do
+        mode="${cand%%|*}"; p="${cand#*|}"
+        [ "$mode" = direct ] && [ ! -e "$p" ] && { log "  skip $p (not visible here)"; continue; }
+        if [ -n "$ISODRIVE" ]; then
+            log "isodrive $p $([ "$ro" = 1 ] && echo '(ro)' || echo -rw)  [$mode]"
+            if [ "$mode" = ns ]; then
+                if [ "$ro" = 1 ]; then g_run "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else g_run "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
+            else
+                if [ "$ro" = 1 ]; then "$ISODRIVE" "$p" >>"$LOGFILE" 2>&1; else "$ISODRIVE" "$p" -rw >>"$LOGFILE" 2>&1; fi
+            fi
+        else
+            [ "$mode" = ns ] || continue
+            log "isodrive not found — built-in configfs sequence ($p)"
+            u="$(cat "$UDC_PATH" 2>/dev/null)"; [ -n "$u" ] || u="$UDC"
+            g_run sh -c '
+                G="${1%/UDC}"; F="$G/functions/mass_storage.0"; L="$F/lun.0"
+                : > "$1"
+                [ -d "$F" ] || mkdir "$F"
+                C="$(ls -d "$G"/configs/*/ 2>/dev/null | head -n 1)"; C="${C%/}"
+                [ -n "$C" ] && [ ! -e "$C/mass_storage.0" ] && ln -s "$F" "$C/mass_storage.0"
+                : > "$L/file"; echo 0 > "$L/cdrom" 2>/dev/null
+                echo "$2" > "$L/ro"; printf "%s" "$3" > "$L/file"
+                sleep 1; printf "%s" "$4" > "$1"
+            ' sh "$UDC_PATH" "$ro" "$p" "$u" >>"$LOGFILE" 2>&1
+        fi
+        sleep 1
+        [ "$(lun_file)" = "$p" ] && { log "  LUN now: $p"; return 0; }
+        log "  LUN is '$(lun_file)', wanted '$p' — trying next path"
+    done
+    return 1
 }
 
-# f2fs magic (0xF2F52010 LE) at offset 1024, read straight from the file
-file_is_f2fs() {
-    m="$(dd if="$1" bs=1 skip=1024 count=4 2>/dev/null | od -An -tx1 | tr -d ' \n')"
-    [ "$m" = "1020f5f2" ]
+# exfat magic: "EXFAT   " (with 3 trailing spaces) at offset 3
+file_is_exfat() {
+    m="$(dd if="$1" bs=1 skip=3 count=8 2>/dev/null | cat)"
+    [ "$m" = "EXFAT   " ]
 }
 
 clear_lun() {
@@ -331,7 +356,7 @@ check_image() {
 
 check_fstype() {
     t="$("$BLKID" -o value -s TYPE "$P_LOOP" 2>/dev/null)"
-    [ "$t" = f2fs ] || { log "inner filesystem is '${t:-none}', expected f2fs (not formatted? run: $0 create)"; return 1; }
+    [ "$t" = exfat ] || { log "inner filesystem is '${t:-none}', expected exfat (not formatted? run: $0 create)"; return 1; }
 }
 
 do_usb() {
@@ -341,14 +366,14 @@ do_usb() {
     [ -e "$UDC_PATH" ] || { log "no USB gadget at ${UDC_PATH%/UDC} — Android USB HAL not up yet?"; return 1; }
     check_image || return 1
     [ "$(lun_state)" = foreign ] && { log "LUN is used by another image (rena.img exported raw?) — refusing"; return 1; }
-    file_is_f2fs "$PIMG" || { log "no f2fs magic in $PIMG (not formatted? run: $0 create)"; return 1; }
+    file_is_exfat "$PIMG" || { log "no exfat magic in $PIMG (not formatted? run: $0 create)"; return 1; }
     log "===== PORTABLE -> USB ($([ "$ro" = 1 ] && echo RO || echo RW)) via ${ISODRIVE:-built-in configfs} ====="
     [ -d "$LUN" ] || log "mass_storage.0 function missing — it will be (re)created by the export"
     p_down || { log "could not reach a clean slate"; return 1; }
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after rebind"; return 1; }
     sync
-    export_file "$EXPORT_PATH" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
+    export_file "$PIMG" "$ro" || { pfail "export failed (LUN file is '$(lun_file)', wanted '$PIMG')"; return 1; }
     udc_active || { rebind_udc; sleep 1; }
     udc_active || { pfail "UDC unbound after export"; return 1; }
     usb_connected || log "note: no USB cable connected right now (drive appears when plugged in)"
@@ -365,16 +390,16 @@ do_system() {
     check_fstype || { pfail "bad image"; return 1; }
     mkdir -p "$PRAW" "$RM/$PNAME"
 
-    if ! try g_run mount -t f2fs -o rw,noatime "$P_LOOP" "$PRAW"; then
+    if ! try g_run mount -t exfat -o rw,noatime,uid=1023,gid=1023,dmask=0000,fmask=0111 "$P_LOOP" "$PRAW"; then
         log "  mount failed — running fsck once"
-        if [ -n "$FSCK_F2FS" ] && [ -x "$FSCK_F2FS" ]; then
-            try "$FSCK_F2FS" $FSCK_OPTS "$P_LOOP"
-            try g_run mount -t f2fs -o rw,noatime "$P_LOOP" "$PRAW" || { pfail "f2fs mount failed after fsck"; return 1; }
+        if [ -n "$FSCK_EXFAT" ] && [ -x "$FSCK_EXFAT" ]; then
+            try "$FSCK_EXFAT" $FSCK_OPTS "$P_LOOP"
+            try g_run mount -t exfat -o rw,noatime,uid=1023,gid=1023,dmask=0000,fmask=0111 "$P_LOOP" "$PRAW" || { pfail "exfat mount failed after fsck"; return 1; }
         else
-            pfail "f2fs mount failed and no fsck.f2fs found"; return 1
+            pfail "exfat mount failed and no fsck.exfat found"; return 1
         fi
     fi
-    g_mounted "$PRAW" || { pfail "f2fs not visible after mount"; return 1; }
+    g_mounted "$PRAW" || { pfail "exfat not visible after mount"; return 1; }
     : > "$PRAW/.p_rw_test" 2>/dev/null && rm -f "$PRAW/.p_rw_test" || { pfail "write test failed"; return 1; }
 
     log "bindfs $PRAW -> $PUV"
@@ -445,7 +470,7 @@ part_cleanup() {
 #   * refuses if anything (file, dir, symlink) already exists at $PIMG
 #   * never calls p_down, never touches the LUN, never touches a running portable/rena stack
 #   * builds in $PIMG.part and only renames it into place (mv -n = no clobber) after a
-#     successful mkfs + f2fs verification; any failure/Ctrl-C removes just the .part
+#     successful mkfs + exfat verification; any failure/Ctrl-C removes just the .part
 #   * mkfs only ever runs on a loop whose backing file is verified to be the .part file
 do_create() {
     size="$1"; PART="$PIMG.part"
@@ -453,7 +478,7 @@ do_create() {
         log "refusing: $PIMG already exists — nothing was changed"
         return 1
     fi
-    [ -n "$MKFS_F2FS" ] && [ -x "$MKFS_F2FS" ] || { log "no mkfs.f2fs/make_f2fs found (Termux or /system/bin) — set MKFS_F2FS= in the config, see: ls /system/bin | grep f2fs"; return 1; }
+    [ -n "$MKFS_EXFAT" ] && [ -x "$MKFS_EXFAT" ] || { log "no mkfs.exfat found — install via Termux: pkg install exfat-utils"; return 1; }
     [ -x "$LOSETUP" ]   || { log "losetup missing: $LOSETUP"; return 1; }
     rena_healthy || { log "rena not healthy"; return 1; }
     case "$size" in
@@ -486,15 +511,12 @@ do_create() {
         try truncate -s "$size" "$PART" || { part_cleanup; trap - INT TERM HUP; return 1; }
     fi
 
-    # Format the FILE directly (no loop): on this device every mkfs through a loop device fails
-    # with "Failed to initialise the SIT AREA". -w 4096 gives the fs a 4096 sector size so it
-    # matches the --sector-size 4096 loop used by usb/system modes. -t 0 = no discard.
-    log "formatting $PART directly (make_f2fs -w 4096, no loop)"
-    if ! try "$MKFS_F2FS" -f -t 0 -w 4096 -l "$PLABEL" "$PART"; then
-        part_cleanup; trap - INT TERM HUP; log "mkfs.f2fs failed — partial image removed, nothing else touched"; return 1
+    log "formatting $PART (mkfs.exfat)"
+    if ! try "$MKFS_EXFAT" -n "$PLABEL" "$PART"; then
+        part_cleanup; trap - INT TERM HUP; log "mkfs.exfat failed — partial image removed, nothing else touched"; return 1
     fi
     sync
-    # verify exactly the way usb/system will use it: 4096 sector loop + direct-io
+    # verify via loop + direct-io
     p_attach "$PART" || { part_cleanup; trap - INT TERM HUP; log "verify: losetup failed — partial image removed"; return 1; }
     bf="$(cat "/sys/block/${P_LOOP##*/}/loop/backing_file" 2>/dev/null)"
     case "$bf" in
@@ -502,7 +524,7 @@ do_create() {
         *) part_cleanup; trap - INT TERM HUP; log "safety stop: $P_LOOP backed by '$bf' — aborted"; return 1 ;;
     esac
     t="$("$BLKID" -o value -s TYPE "$P_LOOP" 2>/dev/null)"
-    if [ "$t" != f2fs ]; then
+    if [ "$t" != exfat ]; then
         part_cleanup; trap - INT TERM HUP; log "verification failed (fs type '${t:-none}') — partial image removed"; return 1
     fi
 
