@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# ocrmachine v6 — single-file, self-installing, universal
+# ocrmachine v7 — single-file, self-installing, universal
+#   v7: per-page checkpoints (resume), stall-based timeout, hard watchdog,
+#       real engine recycling (memory leak fix), progress bar
 # =============================================================================
 set -euo pipefail
 
@@ -13,7 +15,7 @@ WRAPPER="${HOME}/.local/bin/ocrmachine"
 EXPECTED_WRAPPER="${HOME}/.local/bin/ocrmachine"
 PYTHON_BIN="${OCR_PYTHON_BIN:-python3.13}"
 LOG="${INSTALL_DIR}/install.log"
-VERSION="6.0"
+VERSION="7.3"
 
 if [[ -t 1 ]]; then
   G="\033[0;32m"; Y="\033[1;33m"; R="\033[0;31m"; B="\033[1m"; N="\033[0m"
@@ -133,15 +135,18 @@ show_help() {
 ${B}ocrmachine v${VERSION}${N}
 
 Usage:
-  ocrmachine setup
+  ocrmachine setup              (optional: runs automatically when needed)
   ocrmachine ocr SRC DST [options]
   ocrmachine verify SRC DST [--repair]
   ocrmachine report DST [-o FILE]
   ocrmachine version
   ocrmachine uninstall
 
+Auto-setup: ocr/verify/report install themselves if missing and upgrade the
+library when this script is newer. Set OCR_NO_AUTOSETUP=1 to disable.
+
 ocr options:
-  --force                    re-OCR even if output exists
+  --force                    re-OCR even if output exists (also drops checkpoints)
   --retry-failed             only re-OCR files marked failed
   --dry-run                  show plan without doing work
   --lang LANG                OCR language (default: en)
@@ -149,26 +154,42 @@ ocr options:
   --dpi N                    render DPI, default 200 (min 50)
   --max-dim N                cap long side in px, default 3500
   --low-conf-threshold F     flag pages below F (default 0.6)
-  --memory-limit-mb N        recycle engine above N MB (default 1500)
-  --timeout-per-file SEC     per-file timeout, default 600 (0 = off)
+  --memory-limit-mb N        recycle engine above N MB (default 4000;
+                             auto-raised if the baseline is already near it)
+  --stall-timeout SEC        fail a file if NO page finishes for SEC (default 180)
+  --hard-stall SEC           watchdog thread: if nothing moves for SEC (native
+                             hang), mark file failed and restart (default 900, 0=off)
+  --timeout-per-file SEC     optional absolute cap per file (default 0 = off)
+  --checkpoint-every N       save page results every N pages (default 5)
   --skip-text                skip pages that already have text (default ON)
   --no-skip-text             force OCR on every page
   --min-text-chars N         text threshold, default 50
+  --color auto|always|never  colored console output (default auto; honours NO_COLOR,
+                             FORCE_COLOR; batch_ocr.log is always plain text)
+  --no-progress              disable the progress bar
+  --osc-progress auto|on|off native tab/window progress (OSC 9;4): auto = Ghostty
+                             and Windows Terminal; use "on" for Kitty 0.47+.
+                             Env: OCRMACHINE_OSC_PROGRESS
+  --verbose                  print per-page lines even with the progress bar
 EOF
 }
 
 write_lib() {
 cat > "$LIB" <<'PYEOF'
 #!/usr/bin/env python3
-"""ocr_lib — OCR Machine v6."""
-import sys, os, gc, json, time, argparse, signal, re, shutil
+"""ocr_lib — OCR Machine v7."""
+import sys, os, gc, json, time, argparse, signal, re, shutil, threading, atexit
+try:
+    import fcntl
+except ImportError:  # non-POSIX
+    fcntl = None
 from pathlib import Path
 from datetime import datetime
 import pymupdf
 import numpy as np
 from rapidocr_openvino import RapidOCR
 
-LIB_VERSION = "6.0"
+LIB_VERSION = "7.3"
 MANIFEST_NAME = "manifest.json"
 LOG_NAME = "batch_ocr.log"
 SIDECAR_CHOICES = ("txt", "md", "json")
@@ -177,21 +198,31 @@ DEFAULT_DPI = 200
 DEFAULT_MAX_DIM = 3500
 DEFAULT_RECREATE_EVERY = 3
 DEFAULT_LOW_CONF = 0.6
-DEFAULT_MEM_LIMIT_MB = 1500
-DEFAULT_TIMEOUT_S = 600
+DEFAULT_MEM_LIMIT_MB = 4000
+DEFAULT_STALL_S = 180
+DEFAULT_HARD_STALL_S = 900
+DEFAULT_FILE_CAP_S = 0
+DEFAULT_CKPT_EVERY = 5
 DEFAULT_MIN_TEXT_CHARS = 50
+MAX_RESTARTS = 3
 
 MIN_DPI = 50
+MIN_EFF_DPI = 20
 MIN_MAX_DIM = 500
 MAX_FONT_SIZE = 72
 HAS_ALARM = hasattr(signal, "SIGALRM") and hasattr(signal, "alarm")
 
+# Runtime state shared with the watchdog thread / signal handler.
+STATE = {"beat": time.time(), "rel": None}
+ALARM_ON = [False]
+STALL_S = [DEFAULT_STALL_S]
+
 # --- garbage filters (existing PDF annotations that aren't real content) ---
 GARBAGE_PATTERNS = [
-    re.compile(r'^text\[\[?\d'),           # text[[42, 676, 90
-    re.compile(r'^text\[\d'),              # text[42...
-    re.compile(r'^\s*[\d\s,\.\-]+\s*$'),   # pure numbers/commas/spaces
-    re.compile(r'^\s*[[\]\(\)\{\}\d\s,\.\-]+\s*$'),  # pure punctuation
+    re.compile(r'^text\[\[?\d'),
+    re.compile(r'^text\[\d'),
+    re.compile(r'^\s*[\d\s,\.\-]+\s*$'),
+    re.compile(r'^\s*[[\]\(\)\{\}\d\s,\.\-]+\s*$'),
 ]
 
 
@@ -233,16 +264,226 @@ def page_text_chars(page):
     return sum(len(l) for l in clean_lines)
 
 
+# --------------------------------------------------------------------------
+# Progress bar (stderr, TTY only) and logger
+# --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Console colors (console only: batch_ocr.log always stays plain text)
+# --------------------------------------------------------------------------
+COLOR = {"out": False, "err": False}
+_SGR = {"dim": "2", "bold": "1", "red": "31", "green": "32", "yellow": "33",
+        "blue": "34", "magenta": "35", "cyan": "36"}
+RST = "\033[0m"
+
+
+def sgr(*names):
+    return "\033[" + ";".join(_SGR[n] for n in names) + "m"
+
+
+def setup_color(mode="auto"):
+    env = os.environ
+    def decide(stream):
+        if mode == "never": return False
+        if mode == "always": return True
+        if env.get("NO_COLOR"): return False
+        if env.get("FORCE_COLOR") or env.get("CLICOLOR_FORCE") == "1": return True
+        try: tty = stream.isatty()
+        except Exception: tty = False
+        return tty and env.get("TERM", "") != "dumb"
+    COLOR["out"] = decide(sys.stdout)
+    COLOR["err"] = decide(sys.stderr)
+
+
+def paint(text, *styles):
+    return (sgr(*styles) + text + RST) if (COLOR["out"] and styles) else text
+
+
+_RE_TS = re.compile(r'^\[\d\d:\d\d:\d\d\] ?')
+_RE_KV = re.compile(r'\b([A-Za-z_]+)=([^\s,)\]]+)')
+_RE_HDR = re.compile(r'^(---\s*\[\d+/\d+\]\s*)(.*?)(\s*---)$')
+_RE_SUM = re.compile(r'^(\s{2}(?:files|pages|text boxes|total time|avg per page|'
+                     r'avg confidence|engine recycles|rss at end|manifest)[a-zA-Z\' ]*?'
+                     r'\s*:\s)(.*)$')
+_RE_BAD = re.compile(r'\b(FAILED|ERROR|HARD STALL|giving up|interrupted)\b')
+_RE_OK = re.compile(r'\b(DONE|saved|ALL GOOD|ready in)\b')
+_WARN_WORDS = ("SKIP", "WARNING", "LOW CONF", "EMPTY pages", "quarantine", "NOTE:")
+_MAG_WORDS = ("[memory]", "recycling", "recreated", "restarting", "saving PDF")
+
+
+def _base_style(body):
+    if _RE_BAD.search(body): return ("bold", "red")
+    if any(w in body for w in _WARN_WORDS): return ("yellow",)
+    if _RE_OK.search(body): return ("green",)
+    if "RESUMED" in body or "resuming" in body: return ("cyan",)
+    if any(w in body for w in _MAG_WORDS): return ("magenta",)
+    if body.startswith("="): return ("dim",)
+    return ()
+
+
+def colorize(line):
+    m = _RE_TS.match(line)
+    ts, body = "", line
+    if m:
+        ts = sgr("dim") + m.group(0) + RST
+        body = line[m.end():]
+    h = _RE_HDR.match(body)
+    if h:                                        # --- [3/81] file name ---
+        return ts + sgr("blue") + h.group(1) + RST + sgr("bold") + h.group(2) + RST \
+               + sgr("blue") + h.group(3) + RST
+    sm = _RE_SUM.match(body)
+    if sm:                                       # summary table rows
+        label, val = sm.group(1), sm.group(2)
+        sty = ("bold",)
+        if label.strip().startswith("files failed"):
+            try: sty = ("bold", "red") if int(val.split()[0]) > 0 else ("bold", "green")
+            except Exception: pass
+        return ts + sgr("dim") + label + RST + sgr(*sty) + val + RST
+    base = _base_style(body)
+    bs = sgr(*base) if base else ""
+    def kv(mm):
+        k, v = mm.group(1), mm.group(2)
+        vc = "cyan"
+        if k in ("avg_conf", "conf"):
+            try:
+                f = float(v)
+                vc = "green" if f >= 0.8 else ("yellow" if f >= 0.6 else "red")
+            except ValueError:
+                pass
+        return sgr("dim") + k + "=" + RST + sgr(vc) + v + RST + bs
+    return ts + bs + _RE_KV.sub(kv, body) + RST
+
+
+_RE_BAR = re.compile(r'^\[([\u2588#]*)([\u2591-]*)\]( *\d+\.\d%)')
+
+
+def color_bar(line):
+    m = _RE_BAR.match(line)
+    if not m: return line
+    return (sgr("dim") + "[" + RST + sgr("green") + m.group(1) + RST
+            + sgr("dim") + m.group(2) + "]" + RST
+            + sgr("bold") + m.group(3) + RST + line[m.end():])
+
+
+def _osc_supported(mode):
+    """OSC 9;4 = native tab/window progress (Ghostty 1.2+, Windows Terminal,
+    Kitty 0.47+). Older Kitty/iTerm2 treat OSC 9 as a desktop NOTIFICATION, so
+    auto-detect is limited to terminals known to be safe; Kitty is opt-in."""
+    env = os.environ
+    mode = (env.get("OCRMACHINE_OSC_PROGRESS") or mode or "auto").lower()
+    if mode in ("off", "0", "no", "false"): return False
+    if mode in ("on", "1", "yes", "true"): return True
+    if env.get("TMUX") or env.get("STY"): return False   # multiplexers swallow it
+    tp = (env.get("TERM_PROGRAM") or "").lower()
+    return bool(tp == "ghostty" or env.get("GHOSTTY_RESOURCES_DIR")
+                or env.get("WT_SESSION"))
+
+
+class Progress:
+    def __init__(self, total_pages, enabled=None, osc="auto"):
+        self.total = max(1, total_pages)
+        self.done = 0
+        self.ocr_done = 0
+        self.t0 = time.time()
+        tty = sys.stderr.isatty() and os.environ.get("TERM", "") != "dumb"
+        self.on = tty if enabled is None else enabled
+        self.osc = bool(self.on and _osc_supported(osc))
+        enc = (getattr(sys.stderr, "encoding", "") or "").lower()
+        self.fill, self.empty = ("\u2588", "\u2591") if "utf" in enc else ("#", "-")
+        self.idx = 0; self.n_files = 0; self.label = ""
+        self.base = 0; self.file_pages = 0
+        self._osc_last = -1
+        self._osc_open = False
+
+    def start(self):
+        self.t0 = time.time()
+
+    def set_file(self, idx, n_files, label, pages):
+        self.idx, self.n_files, self.label = idx, n_files, label
+        self.base, self.file_pages = self.done, pages
+
+    def finish_file(self):
+        self.done = max(self.done, self.base + self.file_pages)
+
+    def _osc_send(self, state, pct):
+        try:
+            sys.stderr.write(f"\033]9;4;{state};{pct}\a"); sys.stderr.flush()
+        except Exception:
+            pass
+
+    def tick(self, page, n_pages, ocr=True):
+        self.done += 1
+        if ocr: self.ocr_done += 1
+        if not self.on: return
+        el = time.time() - self.t0
+        if self.ocr_done and el > 0:
+            eta = max(0, self.total - self.done) / (self.ocr_done / el) / 60.0
+            eta_s = f"ETA<={eta:.1f}m"
+        else:
+            eta_s = "ETA ?"
+        frac = min(1.0, self.done / self.total)
+        cols = shutil.get_terminal_size((80, 24)).columns
+        tail = f" {frac*100:5.1f}% f{self.idx}/{self.n_files} p{page}/{n_pages} {eta_s}"
+        room = cols - len(tail) - 3          # "[" + "]" + 1 spare: never wrap
+        bar_w = max(0, min(24, room))
+        n = int(frac * bar_w)
+        bar = (f"[{self.fill*n}{self.empty*(bar_w-n)}]" if bar_w >= 4 else "")
+        line = bar + tail
+        extra = cols - len(line) - 2
+        if extra > 8:
+            line += " " + self.label[-(extra-1):]
+        out = line[:max(1, cols - 1)]
+        if COLOR["err"]: out = color_bar(out)
+        sys.stderr.write("\r\033[K" + out)
+        sys.stderr.flush()
+        if self.osc:
+            pct = int(frac * 100)
+            if pct != self._osc_last:
+                self._osc_last = pct; self._osc_open = True
+                self._osc_send(1, pct)
+
+    def clear(self):
+        """Erase the text bar (the native OSC bar, if any, stays)."""
+        if self.on:
+            try:
+                sys.stderr.write("\r\033[K"); sys.stderr.flush()
+            except Exception:
+                pass
+
+    def close(self, failed=False):
+        """Final cleanup: erase line and remove/mark the native bar."""
+        self.clear()
+        if self.osc and self._osc_open:
+            if failed: self._osc_send(2, 100)    # red 'error' state
+            else: self._osc_send(0, 0)           # remove
+            if failed:
+                time.sleep(0.05)
+            self._osc_open = False
+
+
 class Logger:
     def __init__(self, path):
         self.f = open(path, "a", encoding="utf-8")
+        self.progress = None
+        self.verbose = False
+        self._lock = threading.Lock()
+
+    def _emit(self, line, console):
+        with self._lock:
+            if console:
+                if self.progress: self.progress.clear()
+                print(colorize(line) if COLOR["out"] else line, flush=True)
+            try:
+                self.f.write(line + "\n"); self.f.flush()
+            except Exception:
+                pass
+
     def log(self, msg):
-        line = f"[{now()}] {msg}"
-        print(line, flush=True)
-        try:
-            self.f.write(line + "\n"); self.f.flush()
-        except Exception:
-            pass
+        self._emit(f"[{now()}] {msg}", True)
+
+    def page(self, msg):
+        quiet = bool(self.progress and self.progress.on and not self.verbose)
+        self._emit(f"[{now()}] {msg}", not quiet)
+
     def close(self):
         try: self.f.close()
         except Exception: pass
@@ -251,18 +492,24 @@ class Logger:
 class Manifest:
     def __init__(self, path):
         self.path = Path(path)
-        self.data = {"version": 6, "entries": {}}
+        self._lock = threading.Lock()
+        self.data = {"version": 7, "entries": {}}
         if self.path.exists():
             try:
                 loaded = json.loads(self.path.read_text(encoding="utf-8"))
                 if isinstance(loaded, dict) and "entries" in loaded:
                     self.data = loaded
+                    self.data["version"] = 7
             except Exception:
-                self.data = {"version": 6, "entries": {}}
+                # unreadable manifest: keep a copy instead of silently losing it
+                try: shutil.copy2(self.path, self.path.with_name(self.path.name + ".corrupt"))
+                except Exception: pass
+                self.data = {"version": 7, "entries": {}}
     def get(self, rel): return self.data["entries"].get(rel)
     def set(self, rel, entry):
-        self.data["entries"][rel] = entry
-        self.save()
+        with self._lock:
+            self.data["entries"][rel] = entry
+            self.save()
     def save(self):
         tmp = self.path.parent / (self.path.name + ".tmp")
         tmp.write_text(json.dumps(self.data, indent=2, ensure_ascii=False),
@@ -288,6 +535,7 @@ def out_name(rel):
 
 
 def _tmp_path(t): return t.parent / (t.name + ".tmp")
+def _ckpt_path(out_pdf): return out_pdf.parent / (out_pdf.name + ".ckpt.jsonl")
 
 
 def atomic_write_text(target, text):
@@ -300,10 +548,82 @@ def atomic_write_json(target, obj):
     atomic_write_text(target, json.dumps(obj, indent=2, ensure_ascii=False))
 
 
+# --------------------------------------------------------------------------
+# Timeouts: stall alarm (Python-level) + hard watchdog (native hangs)
+# --------------------------------------------------------------------------
 class FileTimeout(Exception): pass
-def _alarm(signum, frame): raise FileTimeout("per-file timeout reached")
 
 
+def _alarm(signum, frame):
+    raise FileTimeout(f"stalled: no page finished for {STALL_S[0]}s")
+
+
+def beat():
+    STATE["beat"] = time.time()
+
+
+def heartbeat(opts, t_file):
+    """Call whenever real progress happened: resets both timeouts."""
+    beat()
+    cap = getattr(opts, "timeout_per_file", 0)
+    if cap and time.time() - t_file > cap:
+        raise FileTimeout(f"hard cap of {cap}s per file reached")
+    if ALARM_ON[0] and opts.stall_timeout > 0:
+        signal.alarm(opts.stall_timeout)
+
+
+def disarm_alarm():
+    if ALARM_ON[0]:
+        signal.alarm(0)
+
+
+def _quarantine():
+    try: return set(json.loads(os.environ.get("OCR_QUARANTINE", "[]")))
+    except Exception: return set()
+
+
+def start_hard_watchdog(limit, log, manifest):
+    """Thread that survives native hangs (SIGALRM cannot interrupt C code).
+    On stall: mark the file failed (checkpoint stays on disk), then re-exec the
+    whole process so the rest of the batch continues and the file can resume."""
+    if limit <= 0:
+        return
+    def run():
+        while True:
+            time.sleep(5)
+            rel = STATE["rel"]
+            idle = time.time() - STATE["beat"]
+            if rel is None or idle <= limit:
+                continue
+            log.log(f"  HARD STALL: no heartbeat for {idle:.0f}s in {rel}")
+            try:
+                manifest.set(rel, {"status": "failed",
+                    "error": f"hard stall (no heartbeat for {int(idle)}s)",
+                    "finished_at": ts_iso()})
+            except Exception:
+                pass
+            restarts = int(os.environ.get("OCR_RESTARTS", "0"))
+            q = _quarantine(); q.add(rel)
+            if restarts < MAX_RESTARTS:
+                os.environ["OCR_RESTARTS"] = str(restarts + 1)
+                os.environ["OCR_QUARANTINE"] = json.dumps(sorted(q))
+                log.log(f"  restarting process ({restarts+1}/{MAX_RESTARTS}); "
+                        f"checkpoint kept, rerun with --retry-failed to resume it")
+                try:
+                    if HAS_ALARM: signal.alarm(0)   # pending alarms survive exec
+                    if log.progress: log.progress.close()
+                    log.close()
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                except Exception as e:
+                    log.log(f"  restart failed: {e}")
+            log.log("  giving up (restart limit); exiting with code 3")
+            os._exit(3)
+    threading.Thread(target=run, daemon=True, name="hard-watchdog").start()
+
+
+# --------------------------------------------------------------------------
+# OCR engine wrapper (fixes the "del ocr in a callee frees nothing" leak)
+# --------------------------------------------------------------------------
 def build_ocr(lang="en", log=None):
     try: return RapidOCR(lang=lang)
     except TypeError:
@@ -312,18 +632,111 @@ def build_ocr(lang="en", log=None):
         return RapidOCR()
 
 
+class Engine:
+    """Single owner of the RapidOCR instance, so recycle() truly frees it."""
+    def __init__(self, lang, log, mem_limit_mb):
+        self.lang, self.log = lang, log
+        self.mem_limit = float(mem_limit_mb)
+        self.recycles = 0
+        self.ocr = build_ocr(lang, log)
+
+    def __call__(self, arr):
+        return self.ocr(arr)
+
+    def recycle(self):
+        self.ocr = None
+        gc.collect()
+        self.ocr = build_ocr(self.lang, self.log)
+        self.recycles += 1
+
+    def check_memory(self, log):
+        r = rss_mb()
+        if r <= self.mem_limit:
+            return
+        log.log(f"      [memory] rss {r:.0f}MB > {self.mem_limit:.0f}MB, recycling engine")
+        self.recycle()
+        after = rss_mb()
+        log.log(f"      [memory] recreated, rss={after:.0f}MB")
+        if after > self.mem_limit * 0.85:
+            self.mem_limit = after + 1500
+            log.log(f"      [memory] baseline is near the limit; raised limit to "
+                    f"{self.mem_limit:.0f}MB to avoid recycling every page")
+
+
+# --------------------------------------------------------------------------
+# Per-page checkpoint
+# --------------------------------------------------------------------------
+class Checkpoint:
+    """Append-only JSONL: line 1 = header (source sig + params), then one line
+    per OCR'd page. O(1) per flush, and a torn last line (kill -9, power loss)
+    is simply ignored on load."""
+    def __init__(self, path, sig, params, every):
+        self.path, self.sig, self.params = path, sig, params
+        self.every = max(1, every)
+        self.pages = {}
+        self.pending = []
+        self.valid_on_disk = False
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    head = json.loads(fh.readline())
+                    if head.get("source_sig") == sig and head.get("params") == params:
+                        self.valid_on_disk = True
+                        for line in fh:
+                            try:
+                                d = json.loads(line)
+                                self.pages[int(d["i"])] = d["rec"]
+                            except Exception:
+                                break      # torn tail
+            except Exception:
+                self.pages = {}; self.valid_on_disk = False
+
+    def get(self, i): return self.pages.get(i)
+
+    def put(self, i, rec):
+        self.pages[i] = rec
+        self.pending.append(json.dumps({"i": i, "rec": rec},
+                                       separators=(",", ":"), ensure_ascii=False))
+        if len(self.pending) >= self.every:
+            self.flush()
+
+    def flush(self):
+        if not self.pending:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.valid_on_disk:
+            mode = "w"; lines = [json.dumps({"source_sig": self.sig,
+                                             "params": self.params})] + self.pending
+        else:
+            mode = "a"; lines = self.pending
+        with open(self.path, mode, encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n"); fh.flush()
+            try: os.fsync(fh.fileno())
+            except OSError: pass
+        self.valid_on_disk = True
+        self.pending = []
+
+    def discard(self):
+        try: self.path.unlink()
+        except FileNotFoundError: pass
+        except Exception: pass
+
+
+# --------------------------------------------------------------------------
+# OCR helpers
+# --------------------------------------------------------------------------
 def _normalize_box(box):
     xs = [float(p[0]) for p in box]
     ys = [float(p[1]) for p in box]
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def _insert_invisible_text(page, point, text, fontsize):
+def _insert_invisible_text(page, point, text, fontsize, rotate=0):
     if not text or not text.strip(): return False
     for fontname in ("helv", "china-s"):
         try:
             page.insert_text(point, text, fontsize=fontsize,
-                             render_mode=3, fontname=fontname)
+                             render_mode=3, fontname=fontname, rotate=rotate)
             return True
         except Exception:
             continue
@@ -331,139 +744,185 @@ def _insert_invisible_text(page, point, text, fontsize):
         ascii_text = text.encode("ascii", "ignore").decode("ascii")
         if ascii_text.strip():
             page.insert_text(point, ascii_text, fontsize=fontsize,
-                             render_mode=3, fontname="helv")
+                             render_mode=3, fontname="helv", rotate=rotate)
             return True
     except Exception:
         pass
     return False
 
 
-def process_one_file(ocr, src, out_pdf, opts, log):
+def extract_items(result):
+    """RapidOCR result -> list of clean, JSON-serialisable items."""
+    boxes = result or []
+    items = []
+    for item in boxes:
+        try:
+            if len(item) != 3: continue
+            box, text, score = item
+            try: s = float(score)
+            except Exception: s = 0.0
+            clean = str(text).replace("\n", " ").replace("\r", " ")
+            if not clean.strip() or is_garbage_text(clean): continue
+            items.append({"box": [[float(p[0]), float(p[1])] for p in box],
+                          "text": clean, "conf": round(s, 4)})
+        except Exception:
+            continue
+    return items, len(boxes)
+
+
+def insert_items(page, items, w, h):
+    """Insert invisible text for items (pixel coords of a w x h render)."""
+    rect = page.rect
+    rot = page.rotation
+    sx = rect.width / w
+    sy = rect.height / h
+    out = []; inserted = 0
+    for it in items:
+        try:
+            x0, y0, x2, y2 = _normalize_box(it["box"])
+            r = pymupdf.Rect(x0*sx, y0*sy, x2*sx, y2*sy)
+            fs = max(4, min(MAX_FONT_SIZE, r.height * 0.8))
+            # OCR coords are in the *visual* (rotated) space; insert_text wants
+            # unrotated page space, and the text must be rotated with the page.
+            pt = pymupdf.Point(r.x0, r.y1) * page.derotation_matrix if rot else \
+                 pymupdf.Point(r.x0, r.y1)
+            ok = _insert_invisible_text(page, pt, it["text"], fs, rotate=rot)
+            if ok: inserted += 1
+            out.append({"box": it["box"], "text": it["text"],
+                        "conf": it["conf"], "inserted": ok})
+        except Exception:
+            continue
+    return out, inserted
+
+
+def process_one_file(eng, src, out_pdf, opts, log, progress):
     src_sig = source_sig(src)
     started = ts_iso()
     t_file = time.time()
+    ckpt = Checkpoint(_ckpt_path(out_pdf), src_sig,
+                      {"dpi": opts.dpi, "max_dim": opts.max_dim, "lang": opts.lang},
+                      opts.checkpoint_every)
 
     doc = None
     try:
+        heartbeat(opts, t_file)
         doc = pymupdf.open(str(src))
         n_pages = len(doc)
+        if ckpt.pages:
+            log.log(f"  resuming: {len(ckpt.pages)} page(s) already in checkpoint")
 
         total_boxes = 0
         total_conf_sum = 0.0
         total_conf_n = 0
         total_inserted = 0
+        n_resumed = 0
         low_conf_pages = []
         empty_pages = []
         skipped_pages = []
         pages_meta = []
         any_modified = False
 
-        for i, page in enumerate(doc):
-            page_t0 = time.time()
+        try:
+            for i, page in enumerate(doc):
+                heartbeat(opts, t_file)
+                page_t0 = time.time()
 
-            # ---- v6: skip pages that already have real text ----
-            existing_chars = page_text_chars(page)
-            if opts.skip_text and existing_chars >= opts.min_text_chars:
-                skipped_pages.append(i + 1)
-                log.log(f"      page {i+1}/{n_pages} "
-                        f"[text: {existing_chars} chars, SKIP]")
+                # ---- skip pages that already have real text ----
+                existing_chars = page_text_chars(page)
+                if opts.skip_text and existing_chars >= opts.min_text_chars:
+                    skipped_pages.append(i + 1)
+                    log.page(f"      page {i+1}/{n_pages} "
+                             f"[text: {existing_chars} chars, SKIP]")
+                    pm = {"page": i + 1, "skipped": True,
+                          "reason": "existing_text", "chars": existing_chars,
+                          "boxes": [], "avg_conf": 0.0}
+                    if opts.sidecar:
+                        try: pm["text"] = page.get_text() or ""
+                        except Exception: pm["text"] = ""
+                    pages_meta.append(pm)
+                    progress.tick(i + 1, n_pages, ocr=False)
+                    continue
+
+                # ---- OCR (or reuse checkpoint) ----
+                rec = ckpt.get(i)
+                resumed = rec is not None
+                if not resumed:
+                    rect = page.rect
+                    long_pts = max(rect.width, rect.height)
+                    eff_dpi = opts.dpi
+                    if long_pts > 0:
+                        max_dpi = max(MIN_EFF_DPI, int(opts.max_dim * 72 / long_pts))
+                        eff_dpi = min(opts.dpi, max_dpi)
+
+                    pix = page.get_pixmap(dpi=eff_dpi,
+                                          colorspace=pymupdf.csRGB, alpha=False)
+                    w, h = pix.width, pix.height
+                    arr = np.frombuffer(pix.samples, dtype=np.uint8)
+                    arr = arr.reshape(h, pix.stride)[:, :w * 3].reshape(h, w, 3)
+                    arr = np.ascontiguousarray(arr)
+                    del pix; gc.collect()
+
+                    result, _ = eng(arr)
+                    items, n_raw = extract_items(result)
+                    rec = {"w": w, "h": h, "dpi": eff_dpi,
+                           "n_raw": n_raw, "items": items}
+                    ckpt.put(i, rec)
+                    del arr
+                    if result is not None: del result
+                    gc.collect()
+                else:
+                    n_resumed += 1
+
+                w, h, eff_dpi = rec["w"], rec["h"], rec["dpi"]
+                page_boxes, ins = insert_items(page, rec["items"], w, h)
+                total_boxes += rec["n_raw"]
+                total_inserted += ins
+                if ins: any_modified = True
+                for b in page_boxes:
+                    total_conf_sum += b["conf"]; total_conf_n += 1
+
+                if not page_boxes:
+                    empty_pages.append(i + 1)
+                page_avg = (sum(b["conf"] for b in page_boxes) / len(page_boxes)
+                            if page_boxes else 0.0)
+                if page_boxes and page_avg < opts.low_conf_threshold:
+                    low_conf_pages.append({"page": i + 1,
+                                           "avg_conf": round(page_avg, 3)})
                 pages_meta.append({
-                    "page": i + 1, "skipped": True,
-                    "reason": "existing_text", "chars": existing_chars,
-                    "boxes": [], "avg_conf": 0.0,
+                    "page": i + 1, "width": w, "height": h,
+                    "dpi_used": eff_dpi, "boxes": page_boxes,
+                    "avg_conf": round(page_avg, 4),
                 })
-                continue
 
-            # ---- normal OCR path ----
-            rect = page.rect
-            long_pts = max(rect.width, rect.height)
-            eff_dpi = opts.dpi
-            if long_pts > 0:
-                max_dpi = int(opts.max_dim * 72 / long_pts)
-                eff_dpi = min(opts.dpi, max_dpi)
+                tag = "RESUMED" if resumed else f"t={time.time()-page_t0:.1f}s"
+                log.page(f"      page {i+1}/{n_pages} dpi={eff_dpi} "
+                         f"{w}x{h} boxes={rec['n_raw']} {tag} rss={rss_mb():.0f}MB")
+                progress.tick(i + 1, n_pages, ocr=not resumed)
 
-            pix = page.get_pixmap(dpi=eff_dpi,
-                                   colorspace=pymupdf.csRGB, alpha=False)
-            w, h = pix.width, pix.height
-
-            arr = np.frombuffer(pix.samples, dtype=np.uint8)
-            arr = arr.reshape(h, w, 3)
-            arr = np.ascontiguousarray(arr)
-            del pix; gc.collect()
-
-            result, _ = ocr(arr)
-            boxes = result or []
-            n_boxes = len(boxes)
-            total_boxes += n_boxes
-
-            page_boxes = []
-            if n_boxes:
-                sx = rect.width / w
-                sy = rect.height / h
-                for item in boxes:
-                    try:
-                        if len(item) != 3: continue
-                        box, text, score = item
-                        x0, y0, x2, y2 = _normalize_box(box)
-                        try: s = float(score)
-                        except Exception: s = 0.0
-                        total_conf_sum += s; total_conf_n += 1
-                        r = pymupdf.Rect(x0*sx, y0*sy, x2*sx, y2*sy)
-                        clean = str(text).replace("\n", " ").replace("\r", " ")
-                        if not clean.strip(): continue
-                        if is_garbage_text(clean): continue
-                        fs = max(4, min(MAX_FONT_SIZE, r.height * 0.8))
-                        ok = _insert_invisible_text(page, (r.x0, r.y1), clean, fs)
-                        if ok:
-                            total_inserted += 1
-                            any_modified = True
-                        page_boxes.append({
-                            "box": [[float(p[0]), float(p[1])] for p in box],
-                            "text": clean, "conf": round(s, 4),
-                            "inserted": ok,
-                        })
-                    except Exception:
-                        continue
-
-            if not page_boxes:
-                empty_pages.append(i + 1)
-
-            page_avg = (sum(b["conf"] for b in page_boxes) / len(page_boxes)
-                        if page_boxes else 0.0)
-            if page_boxes and page_avg < opts.low_conf_threshold:
-                low_conf_pages.append({"page": i + 1,
-                                       "avg_conf": round(page_avg, 3)})
-
-            pages_meta.append({
-                "page": i + 1, "width": w, "height": h,
-                "dpi_used": eff_dpi, "boxes": page_boxes,
-                "avg_conf": round(page_avg, 4),
-            })
-
-            del arr
-            if result is not None: del result
-            gc.collect()
-
-            log.log(f"      page {i+1}/{n_pages} dpi={eff_dpi} "
-                    f"{w}x{h} boxes={n_boxes} "
-                    f"t={time.time()-page_t0:.1f}s rss={rss_mb():.0f}MB")
-
-            if rss_mb() > opts.memory_limit_mb:
-                log.log(f"      [watchdog] rss>{opts.memory_limit_mb}MB, recycling")
-                del ocr; gc.collect()
-                ocr = build_ocr(opts.lang, log)
-                log.log(f"      [watchdog] recreated, rss={rss_mb():.0f}MB")
+                if not resumed:
+                    eng.check_memory(log)
+        except BaseException:
+            ckpt.flush()      # keep everything OCR'd so far for the retry
+            raise
+        ckpt.flush()
 
         # ---- write output ----
         out_pdf.parent.mkdir(parents=True, exist_ok=True)
         tmp = _tmp_path(out_pdf)
         if not any_modified:
-            # all pages skipped — copy source verbatim (fast, byte-identical)
             shutil.copy2(src, tmp)
-            log.log(f"  no pages modified — copied source")
+            log.log("  no pages modified — copied source")
         else:
+            # doc.save() is one uninterruptible C call: pages stop completing,
+            # so silence the stall alarm (it could only fire AFTER the save
+            # returns and falsely fail a finished file). The hard watchdog
+            # still covers a genuine hang here.
+            disarm_alarm()
+            beat()
+            log.log("  saving PDF ...")
             doc.save(tmp, deflate=True, deflate_images=False,
                      deflate_fonts=True, garbage=4, clean=True)
+            heartbeat(opts, t_file)
         os.replace(tmp, out_pdf)
 
         duration = time.time() - t_file
@@ -473,7 +932,7 @@ def process_one_file(ocr, src, out_pdf, opts, log):
         ratio = (out_size_mb / src_size_mb) if src_size_mb else 0.0
         log.log(f"  saved {out_size_mb:.2f} MB "
                 f"(source {src_size_mb:.2f} MB, ratio {ratio:.2f}x, "
-                f"skipped {len(skipped_pages)} page(s))")
+                f"skipped {len(skipped_pages)} page(s), resumed {n_resumed})")
 
         sidecars = {}
         if opts.sidecar:
@@ -481,7 +940,8 @@ def process_one_file(ocr, src, out_pdf, opts, log):
                 txt_path = out_pdf.with_suffix(".txt")
                 buf = []
                 for pm in pages_meta:
-                    buf.append("\n".join(b["text"] for b in pm.get("boxes", [])))
+                    buf.append(pm["text"] if "text" in pm else
+                               "\n".join(b["text"] for b in pm.get("boxes", [])))
                 atomic_write_text(txt_path, "\n\n".join(buf))
                 sidecars["txt"] = str(txt_path)
             if "md" in opts.sidecar:
@@ -489,7 +949,8 @@ def process_one_file(ocr, src, out_pdf, opts, log):
                 md = [f"# {src.name}\n"]
                 for pm in pages_meta:
                     md.append(f"## Page {pm['page']}\n")
-                    md.append("\n".join(b["text"] for b in pm.get("boxes", [])))
+                    md.append(pm["text"] if "text" in pm else
+                              "\n".join(b["text"] for b in pm.get("boxes", [])))
                     md.append("")
                 atomic_write_text(md_path, "\n".join(md))
                 sidecars["md"] = str(md_path)
@@ -509,6 +970,7 @@ def process_one_file(ocr, src, out_pdf, opts, log):
             "pages": n_pages,
             "pages_skipped": len(skipped_pages),
             "pages_ocred": n_pages - len(skipped_pages),
+            "pages_resumed": n_resumed,
             "boxes": total_boxes,
             "boxes_inserted": total_inserted,
             "avg_conf": round(avg_conf, 4),
@@ -524,9 +986,11 @@ def process_one_file(ocr, src, out_pdf, opts, log):
             "started_at": started,
             "finished_at": ts_iso(),
         }
-        return entry, ocr
+        ckpt.discard()
+        return entry
 
     finally:
+        disarm_alarm()
         if doc is not None:
             try: doc.close()
             except Exception: pass
@@ -539,6 +1003,11 @@ def _validate_ocr_args(args):
     if not (0.0 < args.low_conf_threshold <= 1.0):
         print("--low-conf-threshold must be in (0, 1]", file=sys.stderr); sys.exit(2)
     if args.timeout_per_file < 0: print("--timeout-per-file must be >= 0", file=sys.stderr); sys.exit(2)
+    if args.stall_timeout < 0: print("--stall-timeout must be >= 0", file=sys.stderr); sys.exit(2)
+    if args.hard_stall < 0: print("--hard-stall must be >= 0", file=sys.stderr); sys.exit(2)
+    if args.hard_stall and args.stall_timeout and args.hard_stall <= args.stall_timeout:
+        print("--hard-stall must be larger than --stall-timeout", file=sys.stderr); sys.exit(2)
+    if args.checkpoint_every < 1: print("--checkpoint-every must be >= 1", file=sys.stderr); sys.exit(2)
     if args.memory_limit_mb < 200: print("--memory-limit-mb must be >= 200", file=sys.stderr); sys.exit(2)
     if args.workers < 1: print("--workers must be >= 1", file=sys.stderr); sys.exit(2)
     if args.min_text_chars < 0: print("--min-text-chars must be >= 0", file=sys.stderr); sys.exit(2)
@@ -569,27 +1038,55 @@ def _discover_candidates(src_root, dst_root):
     return candidates
 
 
+LOCK_FH = [None]
+
+
+def _acquire_lock(folder, log):
+    """One ocrmachine per output folder: two writers would corrupt the manifest."""
+    if fcntl is None:
+        return
+    try:
+        fh = open(folder / ".ocrmachine.lock", "a+")
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        LOCK_FH[0] = fh      # keep open for the life of the process
+    except OSError:
+        log.log(f"ERROR: another ocrmachine is already using {folder}")
+        log.close(); sys.exit(1)
+
+
+def _count_pages(p):
+    try:
+        d = pymupdf.open(str(p)); n = len(d); d.close(); return n
+    except Exception:
+        return 0
+
+
 def cmd_ocr(args):
     _validate_ocr_args(args)
     src_root = Path(args.src).resolve()
     dst_root = Path(args.dst).resolve()
     dst_is_file = (src_root.is_file() and dst_root.suffix.lower() == ".pdf")
-    if not dst_is_file:
+    if dst_is_file:
+        dst_root.parent.mkdir(parents=True, exist_ok=True)
+    else:
         dst_root.mkdir(parents=True, exist_ok=True)
 
     log = Logger(dst_root.parent / LOG_NAME if dst_is_file else dst_root / LOG_NAME)
+    log.verbose = args.verbose
+    _acquire_lock(dst_root.parent if dst_is_file else dst_root, log)
     manifest_path = (dst_root.parent / MANIFEST_NAME if dst_is_file
                      else dst_root / MANIFEST_NAME)
     manifest = Manifest(manifest_path)
 
     log.log("=" * 60)
-    log.log(f"ocr start  src={src_root}  dst={dst_root}")
+    log.log(f"ocr start {ts_iso()}  src={src_root}  dst={dst_root}")
     log.log(f"  dpi={args.dpi} max_dim={args.max_dim} lang={args.lang} "
             f"sidecar={args.sidecar}")
     log.log(f"  skip_text={args.skip_text} min_text_chars={args.min_text_chars}")
     log.log(f"  low_conf={args.low_conf_threshold} "
             f"mem_limit={args.memory_limit_mb}MB "
-            f"timeout={args.timeout_per_file}s")
+            f"stall={args.stall_timeout}s hard_stall={args.hard_stall}s "
+            f"file_cap={args.timeout_per_file}s ckpt_every={args.checkpoint_every}")
     log.log(f"  force={args.force} retry_failed={args.retry_failed} "
             f"dry_run={args.dry_run} workers={args.workers}")
 
@@ -604,12 +1101,19 @@ def cmd_ocr(args):
         log.close(); sys.exit(1)
     log.log(f"  found {len(candidates)} PDF file(s)")
 
+    quarantine = _quarantine()
     plan = []
+    seen_out = {}
     for src, out_pdf, rel in candidates:
         try: same = src.resolve() == out_pdf.resolve()
         except Exception: same = False
         if same:
             log.log(f"  SKIP: src==dst for {rel}"); continue
+        okey = str(out_pdf)
+        if okey in seen_out:
+            log.log(f"  SKIP: {rel} would overwrite the output of {seen_out[okey]}")
+            continue
+        seen_out[okey] = rel
 
         entry = manifest.get(rel)
         current_sig = source_sig(src)
@@ -627,12 +1131,15 @@ def cmd_ocr(args):
         elif out_pdf.stat().st_size != entry.get("output_size"):
             need_run, reason = True, "output size mismatch"
         else: need_run, reason = False, "up-to-date"
+        if need_run and rel in quarantine and not args.force:
+            need_run, reason = False, "quarantined after hard stall (use --retry-failed)"
         plan.append((src, out_pdf, rel, need_run, reason))
 
     if args.dry_run:
         log.log("---- DRY RUN ----")
-        for _, _, rel, need, reason in plan:
-            log.log(f"  {'RUN ' if need else 'skip'}  {rel}  [{reason}]")
+        for _, out_pdf, rel, need, reason in plan:
+            ck = " +checkpoint" if _ckpt_path(out_pdf).exists() else ""
+            log.log(f"  {'RUN ' if need else 'skip'}  {rel}  [{reason}{ck}]")
         log.close(); return
 
     todo = [p for p in plan if p[3]]
@@ -641,33 +1148,55 @@ def cmd_ocr(args):
     if not todo:
         log.log("nothing to do."); log.close(); return
 
+    if args.force:
+        for _, out_pdf, _, _, _ in todo:
+            try: _ckpt_path(out_pdf).unlink()
+            except Exception: pass
+
+    page_counts = {rel: _count_pages(src) for src, _, rel, _, _ in todo}
+    progress = Progress(sum(page_counts.values()),
+                        enabled=False if args.no_progress else None,
+                        osc=args.osc_progress)
+    log.progress = progress
+    atexit.register(progress.close)
+
     log.log("initializing RapidOCR ...")
     t0 = time.time()
-    ocr = build_ocr(args.lang, log)
+    beat()
+    eng = Engine(args.lang, log, args.memory_limit_mb)
     log.log(f"  ready in {time.time()-t0:.2f}s rss={rss_mb():.0f}MB")
 
-    if HAS_ALARM:
+    STALL_S[0] = args.stall_timeout
+    if HAS_ALARM and (args.stall_timeout > 0):
         signal.signal(signal.SIGALRM, _alarm)
+        ALARM_ON[0] = True
+    start_hard_watchdog(args.hard_stall, log, manifest)
 
+    def _on_term(signum, frame):
+        raise KeyboardInterrupt
+    for _sg in ("SIGTERM", "SIGHUP"):
+        if hasattr(signal, _sg):
+            signal.signal(getattr(signal, _sg), _on_term)
+
+    interrupted = False
+    progress.start()
     overall_t0 = time.time()
     done = failed = 0
     total_pages = total_boxes = 0
-    total_skipped_pages = 0
+    total_skipped_pages = total_resumed_pages = 0
     total_conf_sum = 0.0; total_conf_n = 0
-    recycled = 0
 
     try:
         for idx, (src, out_pdf, rel, _, _) in enumerate(todo, start=1):
+            progress.set_file(idx, len(todo), rel, page_counts.get(rel, 0))
             log.log(f"--- [{idx}/{len(todo)}] {rel} ---")
             log.log(f"  rss before: {rss_mb():.0f}MB")
+            STATE["rel"] = rel
+            beat()
 
             if done > 0 and done % DEFAULT_RECREATE_EVERY == 0:
                 log.log("  recycling RapidOCR engine")
-                try: del ocr
-                except Exception: pass
-                gc.collect()
-                ocr = build_ocr(args.lang, log)
-                recycled += 1
+                eng.recycle()
                 log.log(f"  recreated, rss={rss_mb():.0f}MB")
 
             if done > 0:
@@ -675,21 +1204,20 @@ def cmd_ocr(args):
                 remaining = avg * (len(todo) - idx + 1)
                 log.log(f"  ETA ~{remaining/60:.1f} min")
 
-            if HAS_ALARM and args.timeout_per_file > 0:
-                signal.alarm(args.timeout_per_file)
-
             try:
-                entry, ocr = process_one_file(ocr, src, out_pdf, args, log)
+                entry = process_one_file(eng, src, out_pdf, args, log, progress)
                 manifest.set(rel, entry)
                 done += 1
                 total_pages += entry["pages"]
                 total_boxes += entry["boxes"]
                 total_skipped_pages += entry.get("pages_skipped", 0)
+                total_resumed_pages += entry.get("pages_resumed", 0)
                 if entry["avg_conf"] > 0 and entry["pages"]:
                     total_conf_sum += entry["avg_conf"] * entry["pages"]
                     total_conf_n += entry["pages"]
                 log.log(f"  DONE: {entry['pages']} pages "
-                        f"({entry.get('pages_skipped',0)} skipped), "
+                        f"({entry.get('pages_skipped',0)} skipped, "
+                        f"{entry.get('pages_resumed',0)} resumed), "
                         f"{entry['boxes']} boxes, "
                         f"avg_conf={entry['avg_conf']:.2f}, "
                         f"{entry['duration_s']}s")
@@ -698,23 +1226,18 @@ def cmd_ocr(args):
                             f"{[p['page'] for p in entry['low_conf_pages']]}")
                 if entry["empty_pages"]:
                     log.log(f"  EMPTY pages: {entry['empty_pages']}")
-            except FileTimeout:
+            except FileTimeout as e:
                 failed += 1
-                log.log(f"  FAILED: timeout after {args.timeout_per_file}s")
-                manifest.set(rel, {"status": "failed",
-                    "error": f"timeout>{args.timeout_per_file}s",
+                log.log(f"  FAILED: {e} (checkpoint kept; rerun resumes)")
+                manifest.set(rel, {"status": "failed", "error": str(e),
                     "finished_at": ts_iso(), "source_sig": source_sig(src)})
-                try: del ocr
-                except Exception: pass
-                gc.collect(); ocr = build_ocr(args.lang, log)
+                eng.recycle()
             except MemoryError:
                 failed += 1
-                log.log("  FAILED: MemoryError")
+                log.log("  FAILED: MemoryError (checkpoint kept; rerun resumes)")
                 manifest.set(rel, {"status": "failed", "error": "MemoryError",
                     "finished_at": ts_iso(), "source_sig": source_sig(src)})
-                try: del ocr
-                except Exception: pass
-                gc.collect(); ocr = build_ocr(args.lang, log)
+                eng.recycle()
             except Exception as e:
                 failed += 1
                 log.log(f"  FAILED: {type(e).__name__}: {e}")
@@ -723,11 +1246,16 @@ def cmd_ocr(args):
                     "finished_at": ts_iso(), "source_sig": source_sig(src)})
                 gc.collect()
             finally:
-                if HAS_ALARM: signal.alarm(0)
+                disarm_alarm()
+                STATE["rel"] = None
+                progress.finish_file()
     except KeyboardInterrupt:
-        log.log("interrupted by user")
+        interrupted = True
+        log.log("interrupted (checkpoints kept; rerun resumes)")
     finally:
+        STATE["rel"] = None
         total_dt = time.time() - overall_t0
+        progress.close(failed=bool(failed))
         log.log("=" * 60)
         log.log("SUMMARY")
         log.log(f"  files processed : {done}")
@@ -735,15 +1263,20 @@ def cmd_ocr(args):
         log.log(f"  files failed    : {failed}")
         log.log(f"  pages total     : {total_pages}")
         log.log(f"  pages skipped   : {total_skipped_pages} (already had text)")
+        log.log(f"  pages resumed   : {total_resumed_pages} (from checkpoint)")
         log.log(f"  text boxes      : {total_boxes}")
         log.log(f"  total time      : {total_dt/60:.1f} min")
         if total_pages: log.log(f"  avg per page    : {total_dt/total_pages:.2f} s")
         if total_conf_n: log.log(f"  avg confidence  : {total_conf_sum/total_conf_n:.3f}")
-        log.log(f"  engine recycles : {recycled}")
-        log.log(f"  peak rss        : {rss_mb():.0f} MB")
+        log.log(f"  engine recycles : {eng.recycles}")
+        log.log(f"  rss at end      : {rss_mb():.0f} MB")
         log.log(f"  manifest        : {manifest_path}")
         log.log("=" * 60)
         log.close()
+    if interrupted:
+        sys.exit(130)
+    if failed:
+        sys.exit(1)
 
 
 def cmd_verify(args):
@@ -786,7 +1319,11 @@ def cmd_verify(args):
                 to_repair.append((src, out_pdf, rel)); continue
             has_text = any(len(p.get_text().strip()) > 0 for p in d_out)
             if not has_text:
-                no_text.append(rel); to_repair.append((src, out_pdf, rel)); continue
+                ent = manifest.get(rel)
+                blank_ok = bool(ent and ent.get("status") == "done"
+                                and ent.get("boxes_inserted", 1) == 0)
+                if not blank_ok:   # OCR found nothing (blank scan): not an error
+                    no_text.append(rel); to_repair.append((src, out_pdf, rel)); continue
         except Exception as e:
             unreadable.append((rel, str(e)))
             to_repair.append((src, out_pdf, rel)); continue
@@ -802,14 +1339,18 @@ def cmd_verify(args):
             sig_changed.append(rel)
         ok += 1
 
-    print(f"source PDFs found: {len(sources)}")
-    print(f"OK               : {ok}")
-    print(f"missing          : {len(missing)}")
-    print(f"empty            : {len(empty)}")
-    print(f"unreadable       : {len(unreadable)}")
-    print(f"page mismatch    : {len(page_mismatch)}")
-    print(f"no text layer    : {len(no_text)}")
-    print(f"source changed   : {len(sig_changed)}")
+    def stat(label, n, good=False, info=False):
+        if info: sty = ("bold",)
+        else: sty = ("bold", "green") if (good and n) else (("bold", "red") if n else ())
+        print(paint(f"{label:<17}: ", "dim") + paint(str(n), *sty))
+    stat("source PDFs found", len(sources), info=True)
+    stat("OK", ok, good=True)
+    stat("missing", len(missing))
+    stat("empty", len(empty))
+    stat("unreadable", len(unreadable))
+    stat("page mismatch", len(page_mismatch))
+    stat("no text layer", len(no_text))
+    stat("source changed", len(sig_changed))
 
     for label, items in [("MISSING", missing), ("EMPTY", empty),
                          ("UNREADABLE", unreadable),
@@ -817,11 +1358,11 @@ def cmd_verify(args):
                          ("NO TEXT", no_text),
                          ("SOURCE CHANGED", sig_changed)]:
         if items:
-            print(f"\n{label}:")
+            print("\n" + paint(f"{label}:", "bold", "red"))
             for it in items: print(f"  {it}")
 
     if not (missing or empty or unreadable or page_mismatch or no_text):
-        print("\nALL GOOD ✅"); return
+        print("\n" + paint("ALL GOOD ✅", "bold", "green")); return
     if args.repair:
         print("\n--repair: re-OCRing broken files ...")
         log = Logger((dst_root.parent if single_file else dst_root) / LOG_NAME)
@@ -830,12 +1371,15 @@ def cmd_verify(args):
             min_text_chars=DEFAULT_MIN_TEXT_CHARS,
             low_conf_threshold=DEFAULT_LOW_CONF,
             memory_limit_mb=DEFAULT_MEM_LIMIT_MB,
-            timeout_per_file=DEFAULT_TIMEOUT_S)
-        ocr = build_ocr(opts.lang, log)
+            stall_timeout=DEFAULT_STALL_S,
+            timeout_per_file=DEFAULT_FILE_CAP_S,
+            checkpoint_every=DEFAULT_CKPT_EVERY)
+        eng = Engine(opts.lang, log, opts.memory_limit_mb)
+        progress = Progress(1, enabled=False)
         for src, out_pdf, rel in to_repair:
             print(f"  repairing {rel}")
             try:
-                entry, ocr = process_one_file(ocr, src, out_pdf, opts, log)
+                entry = process_one_file(eng, src, out_pdf, opts, log, progress)
                 manifest.set(rel, entry)
             except Exception as e:
                 print(f"    failed: {e}"); gc.collect()
@@ -927,8 +1471,19 @@ def main():
                    default=DEFAULT_LOW_CONF, dest="low_conf_threshold")
     p.add_argument("--memory-limit-mb", type=int,
                    default=DEFAULT_MEM_LIMIT_MB, dest="memory_limit_mb")
+    p.add_argument("--stall-timeout", type=int,
+                   default=DEFAULT_STALL_S, dest="stall_timeout")
+    p.add_argument("--hard-stall", type=int,
+                   default=DEFAULT_HARD_STALL_S, dest="hard_stall")
     p.add_argument("--timeout-per-file", type=int,
-                   default=DEFAULT_TIMEOUT_S, dest="timeout_per_file")
+                   default=DEFAULT_FILE_CAP_S, dest="timeout_per_file")
+    p.add_argument("--checkpoint-every", type=int,
+                   default=DEFAULT_CKPT_EVERY, dest="checkpoint_every")
+    p.add_argument("--no-progress", action="store_true", dest="no_progress")
+    p.add_argument("--color", choices=("auto", "always", "never"), default="auto")
+    p.add_argument("--osc-progress", choices=("auto", "on", "off"), default="auto",
+                   dest="osc_progress")
+    p.add_argument("--verbose", action="store_true")
     p.add_argument("--workers", type=int, default=1)
     p.add_argument("--skip-text", action="store_true", default=True,
                    dest="skip_text")
@@ -940,6 +1495,7 @@ def main():
     p = sub.add_parser("verify")
     p.add_argument("src"); p.add_argument("dst")
     p.add_argument("--repair", action="store_true")
+    p.add_argument("--color", choices=("auto", "always", "never"), default="auto")
     p.set_defaults(func=cmd_verify)
 
     p = sub.add_parser("report")
@@ -948,6 +1504,7 @@ def main():
     p.set_defaults(func=cmd_report)
 
     args = ap.parse_args()
+    setup_color(getattr(args, "color", "auto"))
     if getattr(args, "sidecar", None):
         parts = tuple(s.strip() for s in args.sidecar.split(",") if s.strip())
         for s in parts:
@@ -969,17 +1526,65 @@ PYEOF
 chmod +x "$LIB"
 }
 
+# --- auto setup / auto upgrade ----------------------------------------------
+lib_version() {
+  [[ -f "$LIB" ]] || return 0          # empty output = unknown (safe under set -e)
+  sed -n 's/^LIB_VERSION = "\(.*\)"/\1/p' "$LIB" 2>/dev/null | head -n1 || true
+}
+
+# true if $1 is strictly older than $2 (version sort)
+version_lt() {
+  [[ "$1" != "$2" && "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" == "$1" ]]
+}
+
+deps_ok() { "$PY" -c "import pymupdf, numpy, rapidocr_openvino" >/dev/null 2>&1; }
+
+refresh_lib() {
+  mkdir -p -- "$INSTALL_DIR"
+  write_lib
+  info "library updated to v${VERSION}"
+}
+
+ensure_installed() {
+  if [[ "${OCR_NO_AUTOSETUP:-0}" == "1" ]]; then
+    is_installed || { err "not installed. Run: $0 setup"; exit 1; }
+    return 0
+  fi
+  if [[ ! -x "$PY" ]]; then
+    warn "not set up yet - running setup first"
+    cmd_setup
+    return 0
+  fi
+  local have; have="$(lib_version || true)"
+  if [[ ! -f "$LIB" || -z "$have" ]]; then
+    warn "OCR library missing or unreadable - repairing"
+    deps_ok || cmd_setup
+    [[ "$(lib_version || true)" == "$VERSION" ]] || refresh_lib
+  elif version_lt "$have" "$VERSION"; then
+    warn "installed library v${have} is older than this script (v${VERSION}) - upgrading"
+    deps_ok || cmd_setup
+    refresh_lib
+  elif version_lt "$VERSION" "$have"; then
+    warn "installed library (v${have}) is newer than this wrapper (v${VERSION}); using it."
+    warn "update this wrapper: $(self_path)"
+  fi
+}
+
 main() {
   local cmd="${1:-}"
   case "$cmd" in
     setup) cmd_setup ;;
     uninstall) cmd_uninstall ;;
     ocr|verify|report)
-      if ! is_installed; then err "not installed. Run: $0 setup"; exit 1; fi
+      ensure_installed
       shift
       exec "$PY" "$LIB" "$cmd" "$@"
       ;;
-    version|--version|-V) echo "ocrmachine v${VERSION}" ;;
+    version|--version|-V)
+      echo "ocrmachine v${VERSION} (wrapper)"
+      if [[ -f "$LIB" ]]; then echo "ocr library v$(lib_version || true) (installed)"
+      else echo "ocr library: not installed (it installs itself on first use)"; fi
+      ;;
     ""|-h|--help|help) show_help ;;
     *) err "unknown command: $cmd"; echo; show_help; exit 1 ;;
   esac
