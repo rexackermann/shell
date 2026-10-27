@@ -1,14 +1,34 @@
 #!/usr/bin/env python3
-import subprocess, sys
-from evdev import InputDevice, ecodes as e, list_devices
+import asyncio, math, subprocess, sys, time
+from collections import deque
+from evdev import InputDevice, UInput, ecodes as e, list_devices
 
-ZONE = 0.06   # edge strip, fraction of the pad
-STEP = 0.03   # finger travel per action, fraction of the pad
+# ---- sliders (top = brightness, left = volume) ----
+ZONE = 0.06            # edge strip, fraction of the pad
+STEP = 0.03            # finger travel per slider action, fraction of the pad
+
+# ---- right-edge scroll ----
+RIGHT_SCROLL = True    # turn KDE's own Edge scrolling OFF when this is True
+NATURAL = True         # True: content follows the finger. False: classic edge scroll
+SCROLL_GAIN = 2400     # hi-res wheel units per full pad height (120 = one notch)
+
+# ---- kinetic physics ----
+KINETIC = True
+VEL_WINDOW = 0.08      # s of finger history used to measure release velocity
+STALE = 0.06           # s; finger paused longer than this before lift = no fling
+FLING_MIN = 300        # hi-res units/s needed to start coasting
+FLING_MAX = 24000      # velocity cap, hi-res units/s
+FRICTION = 2.2         # viscous drag, 1/s (higher = stops sooner)
+DRY = 600              # constant friction, hi-res units/s^2 (clean final stop)
+STOP_BELOW = 40        # hi-res units/s; below this the motion ends
+TICK = 1 / 120
 
 BRIGHT_UP   = ["brightnessctl", "set", "3%+"]
 BRIGHT_DOWN = ["brightnessctl", "set", "3%-"]
 VOL_UP      = ["wpctl", "set-volume", "-l", "1.0", "@DEFAULT_AUDIO_SINK@", "2%+"]
 VOL_DOWN    = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "2%-"]
+
+DIR = 1.0 if NATURAL else -1.0
 
 def fire(cmd):
     subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -28,26 +48,84 @@ def find_pad():
         print("permission denied on some input devices; check the touchpad udev rule / log out and in", file=sys.stderr)
     return None
 
-def main():
-    pad = find_pad()
-    if pad is None:
-        sys.exit("no readable touchpad found")
+class Wheel:
+    """Accumulates fractional hi-res units and emits whole ones."""
+    def __init__(self, ui):
+        self.ui, self.frac, self.notch = ui, 0.0, 0
+    def add(self, hi):
+        self.frac += hi
+        n = int(self.frac)
+        if not n:
+            return
+        self.frac -= n
+        self.ui.write(e.EV_REL, e.REL_WHEEL_HI_RES, n)
+        self.notch += n
+        k = int(self.notch / 120)
+        if k:
+            self.notch -= k * 120
+            self.ui.write(e.EV_REL, e.REL_WHEEL, k)
+        self.ui.syn()
+
+async def physics(state, wheel):
+    last = time.monotonic()
+    while True:
+        await asyncio.sleep(TICK)
+        now = time.monotonic()
+        dt = now - last
+        last = now
+        v = state["v"]
+        if v == 0.0:
+            continue
+        v *= math.exp(-FRICTION * dt)
+        d = DRY * dt
+        v = 0.0 if abs(v) <= d else v - math.copysign(d, v)
+        if abs(v) < STOP_BELOW:
+            v = 0.0
+        state["v"] = v
+        wheel.add(v * dt)
+
+def fling(state, s, t):
+    if not KINETIC or len(s["samples"]) < 2:
+        return
+    if t - s["samples"][-1][0] > STALE:
+        return
+    cutoff = s["samples"][-1][0] - VEL_WINDOW
+    pts = [p for p in s["samples"] if p[0] >= cutoff]
+    if len(pts) < 2:
+        return
+    span = max(pts[-1][0] - pts[0][0], 0.02)
+    v = sum(h for _, h in pts[1:]) / span
+    v = max(-FLING_MAX, min(FLING_MAX, v))
+    if abs(v) >= FLING_MIN:
+        state["v"] = v
+
+async def run(pad):
     print("using", pad.name, flush=True)
+    wheel = None
+    if RIGHT_SCROLL:
+        ui = UInput({e.EV_REL: [e.REL_WHEEL, e.REL_WHEEL_HI_RES]}, name="edge-sliders-scroll")
+        wheel = Wheel(ui)
+    state = {"v": 0.0}
+    if wheel:
+        asyncio.create_task(physics(state, wheel))
     ax = pad.absinfo(e.ABS_MT_POSITION_X)
     ay = pad.absinfo(e.ABS_MT_POSITION_Y)
     nx = lambda v: (v - ax.min) / (ax.max - ax.min)
     ny = lambda v: (v - ay.min) / (ay.max - ay.min)
-    slots = {}
-    cur = 0
-    for ev in pad.read_loop():
+    slots, cur = {}, 0
+    async for ev in pad.async_read_loop():
         if ev.type == e.EV_ABS:
             if ev.code == e.ABS_MT_SLOT:
                 cur = ev.value
             elif ev.code == e.ABS_MT_TRACKING_ID:
                 if ev.value == -1:
-                    slots.pop(cur, None)
+                    s = slots.pop(cur, None)
+                    if s and s["mode"] == "right":
+                        fling(state, s, ev.timestamp())
                 else:
-                    slots[cur] = {"x": None, "y": None, "mode": None, "last": None, "acc": 0.0}
+                    state["v"] = 0.0   # a new touch catches any coasting
+                    slots[cur] = {"x": None, "y": None, "mode": None, "last": None,
+                                  "acc": 0.0, "samples": deque()}
             elif ev.code == e.ABS_MT_POSITION_X and cur in slots:
                 slots[cur]["x"] = ev.value
             elif ev.code == e.ABS_MT_POSITION_Y and cur in slots:
@@ -62,9 +140,22 @@ def main():
                 continue
             x, y = nx(s["x"]), ny(s["y"])
             if s["mode"] is None:
-                s["mode"] = "top" if y <= ZONE else "left" if x <= ZONE else "none"
+                s["mode"] = ("top" if y <= ZONE else "left" if x <= ZONE
+                             else "right" if RIGHT_SCROLL and x >= 1 - ZONE else "none")
                 print("touch mode=%s x=%.3f y=%.3f" % (s["mode"], x, y), flush=True)
             if s["mode"] == "none":
+                continue
+            if s["mode"] == "right":
+                if s["last"] is None:
+                    s["last"] = y
+                    continue
+                hi = DIR * (y - s["last"]) * SCROLL_GAIN
+                s["last"] = y
+                t = ev.timestamp()
+                s["samples"].append((t, hi))
+                while s["samples"] and t - s["samples"][0][0] > 0.3:
+                    s["samples"].popleft()
+                wheel.add(hi)
                 continue
             pos = x if s["mode"] == "top" else -y
             if s["last"] is None:
@@ -79,5 +170,11 @@ def main():
             while s["acc"] <= -STEP:
                 fire(down)
                 s["acc"] += STEP
+
+def main():
+    pad = find_pad()
+    if pad is None:
+        sys.exit("no readable touchpad found")
+    asyncio.run(run(pad))
 
 main()
